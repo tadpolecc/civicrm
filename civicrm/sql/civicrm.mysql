@@ -4575,6 +4575,9 @@ CREATE TABLE `civicrm_contribution` (
   ,     INDEX `check_number`(
         check_number
   )
+  ,     INDEX `creditnote_id`(
+        creditnote_id
+  )
   
 ,          CONSTRAINT FK_civicrm_contribution_contact_id FOREIGN KEY (`contact_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE CASCADE,          CONSTRAINT FK_civicrm_contribution_financial_type_id FOREIGN KEY (`financial_type_id`) REFERENCES `civicrm_financial_type`(`id`) ,          CONSTRAINT FK_civicrm_contribution_contribution_page_id FOREIGN KEY (`contribution_page_id`) REFERENCES `civicrm_contribution_page`(`id`) ON DELETE SET NULL,          CONSTRAINT FK_civicrm_contribution_contribution_recur_id FOREIGN KEY (`contribution_recur_id`) REFERENCES `civicrm_contribution_recur`(`id`) ON DELETE SET NULL,          CONSTRAINT FK_civicrm_contribution_address_id FOREIGN KEY (`address_id`) REFERENCES `civicrm_address`(`id`) ON DELETE SET NULL,          CONSTRAINT FK_civicrm_contribution_campaign_id FOREIGN KEY (`campaign_id`) REFERENCES `civicrm_campaign`(`id`) ON DELETE SET NULL  
 )  ENGINE=InnoDB DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci  ;
