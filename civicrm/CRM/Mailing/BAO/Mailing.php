@@ -758,12 +758,12 @@ ORDER BY   i.contact_id, i.{$tempColumn}
     if (!$this->templates) {
       $this->getHeaderFooter();
       $this->templates = array();
-      if ($this->body_text || $this->header->body_text || $this->footer->body_text) {
+      if ($this->body_text || !empty($this->header)) {
         $template = array();
-        if ($this->header->body_text) {
+        if (!empty($this->header->body_text)) {
           $template[] = $this->header->body_text;
         }
-        else {
+        elseif (!empty($this->header->body_html)) {
           $template[] = CRM_Utils_String::htmlToText($this->header->body_html);
         }
 
@@ -774,10 +774,10 @@ ORDER BY   i.contact_id, i.{$tempColumn}
           $template[] = CRM_Utils_String::htmlToText($this->body_html);
         }
 
-        if ($this->footer->body_text) {
+        if (!empty($this->footer->body_text)) {
           $template[] = $this->footer->body_text;
         }
-        else {
+        elseif (!empty($this->footer->body_html)) {
           $template[] = CRM_Utils_String::htmlToText($this->footer->body_html);
         }
 

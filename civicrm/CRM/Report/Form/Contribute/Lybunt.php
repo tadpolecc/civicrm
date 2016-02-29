@@ -72,17 +72,6 @@ class CRM_Report_Form_Contribute_Lybunt extends CRM_Report_Form {
   protected $groupTempTable = '';
 
   /**
-   * Status clause to be added in to both contact based & contribution based queries.
-   *
-   * The rationale seems to be that we construct a list of contacts and then show the relevant contributions for them.
-   *
-   * Presumably the clause originally was only status but now type is included too.
-   *
-   * @var string
-   */
-  protected $_statusClause = '';
-
-  /**
    * Class constructor.
    */
   public function __construct() {
@@ -179,6 +168,9 @@ class CRM_Report_Form_Contribute_Lybunt extends CRM_Report_Form {
             'title' => ts('Email'),
             'default' => TRUE,
           ),
+          'on_hold' => array(
+            'title' => ts('Email on hold'),
+          ),
         ),
       ),
       'civicrm_phone' => array(
@@ -213,6 +205,7 @@ class CRM_Report_Form_Contribute_Lybunt extends CRM_Report_Form {
             'title' => ts('Last Year Total'),
             'default' => TRUE,
             'type' => CRM_Utils_Type::T_MONEY,
+            'required' => TRUE,
           ),
           'civicrm_life_time_total' => array(
             'title' => ts('Lifetime Total'),
@@ -232,6 +225,7 @@ class CRM_Report_Form_Contribute_Lybunt extends CRM_Report_Form {
           ),
           'financial_type_id' => array(
             'title' => ts('Financial Type'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => CRM_Financial_BAO_FinancialType::getAvailableFinancialTypes(),
           ),
@@ -397,9 +391,6 @@ class CRM_Report_Form_Contribute_Lybunt extends CRM_Report_Form {
     }
     else {
       $clause = parent::whereClause($field, $op, $value, $min, $max);
-    }
-    if ($field['name'] == 'contribution_status_id' || $field['name'] == 'financial_type_id') {
-      $this->_statusClause .= " AND " . $clause;
     }
     return $clause;
   }
@@ -616,7 +607,7 @@ class CRM_Report_Form_Contribute_Lybunt extends CRM_Report_Form {
     $this->buildQuery();
     // @todo this acl has no test coverage and is very hard to test manually so could be fragile.
     $this->getPermissionedFTQuery($this);
-    $this->resetFormSql();
+    $this->resetFormSqlAndWhereHavingClauses();
 
     $this->contactTempTable = 'civicrm_report_temp_lybunt_c_' . date('Ymd_') . uniqid();
     $this->limit();
@@ -707,31 +698,20 @@ class CRM_Report_Form_Contribute_Lybunt extends CRM_Report_Form {
   }
 
   /**
-   * Reset the form sql to prevent misleading developer tab info.
+   * Reset the form sql and where / having clause arrays.
+   *
+   * We do an early iteration of the report queries to generate the temp table.
+   *
+   * However, that iteration populates the sql for the developer tab,
+   * the whereClauses & the havingClauses and they are populated again in the normal
+   * report flow. This is harmless but confusing - ie. the where clause winds up repeating
+   * the same filters and the dev tab shows the query twice, so we rest them.
    */
-  protected function resetFormSql() {
+  protected function resetFormSqlAndWhereHavingClauses() {
     $this->sql = '';
+    $this->_havingClauses = array();
+    $this->_whereClauses = array();
     $this->sqlArray = array();
-  }
-
-  /**
-   * Are we ordering by the latest year total.
-   *
-   * If we are we need to drop the rollup to do the ordering.
-   *
-   * Without bigger changes we can't get the lifetime total and order by
-   * the latest year total in the same query.
-   *
-   * @return bool
-   */
-  public function isOrderByLastYearTotal() {
-    $this->storeOrderByArray();
-    foreach ($this->_orderByArray as $orderBy) {
-      if (stristr($orderBy, 'contribution_civireport.total_amount')) {
-        return TRUE;
-      }
-    }
-    return FALSE;
   }
 
   /**
@@ -801,6 +781,11 @@ class CRM_Report_Form_Contribute_Lybunt extends CRM_Report_Form {
           $rows[$rowNum]['civicrm_contribution_campaign_id'] = $this->activeCampaigns[$value];
           $entryFound = TRUE;
         }
+      }
+      // Display 'Yes' if the email is on hold (leave blank for no so it stands out better).
+      if (array_key_exists('civicrm_email_on_hold', $row)) {
+        $rows[$rowNum]['civicrm_email_on_hold'] = $row['civicrm_email_on_hold'] ? ts('Yes') : '';
+        $entryFound = TRUE;
       }
 
       $entryFound = $this->alterDisplayAddressFields($row, $rows, $rowNum, NULL, 'List all contribution(s)') ? TRUE : $entryFound;
