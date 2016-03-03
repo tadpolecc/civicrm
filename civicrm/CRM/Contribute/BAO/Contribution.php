@@ -2388,6 +2388,10 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
 
     //not really sure what params might be passed in but lets merge em into values
     $values = array_merge($this->_gatherMessageValues($input, $values, $ids), $values);
+    if (!empty($input['receipt_date'])) {
+      $values['receipt_date'] = $input['receipt_date'];
+    }
+
     $template = CRM_Core_Smarty::singleton();
     $this->_assignMessageVariablesToTemplate($values, $input, $template, $recur, $returnMessageText);
     //what does recur 'mean here - to do with payment processor return functionality but
@@ -3356,8 +3360,10 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     ) {
       return;
     }
-    if (($previousContributionStatus == 'Partially paid')
-      && $params['contribution']->contribution_status_id == array_search('Completed', $contributionStatus)
+    if ((($previousContributionStatus == 'Partially paid'
+      && $params['contribution']->contribution_status_id == array_search('Completed', $contributionStatus))
+      || ($previousContributionStatus == 'Pending' && $params['prevContribution']->is_pay_later == TRUE
+      && $params['contribution']->contribution_status_id == array_search('Partially paid', $contributionStatus)))
       && $context == 'changedStatus'
     ) {
       return;
@@ -3567,7 +3573,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     $checkStatus = array(
       'Cancelled' => array('Completed', 'Refunded'),
       'Completed' => array('Cancelled', 'Refunded', 'Chargeback'),
-      'Pending' => array('Cancelled', 'Completed', 'Failed'),
+      'Pending' => array('Cancelled', 'Completed', 'Failed', 'Partially paid'),
       'In Progress' => array('Cancelled', 'Completed', 'Failed'),
       'Refunded' => array('Cancelled', 'Completed'),
       'Partially paid' => array('Completed'),
@@ -4336,6 +4342,7 @@ WHERE eft.financial_trxn_id IN ({$trxnId}, {$baseTrxnId['financialTrxnId']})
       'is_test',
       'campaign_id',
       'receive_date',
+      'receipt_date',
     );
     if (self::isSingleLineItem($primaryContributionID)) {
       $inputContributionWhiteList[] = 'financial_type_id';
@@ -4602,6 +4609,7 @@ LIMIT 1;";
    */
   public static function sendMail(&$input, &$ids, $contribution, &$values, $recur = FALSE, $returnMessageText = FALSE) {
     $input['is_recur'] = $recur;
+    $input['receipt_date'] = $contribution->receipt_date;
     // set receipt from e-mail and name in value
     if (!$returnMessageText) {
       $session = CRM_Core_Session::singleton();
@@ -4829,7 +4837,7 @@ LIMIT 1;";
       // get financial item
       $sql = "SELECT fi.id, li.price_field_value_id
       FROM civicrm_financial_item fi
-      INNER JOIN civicrm_line_item li ON li.id = fi.entity_id
+      INNER JOIN civicrm_line_item li ON li.id = fi.entity_id and fi.entity_table = 'civicrm_line_item'
       WHERE li.contribution_id = %1";
       $dao = CRM_Core_DAO::executeQuery($sql, array(1 => array($params['contribution_id'], 'Integer')));
       while ($dao->fetch()) {

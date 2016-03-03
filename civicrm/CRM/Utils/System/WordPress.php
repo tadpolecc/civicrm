@@ -335,9 +335,11 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     if (!$userdata->data->ID) {
       return FALSE;
     }
+
     $uid = $userdata->data->ID;
     wp_set_current_user($uid);
     $contactID = CRM_Core_BAO_UFMatch::getContactId($uid);
+
     // lets store contact id and user id in session
     $session = CRM_Core_Session::singleton();
     $session->set('ufID', $uid);
