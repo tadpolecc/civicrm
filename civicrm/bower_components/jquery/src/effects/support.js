@@ -1,9 +1,9 @@
-define( [
-	"../var/support",
-	"../var/document"
-], function( support, document ) {
+define([
+	"../var/strundefined",
+	"../var/support"
+], function( strundefined, support ) {
 
-( function() {
+(function() {
 	var shrinkWrapBlocksVal;
 
 	support.shrinkWrapBlocks = function() {
@@ -19,7 +19,6 @@ define( [
 
 		body = document.getElementsByTagName( "body" )[ 0 ];
 		if ( !body || !body.style ) {
-
 			// Test fired too early or in an unsupported environment, exit.
 			return;
 		}
@@ -32,11 +31,9 @@ define( [
 
 		// Support: IE6
 		// Check if elements with layout shrink-wrap their children
-		if ( typeof div.style.zoom !== "undefined" ) {
-
+		if ( typeof div.style.zoom !== strundefined ) {
 			// Reset CSS: box-sizing; display; margin; border
 			div.style.cssText =
-
 				// Support: Firefox<29, Android 2.3
 				// Vendor-prefix box-sizing
 				"-webkit-box-sizing:content-box;-moz-box-sizing:content-box;" +
@@ -51,8 +48,8 @@ define( [
 		return shrinkWrapBlocksVal;
 	};
 
-} )();
+})();
 
 return support;
 
-} );
+});
