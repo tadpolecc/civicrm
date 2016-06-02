@@ -165,6 +165,7 @@ class CRM_ACL_DAO_Cache extends CRM_Core_DAO
           'type' => CRM_Utils_Type::T_TIMESTAMP,
           'title' => ts('Cache Modified Date') ,
           'description' => 'When was this cache entry last modified',
+          'required' => false,
         ) ,
       );
     }
