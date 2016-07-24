@@ -89,8 +89,8 @@ class CRM_Contribute_BAO_Contribution_Utils {
     $form->assign('receive_date',
       CRM_Utils_Date::mysqlToIso($form->_params['receive_date'])
     );
-    if ($isPaymentTransaction) {
 
+    if ($isPaymentTransaction) {
       $contributionParams = array(
         'contact_id' => $contactID,
         'line_item' => $lineItems,
@@ -122,7 +122,7 @@ class CRM_Contribute_BAO_Contribution_Utils {
 
       if ($contribution && $form->_values['is_recur'] && $contribution->contribution_recur_id
       ) {
-        $paymentParams['contributionRecurID'] = $contribution->contribution_recur_id;
+        $form->_params['contributionRecurID'] = $contribution->contribution_recur_id;
       }
 
       $paymentParams['qfKey'] = $form->controller->_key;
@@ -231,11 +231,7 @@ class CRM_Contribute_BAO_Contribution_Utils {
    * @return bool
    */
   static protected function isPaymentTransaction($form) {
-    if (!empty($form->_values['is_monetary']) && $form->_amount >= 0.0) {
-      return TRUE;
-    }
-    return FALSE;
-
+    return ($form->_amount >= 0.0) ? TRUE : FALSE;
   }
 
   /**

@@ -864,6 +864,12 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
           $qf->add('text', $elementName . '_to', ts('To'), $field->attributes);
         }
         else {
+          if ($field->text_length) {
+            $field->attributes .= ' maxlength=' . $field->text_length;
+            if ($field->text_length < 20) {
+              $field->attributes .= ' size=' . $field->text_length;
+            }
+          }
           $element = $qf->add('text', $elementName, $label,
             $field->attributes,
             $useRequired && !$search
@@ -908,7 +914,6 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
           //CRM-18487 - max date should be the last date of the year.
           'maxDate' => isset($maxYear) ? $maxYear . '-12-31' : NULL,
           'time' => $field->time_format ? $field->time_format * 12 : FALSE,
-          'yearRange' => "{$minYear}:{$maxYear}",
         );
         if ($field->is_search_range && $search) {
           $qf->add('datepicker', $elementName . '_from', $label, $attr + array('placeholder' => ts('From')), FALSE, $params);
