@@ -281,9 +281,12 @@ class CRM_Core_Payment_Form {
    * The credit card pseudo constant results only the CC label, not the key ID
    * So we normalize the name to use it as a CSS class.
    */
-  public static function getCreditCardCSSNames() {
+  public static function getCreditCardCSSNames($creditCards = array()) {
     $creditCardTypes = array();
-    foreach (CRM_Contribute_PseudoConstant::creditCard() as $key => $name) {
+    if (empty($creditCards)) {
+      $creditCards = CRM_Contribute_PseudoConstant::creditCard();
+    }
+    foreach ($creditCards as $key => $name) {
       // Replace anything not css-friendly by an underscore
       // Non-latin names will not like this, but so many things are wrong with
       // the credit-card type configurations already.
@@ -325,9 +328,16 @@ class CRM_Core_Payment_Form {
    *
    * @param array $values
    * @param array $errors
+   * @param int $processorID
    */
-  public static function validateCreditCard($values, &$errors) {
+  public static function validateCreditCard($values, &$errors, $processorID = NULL) {
     if (!empty($values['credit_card_type']) || !empty($values['credit_card_number'])) {
+      if (!empty($values['credit_card_type'])) {
+        $processorCards = CRM_Financial_BAO_PaymentProcessor::getCreditCards($processorID);
+        if (!empty($processorCards) && !in_array($values['credit_card_type'], $processorCards)) {
+          $errors['credit_card_type'] = ts('This procesor does not support credit card type ' . $values['credit_card_type']);
+        }
+      }
       if (!empty($values['credit_card_number']) &&
         !CRM_Utils_Rule::creditCardNumber($values['credit_card_number'], $values['credit_card_type'])
       ) {
