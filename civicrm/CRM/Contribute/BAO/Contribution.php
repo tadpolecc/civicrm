@@ -1916,6 +1916,9 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
             //update related Memberships.
             CRM_Member_BAO_Membership::updateRelatedMemberships($membership->id, $formattedParams);
 
+            //CRM-19678: No Membership Renewal Activity is created when a Pay Later is set to Completed
+            CRM_Activity_BAO_Activity::addActivity($membership, 'Membership Renewal', $membership->contact_id);
+
             $updateResult['membership_end_date'] = CRM_Utils_Date::customFormat($dates['end_date'],
               '%B %E%f, %Y'
             );
@@ -3188,7 +3191,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
         'payment_instrument_id' => CRM_Utils_Array::value('payment_instrument_id', $params, $params['contribution']->payment_instrument_id),
         'check_number' => CRM_Utils_Array::value('check_number', $params),
       );
-      if ($contributionStatus == 'Refunded' || $contributionStatus == 'Chargeback') {
+      if ($contributionStatus == 'Refunded' || $contributionStatus == 'Chargeback' || $contributionStatus == 'Cancelled') {
         $trxnParams['trxn_date'] = !empty($params['contribution']->cancel_date) ? $params['contribution']->cancel_date : date('YmdHis');
         if (isset($params['refund_trxn_id'])) {
           // CRM-17751 allow a separate trxn_id for the refund to be passed in via api & form.
@@ -4597,6 +4600,8 @@ LIMIT 1;";
             $var = TRUE;
             CRM_Member_BAO_Membership::createRelatedMemberships($var, $var, TRUE);
             civicrm_api3('Membership', 'create', $membershipParams);
+            //CRM-19600: Add Membership Renewal activity
+            CRM_Activity_BAO_Activity::addActivity($membership, 'Membership Renewal', $membership->contact_id);
           }
         }
       }
