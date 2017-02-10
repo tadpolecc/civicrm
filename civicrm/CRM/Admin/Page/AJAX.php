@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 
 /**
@@ -266,7 +266,7 @@ class CRM_Admin_Page_AJAX {
 
     // query to list mergable tags
     $query = "
-SELECT t1.name, t1.id, t1.used_for, t2.name as parent
+SELECT t1.name, t1.id, t1.used_for, t1.color, t2.name as parent
 FROM   civicrm_tag t1
 LEFT JOIN civicrm_tag t2 ON t1.parent_id = t2.id
 WHERE  t1.id <> {$fromId} AND
@@ -280,6 +280,7 @@ LIMIT $limit";
       $row = array(
         'id' => $dao->id,
         'text' => ($dao->parent ? "{$dao->parent} :: " : '') . $dao->name,
+        'color' => isset($dao->color) ? $dao->color : NULL,
       );
       // Add warning about used_for types
       if (!empty($dao->used_for)) {

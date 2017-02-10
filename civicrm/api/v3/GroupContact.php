@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -140,9 +140,9 @@ function civicrm_api3_group_contact_create($params) {
  * Delete group contact record.
  *
  * @param array $params
- *
  * @return array
- *
+ * @throws API_Exception
+ * @throws CiviCRM_API3_Exception
  * @deprecated
  */
 function civicrm_api3_group_contact_delete($params) {

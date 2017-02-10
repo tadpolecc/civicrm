@@ -2,7 +2,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -26,11 +26,13 @@
 {* this template is used for adding/editing tags  *}
 {literal}
 <style>
-  #tagtree .highlighted > span {
-    background-color: #fefca6;
+  #tagtree,
+  #tagtree li.highlighted ul {
+    background-color: white;
   }
-  #tagtree .helpicon ins {
-    display: none;
+  #tagtree li.highlighted,
+  #tagtree li.highlighted-child.jstree-closed {
+    background-color: #fefcb0;
   }
   #tagtree ins.jstree-icon {
     cursor: pointer;
@@ -45,25 +47,27 @@
     CRM.updateContactSummaryTags = function() {
       var tags = [];
       $('#tagtree input:checkbox:checked+span label').each(function() {
-        tags.push($(this).text());
+        tags.push('<span class="crm-tag-item" style="' + $(this).attr('style') + '" title="' + ($(this).attr('title') || '') + '">' + $(this).text() + '</span>');
       });
       $('input.crm-contact-tagset').each(function() {
-        var setTags = _.pluck($(this).select2('data'), 'label');
-        tags = tags.concat(setTags);
+        $.each($(this).select2('data'), function (i, tag) {
+          tags.push('<span class="crm-tag-item" title="' + (tag.description || '') + '"' + (tag.color ? 'style="color: ' + CRM.utils.colorContrast(tag.color) + '; background-color: ' + tag.color + ';"' : '') + '>' + tag.label + '</span>');
+        });
       });
       // contact summary tabs and search forms both listen for this event
       $($form).closest('.crm-ajax-container').trigger('crmFormSuccess', {tabCount: tags.length});
       // update summary tab
-      $("#contact-summary #tags").html(tags.join(', '));
+      $("#contact-summary #tags").html(tags.join(' '));
     };
 
     $(function() {
       function highlightSelected() {
         $("ul input:not(:checked)", '#tagtree').each(function () {
-          $(this).closest("li").removeClass('highlighted');
+          $(this).closest("li").removeClass('highlighted highlighted-child');
         });
         $("ul input:checked", '#tagtree').each(function () {
-          $(this).parents("li[id^=tag]").addClass('highlighted');
+          $(this).closest("li").addClass('highlighted');
+          $(this).parents("li[id^=tag]").addClass('highlighted-child');
         });
       }
       highlightSelected();
@@ -80,6 +84,7 @@
         //load js tree.
         $("#tagtree").jstree({
           plugins : ["themes", "html_data"],
+          core: {animation: 100},
           themes: {
             "theme": 'classic',
             "dots": false,

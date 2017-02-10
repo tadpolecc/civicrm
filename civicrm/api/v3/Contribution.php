@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -544,8 +544,9 @@ function _civicrm_api3_contribution_completetransaction_spec(&$params) {
  * @param array $params
  *   Input parameters.
  *
- * @throws API_Exception
+ * @return array
  *   Api result array.
+ * @throws API_Exception
  */
 function civicrm_api3_contribution_repeattransaction(&$params) {
   $input = $ids = array();
