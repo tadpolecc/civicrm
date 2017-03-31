@@ -59,6 +59,9 @@ class CRM_Upgrade_Incremental_php_FourSeven extends CRM_Upgrade_Incremental_Base
         $preUpgradeMessage .= '<p>' . ts('The %1 payment processor is no longer bundled with CiviCRM. After upgrading you will need to install the extension to continue using it.', array(1 => 'Moneris')) . '</p>';
       }
     }
+    if ($rev == '4.7.13') {
+      $preUpgradeMessage .= '<p>' . ts('A new permission has been added called %1 This Permission is now used to control access to the Manage Tags screen', array(1 => 'manage tags')) . '</p>';
+    }
   }
 
   /**
@@ -119,6 +122,7 @@ class CRM_Upgrade_Incremental_php_FourSeven extends CRM_Upgrade_Incremental_Base
    * @param string $rev
    */
   public function upgrade_4_7_alpha1($rev) {
+    $this->addTask('Drop action scheudle mapping foreign key', 'dropActionScheudleMappingForeignKey');
     $this->addTask('Migrate \'on behalf of\' information to module_data', 'migrateOnBehalfOfInfo');
     $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => $rev)), 'runSql', $rev);
     $this->addTask(ts('Migrate Settings to %1', array(1 => $rev)), 'migrateSettings', $rev);
@@ -777,6 +781,18 @@ FROM `civicrm_dashboard_contact` JOIN `civicrm_contact` WHERE civicrm_dashboard_
           ADD COLUMN `help_post` text COLLATE utf8_unicode_ci COMMENT 'Price field option post help text.'");
       }
     }
+    return TRUE;
+  }
+
+  /**
+   * CRM-18464 Check if Foreign key exists and also drop any index of same name accidentially created.
+   *
+   * @param \CRM_Queue_TaskContext $ctx
+   *
+   * @return bool
+   */
+  public static function dropActionScheudleMappingForeignKey(CRM_Queue_TaskContext $ctx) {
+    CRM_Core_BAO_SchemaHandler::safeRemoveFK('civicrm_action_schedule', 'FK_civicrm_action_schedule_mapping_id');
     return TRUE;
   }
 

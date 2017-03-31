@@ -589,8 +589,6 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    *   Helps decide how to behave when there are conflicts.
    *   A 'safe' value skips the merge if there are any un-resolved conflicts, wheras 'aggressive'
    *   mode does a force merge.
-   * @param bool $autoFlip to let api decide which contact to retain and which to delete.
-   *   Whether to let api decide which contact to retain and which to delete.
    * @param int $batchLimit number of merges to carry out in one batch.
    * @param int $isSelected if records with is_selected column needs to be processed.
    *
@@ -602,7 +600,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    *
    * @return array|bool
    */
-  public static function batchMerge($rgid, $gid = NULL, $mode = 'safe', $autoFlip = TRUE, $batchLimit = 1, $isSelected = 2, $criteria = array(), $checkPermissions = TRUE) {
+  public static function batchMerge($rgid, $gid = NULL, $mode = 'safe', $batchLimit = 1, $isSelected = 2, $criteria = array(), $checkPermissions = TRUE) {
     $redirectForPerformance = ($batchLimit > 1) ? TRUE : FALSE;
     $reloadCacheIfEmpty = (!$redirectForPerformance && $isSelected == 2);
     $dupePairs = self::getDuplicatePairs($rgid, $gid, $reloadCacheIfEmpty, $batchLimit, $isSelected, '', ($mode == 'aggressive'), $criteria, $checkPermissions);
@@ -614,7 +612,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
       'join' => self::getJoinOnDedupeTable(),
       'where' => self::getWhereString($batchLimit, $isSelected),
     );
-    return CRM_Dedupe_Merger::merge($dupePairs, $cacheParams, $mode, $autoFlip, $redirectForPerformance, $checkPermissions);
+    return CRM_Dedupe_Merger::merge($dupePairs, $cacheParams, $mode, $redirectForPerformance, $checkPermissions);
   }
 
   /**
@@ -748,8 +746,6 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    *   Helps decide how to behave when there are conflicts.
    *                             A 'safe' value skips the merge if there are any un-resolved conflicts.
    *                             Does a force merge otherwise (aggressive mode).
-   * @param bool $autoFlip to let api decide which contact to retain and which to delete.
-   *   Whether to let api decide which contact to retain and which to delete.
    *
    * @param bool $redirectForPerformance
    *   Redirect to a url for batch processing.
@@ -760,7 +756,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    * @return array|bool
    */
   public static function merge($dupePairs = array(), $cacheParams = array(), $mode = 'safe',
-                               $autoFlip = TRUE, $redirectForPerformance = FALSE, $checkPermissions = TRUE
+     $redirectForPerformance = FALSE, $checkPermissions = TRUE
   ) {
     $cacheKeyString = CRM_Utils_Array::value('cache_key_string', $cacheParams);
     $resultStats = array('merged' => array(), 'skipped' => array());

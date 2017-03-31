@@ -109,6 +109,7 @@ class CRM_Core_OptionGroup {
    * @param string $keyColumnName
    *   the column to use for 'key'.
    * @param string $orderBy
+   *   the column to use for ordering.
    *
    * @return array
    *   The values as specified by the params
@@ -120,7 +121,7 @@ class CRM_Core_OptionGroup {
     $orderBy = 'weight'
   ) {
     $cache = CRM_Utils_Cache::singleton();
-    $cacheKey = self::createCacheKey($name, $flip, $grouping, $localize, $condition, $labelColumnName, $onlyActive, $keyColumnName);
+    $cacheKey = self::createCacheKey($name, $flip, $grouping, $localize, $condition, $labelColumnName, $onlyActive, $keyColumnName, $orderBy);
 
     if (!$fresh) {
       // Fetch from static var
@@ -144,6 +145,14 @@ WHERE  v.option_group_id = g.id
 
     if ($onlyActive) {
       $query .= " AND  v.is_active = 1 ";
+      // Only show options for enabled components
+      $componentClause = ' v.component_id IS NULL ';
+      $enabledComponents = CRM_Core_Config::singleton()->enableComponents;
+      if ($enabledComponents) {
+        $enabledComponents = '"' . implode('","', $enabledComponents) . '"';
+        $componentClause .= " OR v.component_id IN (SELECT id FROM civicrm_component WHERE name IN ($enabledComponents)) ";
+      }
+      $query .= " AND ($componentClause) ";
     }
     if (in_array($name, self::$_domainIDGroups)) {
       $query .= " AND v.domain_id = " . CRM_Core_Config::domainID();
@@ -253,9 +262,9 @@ WHERE  v.option_group_id = g.id
   }
 
   /**
-   * Lookup titles OR ids for a set of option_value populated fields. The retrieved value
-   * is assigned a new fieldname by id or id's by title
-   * (each within a specificied option_group)
+   * Lookup titles OR ids for a set of option_value populated fields. The
+   * retrieved value is assigned a new field name by id or id's by title
+   * (each within a specified option_group).
    *
    * @param array $params
    *   Reference array of values submitted by the form. Based on.
@@ -265,14 +274,13 @@ WHERE  v.option_group_id = g.id
    *   If $flip = true, adds actual field name => id
    *
    * @param array $names
-   *   Reference array of fieldnames we want transformed.
+   *   Array of field names we want transformed.
    *   Array key = 'postName' (field name submitted by form in $params).
    *   Array value = array('newName' => $newName, 'groupName' => $groupName).
    *
-   *
    * @param bool $flip
    */
-  public static function lookupValues(&$params, &$names, $flip = FALSE) {
+  public static function lookupValues(&$params, $names, $flip = FALSE) {
     foreach ($names as $postName => $value) {
       // See if $params field is in $names array (i.e. is a value that we need to lookup)
       if ($postalName = CRM_Utils_Array::value($postName, $params)) {

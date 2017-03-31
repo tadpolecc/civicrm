@@ -825,15 +825,6 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
         ),
       );
 
-      $contributionRecurId = array(
-        'contribution_recur_id' => array(
-          'title' => ts('Recurring Contributions ID'),
-          'name' => 'contribution_recur_id',
-          'where' => 'civicrm_contribution.contribution_recur_id',
-          'data_type' => CRM_Utils_Type::T_INT,
-        ),
-      );
-
       $extraFields = array(
         'contribution_batch' => array(
           'title' => ts('Batch Name'),
@@ -893,7 +884,7 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
       );
 
       $fields = array_merge($impFields, $typeField, $contributionStatus, $contributionPage, $optionField, $expFieldProduct,
-        $expFieldsContrib, $contributionNote, $contributionRecurId, $extraFields, $softCreditFields, $financialAccount, $premiums, $campaignTitle,
+        $expFieldsContrib, $contributionNote, $extraFields, $softCreditFields, $financialAccount, $premiums, $campaignTitle,
         CRM_Core_BAO_CustomField::getFieldsForImport('Contribution', FALSE, FALSE, FALSE, $checkPermission)
       );
 
@@ -4476,6 +4467,12 @@ WHERE eft.financial_trxn_id IN ({$trxnId}, {$baseTrxnId['financialTrxnId']})
     ));
     $contributionParams['payment_processor'] = $input['payment_processor'] = $paymentProcessorId;
 
+    // If paymentProcessor is not set then the payment_instrument_id would not be correct.
+    // not clear when or if this would occur if you encounter this please fix here & add a unit test.
+    if (empty($contributionParams['payment_instrument_id']) && isset($contribution->_relatedObjects['paymentProcessor']['payment_instrument_id'])) {
+      $contributionParams['payment_instrument_id'] = $contribution->_relatedObjects['paymentProcessor']['payment_instrument_id'];
+    }
+
     if ($recurringContributionID) {
       $contributionParams['contribution_recur_id'] = $recurringContributionID;
     }
@@ -4718,20 +4715,50 @@ LIMIT 1;";
     $contribution->loadRelatedObjects($input, $ids, TRUE);
     // set receipt from e-mail and name in value
     if (!$returnMessageText) {
-      $userID = CRM_Core_Session::singleton()->getLoggedInContactID();
-      if (!empty($userID)) {
-        list($userName, $userEmail) = CRM_Contact_BAO_Contact_Location::getEmailDetails($userID);
-        $values['receipt_from_email'] = CRM_Utils_Array::value('receipt_from_email', $input, $userEmail);
-        $values['receipt_from_name'] = CRM_Utils_Array::value('receipt_from_name', $input, $userName);
-      }
+      list($values['receipt_from_name'], $values['receipt_from_email']) = self::generateFromEmailAndName($input, $contribution);
     }
-
     $return = $contribution->composeMessageArray($input, $ids, $values, $recur, $returnMessageText);
     // Contribution ID should really always be set. But ?
     if (!$returnMessageText && (!isset($input['receipt_update']) || $input['receipt_update']) && empty($contribution->receipt_date)) {
       civicrm_api3('Contribution', 'create', array('receipt_date' => 'now', 'id' => $contribution->id));
     }
     return $return;
+  }
+
+  /**
+   * Generate From email and from name in an array values
+   */
+  public static function generateFromEmailAndName($input, $contribution) {
+    // Use input valuse if supplied.
+    if (!empty($input['receipt_from_email'])) {
+      return array(CRM_Utils_array::value('receipt_from_name', $input, ''), $input['receipt_from_email']);
+    }
+    // if we are still empty see if we can use anything from a contribution page.
+    $pageValues = array();
+    if (!empty($contribution->contribution_page_id)) {
+      $pageValues = civicrm_api3('ContributionPage', 'getsingle', array('id' => $contribution->contribution_page_id));
+    }
+    // if we are still empty see if we can use anything from a contribution page.
+    if (!empty($pageValues['receipt_from_email'])) {
+      return array($pageValues['receipt_from_name'], $pageValues['receipt_from_email']);
+    }
+    // If we are still empty fall back to the domain.
+    $domain = civicrm_api3('domain', 'getsingle', array('id' => CRM_Core_Config::domainID()));
+    if (!empty($domain['from_email'])) {
+      return array($domain['from_name'], $domain['from_email']);
+    }
+    if (!empty($domain['domain_email'])) {
+      return array($domain['name'], $domain['domain_email']);
+    }
+    $userID = CRM_Core_Session::singleton()->getLoggedInContactID();
+    $userName = '';
+    $userEmail = '';
+    if (!empty($userID)) {
+      list($userName, $userEmail) = CRM_Contact_BAO_Contact_Location::getEmailDetails($userID);
+    }
+    // If still empty fall back to the logged in user details.
+    // return empty values no matter what.
+    return array($userName, $userEmail);
   }
 
   /**
@@ -5390,8 +5417,8 @@ LEFT JOIN  civicrm_contribution on (civicrm_contribution.contact_id = civicrm_co
    */
   public static function createProportionalEntry($entityParams, $eftParams) {
     $paid = $entityParams['line_item_amount'] * ($entityParams['trxn_total_amount'] / $entityParams['contribution_total_amount']);
-    // Record Entity Financial Trxn
-    $eftParams['amount'] = round($paid, 2);
+    // Record Entity Financial Trxn; CRM-20145
+    $eftParams['amount'] = CRM_Contribute_BAO_Contribution_Utils::formatAmount($paid);
     civicrm_api3('EntityFinancialTrxn', 'create', $eftParams);
   }
 

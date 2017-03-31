@@ -4130,7 +4130,9 @@ CREATE TABLE `civicrm_financial_trxn` (
      `status_id` int unsigned    COMMENT 'pseudo FK to civicrm_option_value of contribution_status_id option_group',
      `payment_processor_id` int unsigned    COMMENT 'Payment Processor for this financial transaction',
      `payment_instrument_id` int unsigned    COMMENT 'FK to payment_instrument option group values',
-     `check_number` varchar(255)    COMMENT 'Check number' 
+     `card_type` int unsigned    COMMENT 'FK to accept_creditcard option group values',
+     `check_number` varchar(255)    COMMENT 'Check number',
+     `pan_truncation` int unsigned    COMMENT 'Last 4 digits of credit card' 
 ,
     PRIMARY KEY ( `id` )
  

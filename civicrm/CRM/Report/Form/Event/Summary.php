@@ -202,8 +202,7 @@ class CRM_Report_Form_Event_Summary extends CRM_Report_Form_Event {
                   $this->_participantWhere
 
         GROUP BY civicrm_participant.event_id,
-                 civicrm_participant.status_id,
-                 civicrm_participant.fee_currency";
+                 civicrm_participant.status_id";
 
     $info = CRM_Core_DAO::executeQuery($sql);
     $participant_data = $participant_info = $currency = array();
@@ -262,8 +261,8 @@ class CRM_Report_Form_Event_Summary extends CRM_Report_Form_Event {
       }
     }
 
-    $statusType1 = CRM_Event_PseudoConstant::participantStatus(NULL, 'is_counted = 1');
-    $statusType2 = CRM_Event_PseudoConstant::participantStatus(NULL, 'is_counted = 0');
+    $statusType1 = CRM_Event_PseudoConstant::participantStatus(NULL, 'is_counted = 1', 'label');
+    $statusType2 = CRM_Event_PseudoConstant::participantStatus(NULL, 'is_counted = 0', 'label');
 
     //make column header for participant status  Registered/Attended
     $type1_header = implode('/', $statusType1);
