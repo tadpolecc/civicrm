@@ -79,6 +79,17 @@ class CRM_Financial_BAO_PaymentProcessor extends CRM_Financial_DAO_PaymentProces
       CRM_Financial_BAO_FinancialTypeAccount::add($values);
     }
 
+    if (isset($params['id']) && isset($params['is_active']) && !isset($params['is_test'])) {
+      // check if is_active has changed & if so update test instance is_active too.
+      $test_id = self::getTestProcessorId($params['id']);
+      $testDAO = new CRM_Financial_DAO_PaymentProcessor();
+      $testDAO->id = $test_id;
+      if ($testDAO->find(TRUE)) {
+        $testDAO->is_active = $params['is_active'];
+        $testDAO->save();
+      }
+    }
+
     Civi\Payment\System::singleton()->flushProcessors();
     return $processor;
   }
@@ -252,6 +263,7 @@ class CRM_Financial_BAO_PaymentProcessor extends CRM_Financial_DAO_PaymentProces
     return civicrm_api3('payment_processor', 'getvalue', array(
       'return' => 'id',
       'name' => $liveProcessorName,
+      'is_test' => 1,
       'domain_id' => CRM_Core_Config::domainID(),
     ));
   }
@@ -402,6 +414,21 @@ class CRM_Financial_BAO_PaymentProcessor extends CRM_Financial_DAO_PaymentProces
 
   /**
    * Is there a processor on this site with the specified capability.
+   *
+   * The capabilities are defined on CRM_Core_Payment and can be extended by
+   * processors.
+   *
+   * examples are
+   *  - supportsBackOffice
+   *  - supportsLiveMode
+   *  - supportsFutureRecurDate
+   *  - supportsCancelRecurring
+   *  - supportsRecurContributionsForPledges
+   *
+   * They are passed as array('BackOffice');
+   *
+   * Details of specific functions are in the docblocks on the CRM_Core_Payment class.
+   *
    * @param array $capabilities
    *
    * @return bool

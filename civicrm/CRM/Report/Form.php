@@ -329,7 +329,7 @@ class CRM_Report_Form extends CRM_Core_Form {
    *
    * @var array
    */
-  protected $_selectedTables;
+  protected $_selectedTables = array();
 
   /**
    * Array of DAO tables having columns included in WHERE or HAVING clause
@@ -2290,6 +2290,7 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
       if (array_key_exists('fields', $table)) {
         foreach ($table['fields'] as $fieldName => $field) {
           if ($tableName == 'civicrm_address') {
+            // deprecated, use $this->isTableSelected.
             $this->_addressField = TRUE;
           }
           if ($tableName == 'civicrm_email') {
@@ -2315,50 +2316,10 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
 
             // include statistics columns only if set
             if (!empty($field['statistics'])) {
-              foreach ($field['statistics'] as $stat => $label) {
-                $alias = "{$tableName}_{$fieldName}_{$stat}";
-                switch (strtolower($stat)) {
-                  case 'max':
-                  case 'sum':
-                    $select[] = "$stat({$field['dbAlias']}) as $alias";
-                    $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['title'] = $label;
-                    $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['type'] = $field['type'];
-                    $this->_statFields[$label] = $alias;
-                    $this->_selectAliases[] = $alias;
-                    break;
-
-                  case 'count':
-                    $select[] = "COUNT({$field['dbAlias']}) as $alias";
-                    $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['title'] = $label;
-                    $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['type'] = CRM_Utils_Type::T_INT;
-                    $this->_statFields[$label] = $alias;
-                    $this->_selectAliases[] = $alias;
-                    break;
-
-                  case 'count_distinct':
-                    $select[] = "COUNT(DISTINCT {$field['dbAlias']}) as $alias";
-                    $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['title'] = $label;
-                    $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['type'] = CRM_Utils_Type::T_INT;
-                    $this->_statFields[$label] = $alias;
-                    $this->_selectAliases[] = $alias;
-                    break;
-
-                  case 'avg':
-                    $select[] = "ROUND(AVG({$field['dbAlias']}),2) as $alias";
-                    $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['title'] = $label;
-                    $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['type'] = $field['type'];
-                    $this->_statFields[$label] = $alias;
-                    $this->_selectAliases[] = $alias;
-                    break;
-                }
-              }
+              $select = $this->addStatisticsToSelect($field, $tableName, $fieldName, $select);
             }
             else {
-              $alias = "{$tableName}_{$fieldName}";
-              $select[] = "{$field['dbAlias']} as $alias";
-              $this->_columnHeaders["{$tableName}_{$fieldName}"]['title'] = CRM_Utils_Array::value('title', $field);
-              $this->_columnHeaders["{$tableName}_{$fieldName}"]['type'] = CRM_Utils_Array::value('type', $field);
-              $this->_selectAliases[] = $alias;
+              $select = $this->addBasicFieldToSelect($tableName, $fieldName, $field, $select);
             }
           }
         }
@@ -2658,6 +2619,7 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
     $this->select();
     $this->from();
     $this->customDataFrom();
+    $this->buildPermissionClause();
     $this->where();
     if (array_key_exists('civicrm_contribution', $this->getVar('_columns'))) {
       $this->getPermissionedFTQuery($this);
@@ -3607,12 +3569,36 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
   }
 
   /**
-   * Build acl clauses.
+   * Buld contact acl clause
+   * @deprecated in favor of buildPermissionClause
    *
    * @param string $tableAlias
    */
   public function buildACLClause($tableAlias = 'contact_a') {
     list($this->_aclFrom, $this->_aclWhere) = CRM_Contact_BAO_Contact_Permission::cacheClause($tableAlias);
+  }
+
+  /**
+   * Build the permision clause for all entities in this report
+   */
+  public function buildPermissionClause() {
+    $ret = array();
+    foreach ($this->selectedTables() as $tableName) {
+      $baoName = str_replace('_DAO_', '_BAO_', CRM_Core_DAO_AllCoreTables::getClassForTable($tableName));
+      if ($baoName && class_exists($baoName) && !empty($this->_columns[$tableName]['alias'])) {
+        $tableAlias = $this->_columns[$tableName]['alias'];
+        $clauses = array_filter($baoName::getSelectWhereClause($tableAlias));
+        foreach ($clauses as $field => $clause) {
+          // Skip contact_id field if redundant
+          if ($field != 'contact_id' || !in_array('civicrm_contact', $this->selectedTables())) {
+            $ret["$tableName.$field"] = $clause;
+          }
+        }
+      }
+    }
+    // Override output from buildACLClause
+    $this->_aclFrom = NULL;
+    $this->_aclWhere = implode(' AND ', $ret);
   }
 
   /**
@@ -4282,7 +4268,7 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
           $rowLabels = array();
           foreach ($rowValues as $rowValue) {
             if ($rowValue) {
-              $rowLabels[] = CRM_Core_Pseudoconstant::getLabel('CRM_Contact_BAO_Contact', $fieldName, $rowValue);
+              $rowLabels[] = CRM_Core_PseudoConstant::getLabel('CRM_Contact_BAO_Contact', $fieldName, $rowValue);
             }
           }
           $rows[$rowNum]['civicrm_contact_' . $fieldName] = implode(', ', $rowLabels);
@@ -4681,7 +4667,7 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
     CRM_Financial_BAO_FinancialType::getAvailableFinancialTypes($financialTypes);
     if (empty($financialTypes)) {
       $contFTs = "0";
-      $liFTs = implode(',', array_keys(CRM_Contribute_Pseudoconstant::financialType()));
+      $liFTs = implode(',', array_keys(CRM_Contribute_PseudoConstant::financialType()));
     }
     else {
       $contFTs = $liFTs = implode(',', array_keys($financialTypes));
@@ -4865,6 +4851,101 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
           ON $tableAlias.{$field} = group_temp_table.id ";
       }
     }
+  }
+
+  /**
+   * Get all labels for fields that are used in a group concat.
+   *
+   * @param string $options
+   *   comma separated option values.
+   * @param string $baoName
+   *   The BAO name for the field.
+   * @param string $fieldName
+   *   The name of the field for which labels should be retrieved.
+   *
+   * return string
+   */
+  public function getLabels($options, $baoName, $fieldName) {
+    $types = explode(',', $options);
+    $labels = array();
+    foreach ($types as $value) {
+      $labels[$value] = CRM_Core_PseudoConstant::getLabel($baoName, $fieldName, $value);
+    }
+    return implode(', ', array_filter($labels));
+  }
+
+  /**
+   * Add statistics columns.
+   *
+   * If a group by is in play then add columns for the statistics fields.
+   *
+   * This would lead to a new field in the $row such as $fieldName_sum and a new, matching
+   * column header field.
+   *
+   * @param array $field
+   * @param string $tableName
+   * @param string $fieldName
+   * @param array $select
+   *
+   * @return array
+   */
+  protected function addStatisticsToSelect($field, $tableName, $fieldName, $select) {
+    foreach ($field['statistics'] as $stat => $label) {
+      $alias = "{$tableName}_{$fieldName}_{$stat}";
+      switch (strtolower($stat)) {
+        case 'max':
+        case 'sum':
+          $select[] = "$stat({$field['dbAlias']}) as $alias";
+          $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['title'] = $label;
+          $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['type'] = $field['type'];
+          $this->_statFields[$label] = $alias;
+          $this->_selectAliases[] = $alias;
+          break;
+
+        case 'count':
+          $select[] = "COUNT({$field['dbAlias']}) as $alias";
+          $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['title'] = $label;
+          $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['type'] = CRM_Utils_Type::T_INT;
+          $this->_statFields[$label] = $alias;
+          $this->_selectAliases[] = $alias;
+          break;
+
+        case 'count_distinct':
+          $select[] = "COUNT(DISTINCT {$field['dbAlias']}) as $alias";
+          $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['title'] = $label;
+          $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['type'] = CRM_Utils_Type::T_INT;
+          $this->_statFields[$label] = $alias;
+          $this->_selectAliases[] = $alias;
+          break;
+
+        case 'avg':
+          $select[] = "ROUND(AVG({$field['dbAlias']}),2) as $alias";
+          $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['title'] = $label;
+          $this->_columnHeaders["{$tableName}_{$fieldName}_{$stat}"]['type'] = $field['type'];
+          $this->_statFields[$label] = $alias;
+          $this->_selectAliases[] = $alias;
+          break;
+      }
+    }
+    return $select;
+  }
+
+  /**
+   * Add a basic field to the select clause.
+   *
+   * @param string $tableName
+   * @param string $fieldName
+   * @param array $field
+   * @param string $select
+   * @return array
+   */
+  protected function addBasicFieldToSelect($tableName, $fieldName, $field, $select) {
+    $alias = "{$tableName}_{$fieldName}";
+    $select[] = "{$field['dbAlias']} as $alias";
+    $this->_columnHeaders["{$tableName}_{$fieldName}"]['title'] = CRM_Utils_Array::value('title', $field);
+    $this->_columnHeaders["{$tableName}_{$fieldName}"]['type'] = CRM_Utils_Array::value('type', $field);
+    $this->_selectAliases[] = $alias;
+    return $select;
   }
 
 }

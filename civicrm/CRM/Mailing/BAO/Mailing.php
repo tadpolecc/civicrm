@@ -1452,6 +1452,7 @@ ORDER BY   civicrm_email.is_bulkmail DESC
    *
    * @param array $token_a
    * @param bool $html
+   *   Whether to encode the token result for use in HTML email
    * @param array $contact
    * @param string $verp
    * @param array $urls
@@ -1469,7 +1470,7 @@ ORDER BY   civicrm_email.is_bulkmail DESC
     if ($type == 'embedded_url') {
       $embed_data = array();
       foreach ($token as $t) {
-        $embed_data[] = $this->getTokenData($t, $html = FALSE, $contact, $verp, $urls, $event_queue_id);
+        $embed_data[] = $this->getTokenData($t, $html, $contact, $verp, $urls, $event_queue_id);
       }
       $numSlices = count($embed_data);
       $url = '';
@@ -1488,6 +1489,10 @@ ORDER BY   civicrm_email.is_bulkmail DESC
         $url .= '"';
       }
       $data = $url;
+      // CRM-20206 Fix ampersand encoding in plain text emails
+      if (empty($html)) {
+        $data = CRM_Utils_String::unstupifyUrl($data);
+      }
     }
     elseif ($type == 'url') {
       if ($this->url_tracking) {

@@ -781,6 +781,15 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
   }
 
   /**
+   * Get exportable fields with pseudoconstants rendered as an extra field.
+   */
+  public static function getExportableFieldsWithPseudoConstants() {
+    $fields = self::exportableFields();
+    CRM_Core_DAO::appendPseudoConstantsToFields($fields);
+    return $fields;
+  }
+
+  /**
    * Combine all the exportable fields from the lower level objects.
    *
    * @param bool $checkPermission
@@ -799,14 +808,6 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
       $expFieldsContrib = CRM_Contribute_DAO_ContributionProduct::export();
       $typeField = CRM_Financial_DAO_FinancialType::export();
       $financialAccount = CRM_Financial_DAO_FinancialAccount::export();
-      $optionField = CRM_Core_OptionValue::getFields($mode = 'contribute');
-      $contributionStatus = array(
-        'contribution_status' => array(
-          'title' => ts('Contribution Status'),
-          'name' => 'contribution_status',
-          'data_type' => CRM_Utils_Type::T_STRING,
-        ),
-      );
 
       $contributionPage = array(
         'contribution_page' => array(
@@ -883,7 +884,7 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
         ),
       );
 
-      $fields = array_merge($impFields, $typeField, $contributionStatus, $contributionPage, $optionField, $expFieldProduct,
+      $fields = array_merge($impFields, $typeField, $contributionPage, $expFieldProduct,
         $expFieldsContrib, $contributionNote, $extraFields, $softCreditFields, $financialAccount, $premiums, $campaignTitle,
         CRM_Core_BAO_CustomField::getFieldsForImport('Contribution', FALSE, FALSE, FALSE, $checkPermission)
       );
@@ -1137,6 +1138,8 @@ LEFT JOIN  civicrm_line_item i ON ( i.contribution_id = c.id AND i.entity_table 
    */
   public static function getContributionFields($addExtraFields = TRUE) {
     $contributionFields = CRM_Contribute_DAO_Contribution::export();
+    // @todo remove this - this line was added because payment_instrument_id was not
+    // set to exportable - but now it is.
     $contributionFields = array_merge($contributionFields, CRM_Core_OptionValue::getFields($mode = 'contribute'));
 
     if ($addExtraFields) {
@@ -2319,22 +2322,11 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
 
     $ids['contributionType'] = $this->financial_type_id;
     $ids['financialType'] = $this->financial_type_id;
-
-    $entities = array(
-      'contact' => 'CRM_Contact_BAO_Contact',
-      'contributionRecur' => 'CRM_Contribute_BAO_ContributionRecur',
-      'contributionType' => 'CRM_Financial_BAO_FinancialType',
-      'financialType' => 'CRM_Financial_BAO_FinancialType',
-    );
-    foreach ($entities as $entity => $bao) {
-      if (!empty($ids[$entity])) {
-        $this->_relatedObjects[$entity] = new $bao();
-        $this->_relatedObjects[$entity]->id = $ids[$entity];
-        if (!$this->_relatedObjects[$entity]->find(TRUE)) {
-          throw new CRM_Core_Exception($entity . ' could not be loaded');
-        }
-      }
+    if ($this->contribution_page_id) {
+      $ids['contributionPage'] = $this->contribution_page_id;
     }
+
+    $this->loadRelatedEntitiesByID($ids);
 
     if (!empty($ids['contributionRecur']) && !$paymentProcessorID) {
       $paymentProcessorID = $this->_relatedObjects['contributionRecur']->payment_processor_id;
@@ -2413,7 +2405,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    * @param array $values
    *   Any values that may have already been compiled by calling process.
    *   This is augmented by values 'gathered' by gatherMessageValues
-   * @param bool $recur
    * @param bool $returnMessageText
    *   Distinguishes between whether to send message or return.
    *   message text. We are working towards this function ALWAYS returning message text & calling
@@ -2423,7 +2414,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    *   messages
    * @throws Exception
    */
-  public function composeMessageArray(&$input, &$ids, &$values, $recur = FALSE, $returnMessageText = TRUE) {
+  public function composeMessageArray(&$input, &$ids, &$values, $returnMessageText = TRUE) {
     $this->loadRelatedObjects($input, $ids);
 
     if (empty($this->_component)) {
@@ -2432,15 +2423,15 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
 
     //not really sure what params might be passed in but lets merge em into values
     $values = array_merge($this->_gatherMessageValues($input, $values, $ids), $values);
+    $values['is_email_receipt'] = $this->isEmailReceipt($input, $values);
     if (!empty($input['receipt_date'])) {
       $values['receipt_date'] = $input['receipt_date'];
     }
 
-    $template = CRM_Core_Smarty::singleton();
-    $this->_assignMessageVariablesToTemplate($values, $input, $template, $recur, $returnMessageText);
+    $template = $this->_assignMessageVariablesToTemplate($values, $input, $returnMessageText);
     //what does recur 'mean here - to do with payment processor return functionality but
     // what is the importance
-    if ($recur && !empty($this->_relatedObjects['paymentProcessor'])) {
+    if (!empty($this->contribution_recur_id) && !empty($this->_relatedObjects['paymentProcessor'])) {
       $paymentObject = Civi\Payment\System::singleton()->getByProcessor($this->_relatedObjects['paymentProcessor']);
 
       $entityID = $entity = NULL;
@@ -2497,7 +2488,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       if (!empty($input['amount'])) {
         $values['totalAmount'] = $input['amount'];
       }
-
+      // @todo set this in is_email_receipt, based on $this->_relatedObjects.
       if ($values['event']['is_email_confirm']) {
         $values['is_email_receipt'] = 1;
       }
@@ -2549,7 +2540,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
               $values['is_pay_later'] = 1;
             }
 
-            if ($recur && $paymentObject) {
+            if (!empty($this->contribution_recur_id) && $paymentObject) {
               $url = $paymentObject->subscriptionURL($membership->id, 'membership', 'cancel');
               $template->assign('cancelSubscriptionUrl', $url);
               $url = $paymentObject->subscriptionURL($membership->id, 'membership', 'billing');
@@ -2610,8 +2601,14 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
         $values['softContributions'] = $softContributions['soft_credit'];
       }
       if (isset($this->contribution_page_id)) {
+        // This is a call we want to use less, in favour of loading related objects.
         $values = $this->addContributionPageValuesToValuesHeavyHandedly($values);
         if ($this->contribution_page_id) {
+          // This is precautionary as there are some legacy flows, but it should really be
+          // loaded by now.
+          if (!isset($this->_relatedObjects['contributionPage'])) {
+            $this->loadRelatedEntitiesByID(array('contributionPage' => $this->contribution_page_id));
+          }
           // CRM-8254 - override default currency if applicable
           $config = CRM_Core_Config::singleton();
           $config->defaultCurrency = CRM_Utils_Array::value(
@@ -2624,7 +2621,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       // no contribution page -probably back office
       else {
         // Handle re-print receipt for offline contributions (call from PDF.php - no contribution_page_id)
-        $values['is_email_receipt'] = 1;
         $values['title'] = 'Contribution';
       }
       // set lineItem for contribution
@@ -2785,13 +2781,12 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    *
    * @param $values
    * @param $input
-   * @param CRM_Core_SMARTY $template
-   * @param bool $recur
    * @param bool $returnMessageText
    *
    * @return mixed
    */
-  public function _assignMessageVariablesToTemplate(&$values, $input, &$template, $recur = FALSE, $returnMessageText = TRUE) {
+  public function _assignMessageVariablesToTemplate(&$values, $input, $returnMessageText = TRUE) {
+    $template = CRM_Core_Smarty::singleton();
     $template->assign('first_name', $this->_relatedObjects['contact']->first_name);
     $template->assign('last_name', $this->_relatedObjects['contact']->last_name);
     $template->assign('displayName', $this->_relatedObjects['contact']->display_name);
@@ -2886,7 +2881,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       )
     );
     $template->assign('is_monetary', 1);
-    $template->assign('is_recur', (bool) $recur);
+    $template->assign('is_recur', !empty($this->contribution_recur_id));
     $template->assign('currency', $this->currency);
     $template->assign('address', CRM_Utils_Address::format($input));
     if (!empty($values['customGroup'])) {
@@ -3702,6 +3697,9 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
   public static function buildOptions($fieldName, $context = NULL, $props = array()) {
     $className = __CLASS__;
     $params = array();
+    if (isset($props['orderColumn'])) {
+      $params['orderColumn'] = $props['orderColumn'];
+    }
     switch ($fieldName) {
       // This field is not part of this object but the api supports it
       case 'payment_processor':
@@ -4534,6 +4532,8 @@ WHERE eft.financial_trxn_id IN ({$trxnId}, {$baseTrxnId['financialTrxnId']})
 
             // CRM-8141 update the membership type with the value recorded in log when membership created/renewed
             // this picks up membership type changes during renewals
+            // @todo this is almost certainly an obsolete sql call, the pre-change
+            // membership is accessible via $this->_relatedObjects
             $sql = "
 SELECT    membership_type_id
 FROM      civicrm_membership_log
@@ -4693,8 +4693,6 @@ LIMIT 1;";
    * @param int $contributionID
    * @param array $values
    *   Values related to objects that have already been loaded.
-   * @param bool $recur
-   *   Is it part of a recurring contribution.
    * @param bool $returnMessageText
    *   Should text be returned instead of sent. This.
    *   is because the function is also used to generate pdfs
@@ -4703,9 +4701,8 @@ LIMIT 1;";
    * @throws \CRM_Core_Exception
    * @throws \CiviCRM_API3_Exception
    */
-  public static function sendMail(&$input, &$ids, $contributionID, &$values, $recur = FALSE,
+  public static function sendMail(&$input, &$ids, $contributionID, &$values,
                                   $returnMessageText = FALSE) {
-    $input['is_recur'] = $recur;
 
     $contribution = new CRM_Contribute_BAO_Contribution();
     $contribution->id = $contributionID;
@@ -4717,7 +4714,7 @@ LIMIT 1;";
     if (!$returnMessageText) {
       list($values['receipt_from_name'], $values['receipt_from_email']) = self::generateFromEmailAndName($input, $contribution);
     }
-    $return = $contribution->composeMessageArray($input, $ids, $values, $recur, $returnMessageText);
+    $return = $contribution->composeMessageArray($input, $ids, $values, $returnMessageText);
     // Contribution ID should really always be set. But ?
     if (!$returnMessageText && (!isset($input['receipt_update']) || $input['receipt_update']) && empty($contribution->receipt_date)) {
       civicrm_api3('Contribution', 'create', array('receipt_date' => 'now', 'id' => $contribution->id));
@@ -5057,7 +5054,6 @@ LIMIT 1;";
       // These are the values that I believe to be useful.
       'id',
       'title',
-      'is_email_receipt',
       'pay_later_receipt',
       'pay_later_text',
       'receipt_from_email',
@@ -5371,22 +5367,6 @@ LEFT JOIN  civicrm_contribution on (civicrm_contribution.contact_id = civicrm_co
   }
 
   /**
-   * Calculate net amount.
-   *
-   * @param array $netAmount
-   *
-   * @param float $taxAmount
-   *
-   * @return array
-   */
-  public static function calculateNetAmount($netAmount, $taxAmount) {
-    if ($taxAmount) {
-      $netAmount -= $taxAmount;
-    }
-    return CRM_Utils_Money::format($netAmount, NULL, '%a');
-  }
-
-  /**
    * Retrieve Sales Tax Financial Accounts.
    *
    *
@@ -5482,6 +5462,49 @@ LEFT JOIN  civicrm_contribution on (civicrm_contribution.contact_id = civicrm_co
         self::createProportionalEntry($entityParams, $eftParams);
       }
     }
+  }
+
+  /**
+   * Load entities related to the contribution into $this->_relatedObjects.
+   *
+   * @param array $ids
+   *
+   * @throws \CRM_Core_Exception
+   */
+  protected function loadRelatedEntitiesByID($ids) {
+    $entities = array(
+      'contact' => 'CRM_Contact_BAO_Contact',
+      'contributionRecur' => 'CRM_Contribute_BAO_ContributionRecur',
+      'contributionType' => 'CRM_Financial_BAO_FinancialType',
+      'financialType' => 'CRM_Financial_BAO_FinancialType',
+      'contributionPage' => 'CRM_Contribute_BAO_ContributionPage',
+    );
+    foreach ($entities as $entity => $bao) {
+      if (!empty($ids[$entity])) {
+        $this->_relatedObjects[$entity] = new $bao();
+        $this->_relatedObjects[$entity]->id = $ids[$entity];
+        if (!$this->_relatedObjects[$entity]->find(TRUE)) {
+          throw new CRM_Core_Exception($entity . ' could not be loaded');
+        }
+      }
+    }
+  }
+
+  /**
+   * Should an email receipt be sent for this contribution when complete.
+   *
+   * @param array $input
+   *
+   * @return mixed
+   */
+  protected function isEmailReceipt($input) {
+    if (isset($input['is_email_receipt'])) {
+      return $input['is_email_receipt'];
+    }
+    if (!empty($this->_relatedObjects['contribution_page_id'])) {
+      return $this->_relatedObjects['contribution_page_id']->is_email_receipt;
+    }
+    return TRUE;
   }
 
 }

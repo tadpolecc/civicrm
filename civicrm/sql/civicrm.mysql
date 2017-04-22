@@ -3519,7 +3519,7 @@ CREATE TABLE `civicrm_case` (
 
 
      `id` int unsigned NOT NULL AUTO_INCREMENT  COMMENT 'Unique Case ID',
-     `case_type_id` int unsigned    COMMENT 'FK to civicrm_case_type.id',
+     `case_type_id` int unsigned NOT NULL   COMMENT 'FK to civicrm_case_type.id',
      `subject` varchar(128)    COMMENT 'Short name of the case.',
      `start_date` date    COMMENT 'Date on which given case starts.',
      `end_date` date    COMMENT 'Date on which given case ends.',
@@ -3536,7 +3536,7 @@ CREATE TABLE `civicrm_case` (
         is_deleted
   )
   
-,          CONSTRAINT FK_civicrm_case_case_type_id FOREIGN KEY (`case_type_id`) REFERENCES `civicrm_case_type`(`id`) ON DELETE SET NULL  
+,          CONSTRAINT FK_civicrm_case_case_type_id FOREIGN KEY (`case_type_id`) REFERENCES `civicrm_case_type`(`id`)   
 )  ENGINE=InnoDB DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci  ;
 
 -- /*******************************************************

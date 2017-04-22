@@ -76,6 +76,15 @@ class CiviCRM_For_WordPress_Basepage {
       return;
     }
 
+    // In WP 4.6.0+, tell it URL params are part of canonical URL
+    add_filter( 'get_canonical_url', array( $this, 'basepage_canonical_url' ), 999 );
+
+    // Yoast SEO has separate way of establishing canonical URL
+    add_filter( 'wpseo_canonical', array( $this, 'basepage_canonical_url' ), 999 );
+
+    // And also for All in One SEO to handle canonical URL
+    add_filter( 'aioseop_canonical_url', array( $this, 'basepage_canonical_url' ), 999 );
+
     // regardless of URL, load page template
     add_filter( 'template_include', array( $this, 'basepage_template' ), 999 );
 
@@ -178,6 +187,9 @@ class CiviCRM_For_WordPress_Basepage {
     // tweak admin bar
     add_action( 'wp_before_admin_bar_render', array( $this->civi, 'clear_edit_post_menu_item' ) );
 
+    // add body classes for easier styling
+    add_filter( 'body_class', array( $this, 'add_body_classes' ) );
+
     // flag that we have parsed the base page
     $this->basepage_parsed = TRUE;
 
@@ -259,6 +271,45 @@ class CiviCRM_For_WordPress_Basepage {
 
   }
 
+  /**
+   * Provide the canonical URL for a page accessed through a basepage.
+   *
+   * WordPress will default to saying the canonical URL is the URL of the base
+   * page itself, but we need to indicate that in this case, the whole thing
+   * matters.
+   *
+   * Note: this function is used for three different but similar hooks:
+   *  - `get_canonical_url` (WP 4.6.0+)
+   *  - `aioseop_canonical_url` (All in One SEO)
+   *  - `wpseo_canonical` (Yoast WordPress SEO)
+   *
+   * The native WordPress one passes the page object, while the other two do
+   * not.  We don't actually need the page object, so the argument is omitted
+   * here.
+   *
+   * @param string $canonical
+   *   The canonical URL.
+   *
+   * @return string
+   *   The complete URL to the page as it should be accessed.
+   */
+  public function basepage_canonical_url( $canonical ) {
+    // It would be better to specify which params are okay to accept as the
+    // canonical URLs, but this will work for the time being.
+    if ( empty( $_GET['page'] )
+      || empty( $_GET['q'] )
+      || 'CiviCRM' !== $_GET['page'] ) {
+      return $canonical;
+    }
+    $path = $_GET['q'];
+    unset( $_GET['q'] );
+    unset( $_GET['page'] );
+    $query = http_build_query( $_GET );
+
+    // We should, however, build the URL the way that CiviCRM expects it to be
+    // (rather than through some other funny base page).
+    return CRM_Utils_System::url( $path, $query );
+  }
 
   /**
    * Get CiviCRM base page template.
@@ -327,6 +378,47 @@ class CiviCRM_For_WordPress_Basepage {
   }
 
 
+  /**
+   * Add classes to body element when on basepage.
+   *
+   * This allows selectors to be written for particular CiviCRM "pages" despite
+   * them all being rendered on the one WordPress basepage.
+   *
+   * @param array $classes The existing body classes
+   * @return array $classes The modified body classes
+   */
+  public function add_body_classes( $classes ) {
+
+  	 $args = $this->civi->get_request_args();
+
+  	 // bail if we don't have any
+  	 if ( is_null( $args['argString'] ) ) {
+  	   return $classes;
+  	 }
+
+  	 // check for top level - it can be assumed this always 'civicrm'
+  	 if ( isset( $args['args'][0] ) AND ! empty( $args['args'][0] ) ) {
+  	   $classes[] = $args['args'][0];
+  	 }
+
+  	 // check for second level - the component
+  	 if ( isset( $args['args'][1] ) AND ! empty( $args['args'][1] ) ) {
+  	   $classes[] = $args['args'][0] . '-' . $args['args'][1];
+  	 }
+
+  	 // check for third level - the component's configuration
+  	 if ( isset( $args['args'][2] ) AND ! empty( $args['args'][2] ) ) {
+  	   $classes[] = $args['args'][0] . '-' . $args['args'][1] . '-' . $args['args'][2];
+  	 }
+
+  	 // check for fourth level - because well, why not?
+  	 if ( isset( $args['args'][3] ) AND ! empty( $args['args'][3] ) ) {
+  	   $classes[] = $args['args'][0] . '-' . $args['args'][1] . '-' . $args['args'][2] . '-' . $args['args'][3];
+  	 }
+
+  	 return $classes;
+
+  }
+
+
 } // class CiviCRM_For_WordPress_Basepage ends
-
-

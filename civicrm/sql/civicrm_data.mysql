@@ -72,7 +72,7 @@ INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1028", "Bouvet Island", "BV", "1", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1029", "Brazil", "BR", "2", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1030", "British Indian Ocean Territory", "IO", "4", "0");
-INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1031", "Virgin Islands,British", "VG", "2", "0");
+INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1031", "Virgin Islands, British", "VG", "2", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1032", "Brunei Darussalam", "BN", "4", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1033", "Bulgaria", "BG", "1", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1034", "Burkina Faso", "BF", "5", "0");
@@ -205,7 +205,7 @@ INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1162", "Oman", "OM", "3", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1163", "Pakistan", "PK", "4", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1164", "Palau", "PW", "4", "0");
-INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1165", "Palestinian Territory", "PS", "3", "0");
+INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1165", "Palestine, State of", "PS", "3", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1166", "Panama", "PA", "2", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1167", "Papua New Guinea", "PG", "4", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1168", "Paraguay", "PY", "2", "0");
@@ -422,7 +422,7 @@ INSERT INTO civicrm_state_province (id, country_id, abbreviation, name) VALUES
 (1222, 1101, "SK", "Sikkim"),
 (1223, 1101, "TN", "Tamil Nadu"),
 (1224, 1101, "TR", "Tripura"),
-(1225, 1101, "UL", "Uttaranchal"),
+(1225, 1101, "UT", "Uttarakhand"),
 (1226, 1101, "UP", "Uttar Pradesh"),
 (1227, 1101, "WB", "West Bengal"),
 (1228, 1101, "AN", "Andaman and Nicobar Islands"),
@@ -2125,11 +2125,9 @@ INSERT INTO civicrm_state_province (id, country_id, abbreviation, name) VALUES
 (3345, 1110, "JA", "Jarash"),
 (3346, 1110, "MN", "Ma\'an"),
 (3347, 1110, "MD", "Madaba"),
-(3348, 1112, "110", "Nairobi Municipality"),
-(3349, 1112, "300", "Coast"),
-(3350, 1112, "500", "North-Eastern Kaskazini Mashariki"),
-(3351, 1112, "700", "Rift Valley"),
-(3352, 1112, "900", "Western Magharibi"),
+
+-- CRM-20062 Outdated provinces for Kenya removed .
+
 (3353, 1117, "GB", "Bishkek"),
 (3354, 1117, "B", "Batken"),
 (3355, 1117, "C", "Chu"),
@@ -3608,7 +3606,7 @@ INSERT INTO civicrm_state_province (id, country_id, abbreviation, name) VALUES
 (4860, 1208, "TPQ", "Taipei County"),
 (4861, 1208, "TTT", "Taitung County"),
 (4862, 1208, "TAO", "Taoyuan County"),
-(4863, 1208, "YUN", "Yunlin Conuty"),
+(4863, 1208, "YUN", "Yunlin County"),
 (4864, 1208, "KEE", "Keelung City"),
 (4865, 1210, "01", "Arusha"),
 (4866, 1210, "02", "Dar-es-Salaam"),
@@ -4297,7 +4295,7 @@ INSERT INTO civicrm_state_province (id, country_id, abbreviation, name) VALUES
 (NULL, 1066, "LI", "La Libertad"),
 (NULL, 1066, "PA", "La Paz"),
 (NULL, 1066, "UN", "La Union"),
- 
+
 -- CRM-17660 Add missing Cameroon Provinces
 (NULL, 1038, "LT", "Littoral"),
 (NULL, 1038, "NW", "Nord-Ouest"),
@@ -4313,7 +4311,69 @@ INSERT INTO civicrm_state_province (id, country_id, abbreviation, name) VALUES
 (NULL, 1076, "MQ", "Martinique"),
 (NULL, 1076, "GF", "Guyane"),
 (NULL, 1076, "RE", "La Réunion"),
-(NULL, 1076, "YT", "Mayotte");
+(NULL, 1076, "YT", "Mayotte"),
+
+-- CRM-20062 New counties of Kenya.
+(NULL, 1112, "01", "Baringo"),
+(NULL, 1112, "02", "Bomet"),
+(NULL, 1112, "03", "Bungoma"),
+(NULL, 1112, "04", "Busia"),
+(NULL, 1112, "05", "Elgeyo/Marakwet"),
+(NULL, 1112, "06", "Embu"),
+(NULL, 1112, "07", "Garissa"),
+(NULL, 1112, "08", "Homa Bay"),
+(NULL, 1112, "09", "Isiolo"),
+(NULL, 1112, "10", "Kajiado"),
+(NULL, 1112, "11", "Kakamega"),
+(NULL, 1112, "12", "Kericho"),
+(NULL, 1112, "13", "Kiambu"),
+(NULL, 1112, "14", "Kilifi"),
+(NULL, 1112, "15", "Kirinyaga"),
+(NULL, 1112, "16", "Kisii"),
+(NULL, 1112, "17", "Kisumu"),
+(NULL, 1112, "18", "Kitui"),
+(NULL, 1112, "19", "Kwale"),
+(NULL, 1112, "20", "Laikipia"),
+(NULL, 1112, "21", "Lamu"),
+(NULL, 1112, "22", "Machakos"),
+(NULL, 1112, "23", "Makueni"),
+(NULL, 1112, "24", "Mandera"),
+(NULL, 1112, "25", "Marsabit"),
+(NULL, 1112, "26", "Meru"),
+(NULL, 1112, "27", "Migori"),
+(NULL, 1112, "28", "Mombasa"),
+(NULL, 1112, "29", "Murang'a"),
+(NULL, 1112, "30", "Nairobi City"),
+(NULL, 1112, "31", "Nakuru"),
+(NULL, 1112, "32", "Nandi"),
+(NULL, 1112, "33", "Narok"),
+(NULL, 1112, "34", "Nyamira"),
+(NULL, 1112, "35", "Nyandarua"),
+(NULL, 1112, "36", "Nyeri"),
+(NULL, 1112, "37", "Samburu"),
+(NULL, 1112, "38", "Siaya"),
+(NULL, 1112, "39", "Taita/Taveta"),
+(NULL, 1112, "40", "Tana River"),
+(NULL, 1112, "41", "Tharaka-Nithi"),
+(NULL, 1112, "42", "Trans Nzoia"),
+(NULL, 1112, "43", "Turkana"),
+(NULL, 1112, "44", "Uasin Gishu"),
+(NULL, 1112, "45", "Vihiga"),
+(NULL, 1112, "46", "Wajir"),
+(NULL, 1112, "47", "West Pokot"),
+
+-- CRM-19993 Fixes for ISO compliance with countries and counties
+-- Add states for: India, Ghana, Sierra Leone, Saint Kitts & Nevis
+(NULL, 1101, "CH", "Chandigarh"),
+(NULL, 1083, "CP", "Central"),
+(NULL, 1083, "EP", "Eastern"),
+(NULL, 1083, "NP", "Northern"),
+(NULL, 1083, "WP", "Western"),
+(NULL, 1181, "K", "Saint Kitts"),
+(NULL, 1181, "N", "Nevis"),
+(NULL, 1190, "E", "Eastern"),
+(NULL, 1190, "N", "Northern"),
+(NULL, 1190, "S", "Southern");
 -- +--------------------------------------------------------------------+
 -- | CiviCRM version 4.7                                                |
 -- +--------------------------------------------------------------------+
@@ -23193,7 +23253,6 @@ VALUES
     ( @domainID, 'civicrm/admin/contribute/managePremiums?reset=1',         'Premiums (Thank-you Gifts)', 'Premiums',                  'access CiviContribute,administer CiviCRM', 'AND',  @contributionlastID, '1', 1,    12 ),
     ( @domainID, 'civicrm/admin/price?reset=1&action=add',                  'New Price Set',              'New Price Set',             'access CiviContribute,administer CiviCRM', 'AND',  @contributionlastID, '1', NULL, 13 ),
     ( @domainID, 'civicrm/admin/price?reset=1',                             'Manage Price Sets',          'Manage Price Sets',         'access CiviContribute,administer CiviCRM', 'AND',  @contributionlastID, '1', 1, 14 ),
-    ( @domainID, 'civicrm/admin/contribute/closeaccperiod?reset=1',         'Close Accounting Period',    'Close Accounting Period',   'access CiviContribute,administer CiviCRM,administer Accounting', 'AND',  @contributionlastID, '1', NULL, 15 ),
 
     ( @domainID, 'civicrm/financial/batch?reset=1&action=add',                             'New Batch',          'New Batch',         'create manual batch', 'AND',  @financialTransactionID, '1', NULL, 1 ),
     ( @domainID, 'civicrm/financial/financialbatches?reset=1&batchStatus=1', 'Open Batches',          'Open Batches',         'view own manual batches,view all manual batches', 'OR',  @financialTransactionID, '1', NULL, 2 ),
@@ -23854,4 +23913,4 @@ INSERT INTO `civicrm_report_instance`
 VALUES
     (  @domainID, 'Survey Details', 'survey/detail', 'Detailed report for canvassing, phone-banking, walk lists or other surveys.', 'access CiviReport', 'a:39:{s:6:"fields";a:2:{s:9:"sort_name";s:1:"1";s:6:"result";s:1:"1";}s:22:"assignee_contact_id_op";s:2:"eq";s:25:"assignee_contact_id_value";s:0:"";s:12:"sort_name_op";s:3:"has";s:15:"sort_name_value";s:0:"";s:17:"street_number_min";s:0:"";s:17:"street_number_max";s:0:"";s:16:"street_number_op";s:3:"lte";s:19:"street_number_value";s:0:"";s:14:"street_name_op";s:3:"has";s:17:"street_name_value";s:0:"";s:15:"postal_code_min";s:0:"";s:15:"postal_code_max";s:0:"";s:14:"postal_code_op";s:3:"lte";s:17:"postal_code_value";s:0:"";s:7:"city_op";s:3:"has";s:10:"city_value";s:0:"";s:20:"state_province_id_op";s:2:"in";s:23:"state_province_id_value";a:0:{}s:13:"country_id_op";s:2:"in";s:16:"country_id_value";a:0:{}s:12:"survey_id_op";s:2:"in";s:15:"survey_id_value";a:0:{}s:12:"status_id_op";s:2:"eq";s:15:"status_id_value";s:1:"1";s:11:"custom_1_op";s:2:"in";s:14:"custom_1_value";a:0:{}s:11:"custom_2_op";s:2:"in";s:14:"custom_2_value";a:0:{}s:17:"custom_3_relative";s:1:"0";s:13:"custom_3_from";s:0:"";s:11:"custom_3_to";s:0:"";s:11:"description";s:75:"Detailed report for canvassing, phone-banking, walk lists or other surveys.";s:13:"email_subject";s:0:"";s:8:"email_to";s:0:"";s:8:"email_cc";s:0:"";s:10:"permission";s:17:"access CiviReport";s:6:"groups";s:0:"";s:9:"domain_id";i:1;}');
 
-UPDATE civicrm_domain SET version = '4.7.17';
+UPDATE civicrm_domain SET version = '4.7.18';

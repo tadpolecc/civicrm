@@ -14,7 +14,7 @@
             "reference": "fe0936ee26643249e916849d48e3a51d5f5e278b",
             "shasum": ""
         },
-        "time": "2012-12-21 11:40:51",
+        "time": "2012-12-21T11:40:51+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -68,7 +68,7 @@
             "ext-mcrypt": "Install the Mcrypt extension in order to speed up a wide variety of cryptographic operations.",
             "pear-pear/PHP_Compat": "Install PHP_Compat to get phpseclib working on PHP < 5.0.0."
         },
-        "time": "2016-10-22 17:53:16",
+        "time": "2016-10-22T17:53:16+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -162,7 +162,7 @@
         "require-dev": {
             "phpunit/phpunit": "3.7.*"
         },
-        "time": "2016-12-06 04:32:51",
+        "time": "2016-12-06T04:32:51+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -197,7 +197,7 @@
             "reference": "b419766515b3426c6da74b0e29e93d71c4f17099",
             "shasum": ""
         },
-        "time": "2015-05-06 18:49:49",
+        "time": "2015-05-06T18:49:49+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -233,7 +233,7 @@
             "reference": "b8af0cacdc3cbf1e41a586fcb78f506f4121a088",
             "shasum": ""
         },
-        "time": "2015-05-06 20:02:39",
+        "time": "2015-05-06T20:02:39+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -280,7 +280,7 @@
         "require-dev": {
             "phpunit/phpunit": "3.7.*"
         },
-        "time": "2016-05-11 00:36:29",
+        "time": "2016-05-11T00:36:29+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -332,7 +332,7 @@
             "reference": "19dd1de9d3f5fc4d7d70175b4c344dee329f45fd",
             "shasum": ""
         },
-        "time": "2014-06-05 11:42:24",
+        "time": "2014-06-05T11:42:24+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -377,7 +377,7 @@
         "require-dev": {
             "phpunit/phpunit": "*"
         },
-        "time": "2015-02-10 20:07:52",
+        "time": "2015-02-10T20:07:52+00:00",
         "type": "class",
         "extra": {
             "branch-alias": {
@@ -435,7 +435,7 @@
         "require-dev": {
             "phpunit/phpunit": "*"
         },
-        "time": "2016-09-12 08:01:21",
+        "time": "2016-09-12T08:01:21+00:00",
         "type": "library",
         "installation-source": "source",
         "autoload": {
@@ -492,7 +492,7 @@
             "zendframework/zend-serializer": "Zend\\Serializer component",
             "zendframework/zend-servicemanager": "To support hydrator plugin manager usage"
         },
-        "time": "2015-07-21 13:55:46",
+        "time": "2015-07-21T13:55:46+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -558,7 +558,7 @@
             "zendframework/zend-session": "Zend\\Session component",
             "zendframework/zend-uri": "Zend\\Uri component, required by the Uri and Sitemap\\Loc validators"
         },
-        "time": "2015-09-08 21:04:17",
+        "time": "2015-09-08T21:04:17+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -606,7 +606,7 @@
             "phpunit/phpunit": "~4.0",
             "satooshi/php-coveralls": "dev-master"
         },
-        "time": "2015-05-07 14:55:31",
+        "time": "2015-05-07T14:55:31+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -657,7 +657,7 @@
             "sebastian/phpcpd": "2.*",
             "squizlabs/php_codesniffer": "2.*"
         },
-        "time": "2016-07-07 17:26:55",
+        "time": "2016-07-07T17:26:55+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -727,7 +727,7 @@
             "ext-xsl": "Allows applying XSL style sheet to headers, to main document part, and to footers of an OOXML template",
             "ext-zip": "Allows writing OOXML and ODF"
         },
-        "time": "2016-07-31 08:53:39",
+        "time": "2016-07-31T08:53:39+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -808,7 +808,7 @@
         "require": {
             "php": ">=5.3.3"
         },
-        "time": "2015-01-03 21:04:44",
+        "time": "2015-01-03T21:04:44+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -858,7 +858,7 @@
             "php": ">=5.3.3",
             "symfony/filesystem": "~2.3"
         },
-        "time": "2015-01-03 08:01:13",
+        "time": "2015-01-03T08:01:13+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -917,7 +917,7 @@
             "symfony/proxy-manager-bridge": "Generate service proxies to lazy load them",
             "symfony/yaml": ""
         },
-        "time": "2015-01-25 04:37:39",
+        "time": "2015-01-25T04:37:39+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -976,7 +976,7 @@
             "symfony/dependency-injection": "",
             "symfony/http-kernel": ""
         },
-        "time": "2015-01-29 18:20:43",
+        "time": "2015-01-29T18:20:43+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -1025,7 +1025,7 @@
         "require": {
             "php": ">=5.3.3"
         },
-        "time": "2015-01-03 08:01:13",
+        "time": "2015-01-03T08:01:13+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -1074,7 +1074,7 @@
         "require": {
             "php": ">=5.3.3"
         },
-        "time": "2015-02-08 07:07:45",
+        "time": "2015-02-08T07:07:45+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -1122,7 +1122,7 @@
         "require": {
             "php": ">=5.3.0"
         },
-        "time": "2015-09-12 10:08:34",
+        "time": "2015-09-12T10:08:34+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -1187,7 +1187,7 @@
         "require": {
             "php": ">=5.2"
         },
-        "time": "2013-02-13 03:40:18",
+        "time": "2013-02-13T03:40:18+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -1223,7 +1223,7 @@
             "reference": "2612ee3ce88902632d45b93e379277e9d46b70a7",
             "shasum": ""
         },
-        "time": "2009-06-29 10:47:39",
+        "time": "2009-06-29T10:47:39+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -1277,9 +1277,9 @@
         "source": {
             "type": "git",
             "url": "https://github.com/civicrm/zetacomponents-mail.git",
-            "reference": "19f5af66cdde19bc20f41671fe453b37f4121eb1"
+            "reference": "e0feff0e1860f16fa2b3c42795c0351db58120a0"
         },
-        "time": "2016-01-08 01:15:38",
+        "time": "2017-03-14T06:51:24+00:00",
         "type": "library",
         "installation-source": "source",
         "autoload": {
