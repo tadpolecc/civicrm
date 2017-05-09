@@ -211,6 +211,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
   public function preProcess() {
     // Check permission for action.
     if (!CRM_Core_Permission::checkActionPermission('CiviContribute', $this->_action)) {
+      // @todo replace with throw new CRM_Core_Exception().
       CRM_Core_Error::fatal(ts('You do not have permission to access this page.'));
     }
 
@@ -252,7 +253,6 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     $this->assign('showCheckNumber', TRUE);
 
     $this->_fromEmails = CRM_Core_BAO_Email::getFromEmail();
-    $this->assignPaymentRelatedVariables();
 
     if (in_array('CiviPledge', CRM_Core_Config::singleton()->enableComponents) && !$this->_formType) {
       $this->preProcessPledge();
@@ -383,7 +383,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     }
 
     if (empty($defaults['payment_instrument_id'])) {
-      $defaults['payment_instrument_id'] = key(CRM_Core_OptionGroup::values('payment_instrument', FALSE, FALSE, FALSE, 'AND is_default = 1'));
+      $defaults['payment_instrument_id'] = $this->getDefaultPaymentInstrumentId();
     }
 
     if (!empty($defaults['is_test'])) {
@@ -560,26 +560,24 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
       $paneNames[ts('Premium Information')] = 'Premium';
     }
 
-    if ($this->_mode) {
-      if (CRM_Core_Payment_Form::buildPaymentForm($this, $this->_paymentProcessor, FALSE, TRUE) == TRUE) {
-        if (!empty($this->_recurPaymentProcessors)) {
-          $buildRecurBlock = TRUE;
-          if ($this->_ppID) {
-            // ppID denotes a pledge payment.
-            foreach ($this->_paymentProcessors as $processor) {
-              if (!empty($processor['is_recur']) && !empty($processor['object']) && $processor['object']->supports('recurContributionsForPledges')) {
-                $buildRecurBlock = TRUE;
-                break;
-              }
-              $buildRecurBlock = FALSE;
+    if (CRM_Core_Payment_Form::buildPaymentForm($this, $this->_paymentProcessor, FALSE, TRUE, $this->getDefaultPaymentInstrumentId()) == TRUE) {
+      if (!empty($this->_recurPaymentProcessors)) {
+        $buildRecurBlock = TRUE;
+        if ($this->_ppID) {
+          // ppID denotes a pledge payment.
+          foreach ($this->_paymentProcessors as $processor) {
+            if (!empty($processor['is_recur']) && !empty($processor['object']) && $processor['object']->supports('recurContributionsForPledges')) {
+              $buildRecurBlock = TRUE;
+              break;
             }
+            $buildRecurBlock = FALSE;
           }
-          if ($buildRecurBlock) {
-            CRM_Contribute_Form_Contribution_Main::buildRecur($this);
-            $this->setDefaults(array('is_recur' => 0));
-            $this->assign('buildRecurBlock', TRUE);
-            $recurJs = array('onChange' => "buildRecurBlock( this.value ); return false;");
-          }
+        }
+        if ($buildRecurBlock) {
+          CRM_Contribute_Form_Contribution_Main::buildRecur($this);
+          $this->setDefaults(array('is_recur' => 0));
+          $this->assign('buildRecurBlock', TRUE);
+          $recurJs = array('onChange' => "buildRecurBlock( this.value ); return false;");
         }
       }
     }
@@ -1276,6 +1274,8 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
               'payment_processor_id' => $this->_paymentProcessor['id'],
               'is_transactional' => FALSE,
               'fee_amount' => CRM_Utils_Array::value('fee_amount', $result),
+              'card_type_id' => CRM_Utils_Array::value('card_type_id', $paymentParams),
+              'pan_truncation' => CRM_Utils_Array::value('pan_truncation', $paymentParams),
             ));
             // This has now been set to 1 in the DB - declare it here also
             $contribution->contribution_status_id = 1;
@@ -1434,10 +1434,11 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
    * @throws \Exception
    */
   protected function submit($submittedValues, $action, $pledgePaymentID) {
-
     $pId = $contribution = $isRelatedId = FALSE;
     $this->_params = $submittedValues;
     $this->beginPostProcess();
+    // reassign submitted form values if the any information is formatted via beginPostProcess
+    $submittedValues = $this->_params;
 
     if (!empty($submittedValues['price_set_id']) && $action & CRM_Core_Action::UPDATE) {
       $line = CRM_Price_BAO_LineItem::getLineItems($this->_id, 'contribution');
@@ -1645,6 +1646,8 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
         'cancel_reason',
         'source',
         'check_number',
+        'card_type_id',
+        'pan_truncation',
       );
       foreach ($fields as $f) {
         $params[$f] = CRM_Utils_Array::value($f, $formValues);

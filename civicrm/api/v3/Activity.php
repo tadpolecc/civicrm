@@ -180,9 +180,6 @@ function civicrm_api3_activity_create($params) {
  */
 function _civicrm_api3_activity_create_spec(&$params) {
 
-  // Default for source_contact_id = currently logged in user.
-  $params['source_contact_id']['api.default'] = 'user_contact_id';
-
   $params['status_id']['api.aliases'] = array('activity_status');
 
   $params['assignee_contact_id'] = array(
@@ -210,6 +207,7 @@ function _civicrm_api3_activity_create_spec(&$params) {
     'FKClassName' => 'CRM_Contact_DAO_Contact',
     'api.default' => 'user_contact_id',
     'FKApiName' => 'Contact',
+    'api.required' => TRUE,
   );
 
   $params['case_id'] = array(
@@ -306,11 +304,29 @@ function civicrm_api3_activity_get($params) {
         "Cannot access activities. Required permission: 'view all activities''"
       );
     }
-
-    if (!CRM_Activity_BAO_Activity::checkPermission($params['id'], CRM_Core_Action::VIEW)) {
-      throw new \Civi\API\Exception\UnauthorizedException(
-        'You do not have permission to view this activity'
-      );
+    $ids = array();
+    $allowed_operators = array(
+      'IN',
+    );
+    if (is_array($params['id'])) {
+      foreach ($params['id'] as $operator => $values) {
+        if (in_array($operator, CRM_Core_DAO::acceptedSQLOperators()) && in_array($operator, $allowed_operators)) {
+          $ids = $values;
+        }
+        else {
+          throw new \API_Exception(ts('Used an unsupported sql operator with Activity.get API'));
+        }
+      }
+    }
+    else {
+      $ids = array($params['id']);
+    }
+    foreach ($ids as $id) {
+      if (!CRM_Activity_BAO_Activity::checkPermission($id, CRM_Core_Action::VIEW)) {
+        throw new \Civi\API\Exception\UnauthorizedException(
+          'You do not have permission to view this activity'
+        );
+      }
     }
   }
 

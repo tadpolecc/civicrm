@@ -943,6 +943,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
       $params['is_email_receipt'] = $isEmailReceipt;
     }
     $params['is_recur'] = $isRecur;
+    $params['payment_instrument_id'] = $contributionParams['payment_instrument_id'];
     $recurringContributionID = self::processRecurringContribution($form, $params, $contactID, $financialType);
     $nonDeductibleAmount = self::getNonDeductibleAmount($params, $financialType, $online, $form);
 
@@ -1188,13 +1189,11 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
 
     if (!$orgID) {
       // check if matching organization contact exists
-      $dedupeParams = CRM_Dedupe_Finder::formatParams($behalfOrganization, 'Organization');
-      $dedupeParams['check_permission'] = FALSE;
-      $dupeIDs = CRM_Dedupe_Finder::dupesByParams($dedupeParams, 'Organization', 'Unsupervised');
+      $dupeID = CRM_Contact_BAO_Contact::getFirstDuplicateContact($behalfOrganization, 'Organization', 'Unsupervised', array(), FALSE);
 
       // CRM-6243 says to pick the first org even if more than one match
       if (count($dupeIDs) >= 1) {
-        $behalfOrganization['contact_id'] = $orgID = $dupeIDs[0];
+        $behalfOrganization['contact_id'] = $orgID = $dupeID;
         // don't allow name edit
         unset($behalfOrganization['organization_name']);
       }
@@ -1670,13 +1669,16 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
       // also it reset any payment processor selection result into pending free membership
       // so its a kind of hack to complete free membership at this point since there is no $form->_paymentProcessor info
       if (!empty($membershipContribution) && !is_a($membershipContribution, 'CRM_Core_Error')) {
-        $paymentProcessorIDs = explode(CRM_Core_DAO::VALUE_SEPARATOR, CRM_Utils_Array::value('payment_processor', $this->_values));
-        if (empty($form->_paymentProcessor) && !empty($paymentProcessorIDs)) {
+        if (empty($form->_paymentProcessor)) {
+          // @todo this can maybe go now we are setting payment_processor_id = 0 more reliably.
+          $paymentProcessorIDs = explode(CRM_Core_DAO::VALUE_SEPARATOR, CRM_Utils_Array::value('payment_processor', $this->_values));
           $this->_paymentProcessor['id'] = $paymentProcessorIDs[0];
         }
         $result = array('payment_status_id' => 1, 'contribution' => $membershipContribution);
         $this->completeTransaction($result, $result['contribution']->id);
       }
+      // return as completeTransaction() already sends the receipt mail.
+      return;
     }
 
     CRM_Contribute_BAO_ContributionPage::sendMail($contactID,
@@ -1943,10 +1945,14 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     $form->_values['fee'] = $priceSetFields['fields'];
     $form->_priceSetId = $priceSetID;
     $form->setFormAmountFields($priceSetID);
+    $capabilities = array();
+    if ($form->_mode) {
+      $capabilities[] = (ucfirst($form->_mode) . 'Mode');
+    }
+    $form->_paymentProcessors = CRM_Financial_BAO_PaymentProcessor::getPaymentProcessors($capabilities);
+    $form->_params['payment_processor_id'] = !empty($params['payment_processor_id']) ? $params['payment_processor_id'] : 0;
+    $form->_paymentProcessor = $form->_paymentProcessors[$form->_params['payment_processor_id']];
     if (!empty($params['payment_processor_id'])) {
-      $form->_paymentProcessor = civicrm_api3('payment_processor', 'getsingle', array(
-        'id' => $params['payment_processor_id'],
-      ));
       // The concept of contributeMode is deprecated as is the billing_mode concept.
       if ($form->_paymentProcessor['billing_mode'] == 1) {
         $form->_contributeMode = 'direct';
@@ -1954,9 +1960,6 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
       else {
         $form->_contributeMode = 'notify';
       }
-    }
-    else {
-      $form->_params['payment_processor_id'] = 0;
     }
 
     $priceFields = $priceFields[$priceSetID]['fields'];
@@ -2033,6 +2036,8 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
 
     // fix currency ID
     $this->_params['currencyID'] = CRM_Core_Config::singleton()->defaultCurrency;
+
+    CRM_Contribute_Form_AbstractEditPayment::formatCreditCardDetails($this->_params);
 
     // CRM-18854
     if (CRM_Utils_Array::value('is_pledge', $this->_params) && !CRM_Utils_Array::value('pledge_id', $this->_values) && CRM_Utils_Array::value('adjust_recur_start_date', $this->_values)) {
@@ -2160,12 +2165,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
         unset($dupeParams['honor']);
       }
 
-      $dedupeParams = CRM_Dedupe_Finder::formatParams($dupeParams, 'Individual');
-      $dedupeParams['check_permission'] = FALSE;
-      $ids = CRM_Dedupe_Finder::dupesByParams($dedupeParams, 'Individual');
-
-      // if we find more than one contact, use the first one
-      $contactID = CRM_Utils_Array::value(0, $ids);
+      $contactID = CRM_Contact_BAO_Contact::getFirstDuplicateContact($dupeParams, 'Individual', 'Unsupervised', array(), FALSE);
 
       // Fetch default greeting id's if creating a contact
       if (!$contactID) {
@@ -2436,14 +2436,15 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     if (CRM_Utils_Array::value('payment_status_id', $result) == 1) {
       try {
         civicrm_api3('contribution', 'completetransaction', array(
-            'id' => $contributionID,
-            'trxn_id' => CRM_Utils_Array::value('trxn_id', $result),
-            'payment_processor_id' => $this->_paymentProcessor['id'],
-            'is_transactional' => FALSE,
-            'fee_amount' => CRM_Utils_Array::value('fee_amount', $result),
-            'receive_date' => CRM_Utils_Array::value('receive_date', $result),
-          )
-        );
+          'id' => $contributionID,
+          'trxn_id' => CRM_Utils_Array::value('trxn_id', $result),
+          'payment_processor_id' => $this->_paymentProcessor['id'],
+          'is_transactional' => FALSE,
+          'fee_amount' => CRM_Utils_Array::value('fee_amount', $result),
+          'receive_date' => CRM_Utils_Array::value('receive_date', $result),
+          'card_type_id' => CRM_Utils_Array::value('card_type_id', $result),
+          'pan_truncation' => CRM_Utils_Array::value('pan_truncation', $result),
+        ));
       }
       catch (CiviCRM_API3_Exception $e) {
         if ($e->getErrorCode() != 'contribution_completed') {

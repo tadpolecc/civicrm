@@ -120,6 +120,58 @@ abstract class CRM_Core_Payment {
   protected $billingProfile;
 
   /**
+   * Payment instrument ID.
+   *
+   * This is normally retrieved from the payment_processor table.
+   *
+   * @var int
+   */
+  protected $paymentInstrumentID;
+
+  /**
+   * Is this a back office transaction.
+   *
+   * @var bool
+   */
+  protected $backOffice = FALSE;
+
+  /**
+   * @return bool
+   */
+  public function isBackOffice() {
+    return $this->backOffice;
+  }
+
+  /**
+   * Set back office property.
+   *
+   * @param bool $isBackOffice
+   */
+  public function setBackOffice($isBackOffice) {
+    $this->backOffice = $isBackOffice;
+  }
+
+  /**
+   * Get payment instrument id.
+   *
+   * @return int
+   */
+  public function getPaymentInstrumentID() {
+    return $this->paymentInstrumentID ? $this->paymentInstrumentID : $this->_paymentProcessor['payment_instrument_id'];
+  }
+
+  /**
+   * Set payment Instrument id.
+   *
+   * By default we actually ignore the form value. The manual processor takes it more seriously.
+   *
+   * @param int $paymentInstrumentID
+   */
+  public function setPaymentInstrumentID($paymentInstrumentID) {
+    $this->paymentInstrumentID = $this->_paymentProcessor['payment_instrument_id'];
+  }
+
+  /**
    * Set base return path (offsite processors).
    *
    * This is only useful with an internal civicrm form.
@@ -721,6 +773,34 @@ abstract class CRM_Core_Payment {
         ),
         'is_required' => TRUE,
 
+      ),
+      'check_number' => array(
+        'htmlType' => 'text',
+        'name' => 'check_number',
+        'title' => ts('Check Number'),
+        'is_required' => FALSE,
+        'cc_field' => TRUE,
+        'attributes' => NULL,
+      ),
+      'pan_truncation' => array(
+        'htmlType' => 'text',
+        'name' => 'pan_truncation',
+        'title' => ts('Last 4 digits of the card'),
+        'is_required' => FALSE,
+        'cc_field' => TRUE,
+        'attributes' => array(
+          'size' => 4,
+          'maxlength' => 4,
+          'minlength' => 4,
+          'autocomplete' => 'off',
+        ),
+        'rules' => array(
+          array(
+            'rule_message' => ts('Please enter valid last 4 digit card number.'),
+            'rule_name' => 'numeric',
+            'rule_parameters' => NULL,
+          ),
+        ),
       ),
     );
   }

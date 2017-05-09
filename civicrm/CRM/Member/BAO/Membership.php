@@ -1000,7 +1000,7 @@ INNER JOIN  civicrm_membership_type type ON ( type.id = membership.membership_ty
     $fields = array_merge($fields, $expFieldMembership);
     $membershipStatus = array(
       'membership_status' => array(
-        'title' => 'Membership Status',
+        'title' => ts('Membership Status'),
         'name' => 'membership_status',
         'type' => CRM_Utils_Type::T_STRING,
         'where' => 'civicrm_membership_status.name',
@@ -2408,6 +2408,8 @@ WHERE      civicrm_membership.is_test = 0";
       'tax_amount',
       'skipLineItem',
       'contribution_recur_id',
+      'pan_truncation',
+      'card_type_id',
     );
     foreach ($recordContribution as $f) {
       $contributionParams[$f] = CRM_Utils_Array::value($f, $params);

@@ -443,12 +443,20 @@ class CRM_Contribute_BAO_Query extends CRM_Core_BAO_Query {
         $query->_tables['civicrm_financial_trxn'] = $query->_whereTables['civicrm_financial_trxn'] = 1;
         return;
 
-      case 'financial_trxn_card_type':
-        $query->_where[$grouping][] = CRM_Contact_BAO_Query::buildClause('civicrm_financial_trxn.card_type', $op, $value);
+      case 'financial_trxn_card_type_id':
+        $query->_where[$grouping][] = CRM_Contact_BAO_Query::buildClause('civicrm_financial_trxn.card_type_id', $op, $value);
         $query->_tables['civicrm_financial_trxn'] = $query->_whereTables['civicrm_financial_trxn'] = 1;
         $query->_tables['civicrm_contribution'] = $query->_whereTables['civicrm_contribution'] = 1;
-        list($op, $value) = CRM_Contact_BAO_Query::buildQillForFieldValue('CRM_Financial_DAO_FinancialTrxn', 'card_type', $value, $op);
+        list($op, $value) = CRM_Contact_BAO_Query::buildQillForFieldValue('CRM_Financial_DAO_FinancialTrxn', 'card_type_id', $value, $op);
         $query->_qill[$grouping][] = ts('Card Type %1 %2', array(1 => $op, 2 => $value));
+        return;
+
+      case 'financial_trxn_pan_truncation':
+        $query->_where[$grouping][] = CRM_Contact_BAO_Query::buildClause('civicrm_financial_trxn.pan_truncation', $op, $value);
+        $query->_tables['civicrm_financial_trxn'] = $query->_whereTables['civicrm_financial_trxn'] = 1;
+        $query->_tables['civicrm_contribution'] = $query->_whereTables['civicrm_contribution'] = 1;
+        list($op, $value) = CRM_Contact_BAO_Query::buildQillForFieldValue('CRM_Financial_DAO_FinancialTrxn', 'pan_truncation', $value, $op);
+        $query->_qill[$grouping][] = ts('Card Number %1 %2', array(1 => $op, 2 => $value));
         return;
 
       default:
@@ -959,7 +967,13 @@ class CRM_Contribute_BAO_Query extends CRM_Core_BAO_Query {
       )
     );
 
-    $form->addField('financial_trxn_card_type', array('entity' => 'FinancialTrxn', 'name' => 'card_type', 'action' => 'get'));
+    $form->addField('financial_trxn_card_type_id', array('entity' => 'FinancialTrxn', 'name' => 'card_type_id', 'action' => 'get'));
+
+    $form->add('text', 'financial_trxn_pan_truncation', ts('Card Number'), array(
+      'size' => 5,
+      'maxlength' => 4,
+      'autocomplete' => 'off',
+    ));
 
     // CRM-16713 - contribution search by premiums on 'Find Contribution' form.
     $form->add('select', 'contribution_product_id',

@@ -243,10 +243,13 @@ if (!CRM.vars) CRM.vars = {};
       var script = document.createElement('script');
       scriptsLoaded[url] = $.Deferred();
       script.onload = function () {
-        if (window.jQuery === CRM.$ && CRM.CMSjQuery) {
-          window.jQuery = CRM.CMSjQuery;
-        }
-        scriptsLoaded[url].resolve();
+        // Give the script time to execute
+        window.setTimeout(function () {
+          if (window.jQuery === CRM.$ && CRM.CMSjQuery) {
+            window.jQuery = CRM.CMSjQuery;
+          }
+          scriptsLoaded[url].resolve();
+        }, 100);
       };
       // Make jQuery global available while script is loading
       if (window.jQuery !== CRM.$) {
@@ -718,7 +721,7 @@ if (!CRM.vars) CRM.vars = {};
       function isValidDate() {
         // FIXME: parseDate doesn't work with incomplete date formats; skip validation if no month, day or year in format
         var lowerFormat = settings.dateFormat.toLowerCase();
-        if (lowerFormat.indexOf('y') < 0 || lowerFormat.indexOf('m') < 0 || lowerFormat.indexOf('d') < 0) {
+        if (lowerFormat.indexOf('y') < 0 || lowerFormat.indexOf('m') < 0 || !dateHasDay()) {
           return true;
         }
         try {
@@ -727,6 +730,19 @@ if (!CRM.vars) CRM.vars = {};
         } catch (e) {
           return false;
         }
+      }
+
+      /**
+       * Does the date format contain the day.
+       *
+       * @returns {boolean}
+       */
+      function dateHasDay() {
+        var lowerFormat = settings.dateFormat.toLowerCase();
+        if (lowerFormat.indexOf('d') < 0) {
+          return false;
+        }
+        return true;
       }
       function updateInputFields(e, context) {
         var val = $dataField.val(),
@@ -753,11 +769,16 @@ if (!CRM.vars) CRM.vars = {};
         if (context !== 'crmClear') {
           var val = '';
           if ($dateField.val()) {
-            if (hasDatepicker && isValidDate()) {
+            if (hasDatepicker && isValidDate() && dateHasDay()) {
               val = $.datepicker.formatDate('yy-mm-dd', $dateField.datepicker('getDate'));
               $dateField.removeClass('crm-error');
             } else if (!hasDatepicker) {
               val = $dateField.val() + '-01-01';
+            }
+            else if (!dateHasDay()) {
+              // This would be a Year-month date (yyyy-mm)
+              // it could be argued it should not use a datepicker....
+              val = $dateField.val() + '-01';
             } else {
               $dateField.addClass('crm-error');
             }

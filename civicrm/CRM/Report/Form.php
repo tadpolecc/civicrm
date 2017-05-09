@@ -701,18 +701,17 @@ class CRM_Report_Form extends CRM_Core_Form {
 
       $this->_aliases[$tableName] = $this->_columns[$tableName]['alias'];
 
-      $daoOrBaoName = NULL;
+      $expFields = array();
       // higher preference to bao object
-      if (array_key_exists('bao', $table)) {
-        $daoOrBaoName = $table['bao'];
-        $expFields = $daoOrBaoName::exportableFields();
-      }
-      elseif (array_key_exists('dao', $table)) {
-        $daoOrBaoName = $table['dao'];
-        $expFields = $daoOrBaoName::export();
-      }
-      else {
-        $expFields = array();
+      $daoOrBaoName = CRM_Utils_Array::value('bao', $table, CRM_Utils_Array::value('dao', $table));
+
+      if ($daoOrBaoName) {
+        if (method_exists($daoOrBaoName, 'exportableFields')) {
+          $expFields = $daoOrBaoName::exportableFields();
+        }
+        else {
+          $expFields = $daoOrBaoName::export();
+        }
       }
 
       $doNotCopy = array('required');
@@ -4047,6 +4046,7 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
       'street_address' => ts('Street Address'),
       'supplemental_address_1' => ts('Supplementary Address Field 1'),
       'supplemental_address_2' => ts('Supplementary Address Field 2'),
+      'supplemental_address_3' => ts('Supplementary Address Field 3'),
       'street_number' => ts('Street Number'),
       'street_name' => ts('Street Name'),
       'street_unit' => ts('Street Unit'),
@@ -4335,13 +4335,26 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
    */
   public function addPhoneFromClause() {
     // include address field if address column is to be included
-    if ($this->isTableSelected('civicrm_phone')
-    ) {
+    if ($this->isTableSelected('civicrm_phone')) {
       $this->_from .= "
       LEFT JOIN civicrm_phone {$this->_aliases['civicrm_phone']}
       ON ({$this->_aliases['civicrm_contact']}.id =
       {$this->_aliases['civicrm_phone']}.contact_id) AND
       {$this->_aliases['civicrm_phone']}.is_primary = 1\n";
+    }
+  }
+
+  /**
+   * Add Financial Transaction into From Table if required.
+   */
+  public function addFinancialTrxnFromClause() {
+    if ($this->isTableSelected('civicrm_financial_trxn')) {
+      $this->_from .= "
+         LEFT JOIN civicrm_entity_financial_trxn eftcc
+           ON ({$this->_aliases['civicrm_contribution']}.id = eftcc.entity_id AND
+             eftcc.entity_table = 'civicrm_contribution')
+         LEFT JOIN civicrm_financial_trxn {$this->_aliases['civicrm_financial_trxn']}
+           ON {$this->_aliases['civicrm_financial_trxn']}.id = eftcc.financial_trxn_id \n";
     }
   }
 

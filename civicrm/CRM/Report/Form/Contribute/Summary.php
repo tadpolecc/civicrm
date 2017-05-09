@@ -229,16 +229,16 @@ class CRM_Report_Form_Contribute_Summary extends CRM_Report_Form {
       'civicrm_financial_trxn' => array(
         'dao' => 'CRM_Financial_DAO_FinancialTrxn',
         'fields' => array(
-          'card_type' => array(
+          'card_type_id' => array(
             'title' => ts('Credit Card Type'),
-            'dbAlias' => 'GROUP_CONCAT(financial_trxn_civireport.card_type SEPARATOR ",")',
+            'dbAlias' => 'GROUP_CONCAT(financial_trxn_civireport.card_type_id SEPARATOR ",")',
           ),
         ),
         'filters' => array(
-          'card_type' => array(
+          'card_type_id' => array(
             'title' => ts('Credit Card Type'),
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
-            'options' => CRM_Core_PseudoConstant::get('CRM_Financial_DAO_FinancialTrxn', 'card_type'),
+            'options' => CRM_Financial_DAO_FinancialTrxn::buildOptions('card_type_id'),
             'default' => NULL,
             'type' => CRM_Utils_Type::T_STRING,
           ),
@@ -251,6 +251,8 @@ class CRM_Report_Form_Contribute_Summary extends CRM_Report_Form {
           'batch_id' => array(
             'name' => 'batch_id',
             'title' => ts('Batch Title'),
+            'dbAlias' => 'GROUP_CONCAT(DISTINCT batch_civireport.batch_id
+                                    ORDER BY batch_civireport.batch_id SEPARATOR ",")',
           ),
         ),
         'filters' => array(
@@ -262,7 +264,7 @@ class CRM_Report_Form_Contribute_Summary extends CRM_Report_Form {
           ),
         ),
         'group_bys' => array(
-          'batch_id' => array('title' => ts('Batch ID')),
+          'batch_id' => array('title' => ts('Batch Title')),
         ),
       ),
       'civicrm_contribution_soft' => array(
@@ -966,8 +968,8 @@ ROUND(AVG({$this->_aliases['civicrm_contribution_soft']}.amount), 2) as civicrm_
         $entryFound = TRUE;
       }
 
-      if (!empty($row['civicrm_financial_trxn_card_type'])) {
-        $rows[$rowNum]['civicrm_financial_trxn_card_type'] = $this->getLabels($row['civicrm_financial_trxn_card_type'], 'CRM_Financial_DAO_FinancialTrxn', 'card_type');
+      if (!empty($row['civicrm_financial_trxn_card_type_id'])) {
+        $rows[$rowNum]['civicrm_financial_trxn_card_type_id'] = $this->getLabels($row['civicrm_financial_trxn_card_type_id'], 'CRM_Financial_DAO_FinancialTrxn', 'card_type_id');
         $entryFound = TRUE;
       }
 
@@ -980,8 +982,8 @@ ROUND(AVG({$this->_aliases['civicrm_contribution_soft']}.amount), 2) as civicrm_
       }
 
       // convert batch id to batch title
-      if (!empty($row['civicrm_batch_batch_id'])) {
-        $rows[$rowNum]['civicrm_batch_batch_id'] = CRM_Core_DAO::getFieldValue('CRM_Batch_BAO_Batch', $row['civicrm_batch_batch_id'], 'title');
+      if (!empty($row['civicrm_batch_batch_id']) && !in_array('Subtotal', $rows[$rowNum])) {
+        $rows[$rowNum]['civicrm_batch_batch_id'] = $this->getLabels($row['civicrm_batch_batch_id'], 'CRM_Batch_BAO_EntityBatch', 'batch_id');
         $entryFound = TRUE;
       }
 
