@@ -4,8 +4,8 @@ Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
 Version: 4.7
 Author: CiviCRM LLC
-Author URI: http://civicrm.org/
-Plugin URI: http://wiki.civicrm.org/confluence/display/CRMDOC/WordPress+Installation+Guide+for+CiviCRM+4.7
+Author URI: https://civicrm.org/
+Plugin URI: https://wiki.civicrm.org/confluence/display/CRMDOC/Installing+CiviCRM+for+WordPress
 License: AGPL3
 Text Domain: civicrm
 Domain Path: /languages
@@ -605,9 +605,9 @@ class CiviCRM_For_WordPress {
 
       // get ready for problems
       $installLink    = admin_url() . "options-general.php?page=civicrm-install";
-      $docLinkInstall = "http://wiki.civicrm.org/confluence/display/CRMDOC/WordPress+Installation+Guide";
-      $docLinkTrouble = "http://wiki.civicrm.org/confluence/display/CRMDOC/Installation+and+Configuration+Trouble-shooting";
-      $forumLink      = "http://forum.civicrm.org/index.php/board,6.0.html";
+      $docLinkInstall = "https://wiki.civicrm.org/confluence/display/CRMDOC/Installing+CiviCRM+for+WordPress";
+      $docLinkTrouble = "https://wiki.civicrm.org/confluence/display/CRMDOC/Installation+and+Upgrades";
+      $forumLink      = "https://civicrm.stackexchange.com/";
 
 
       // construct message
@@ -737,16 +737,10 @@ class CiviCRM_For_WordPress {
    */
   public function add_menu_items() {
 
+    $civilogo = file_get_contents( plugin_dir_path( __FILE__ ) . 'assets/civilogo.svg.b64' );
+
     // check for settings file
     if ( CIVICRM_INSTALLED ) {
-
-      // use plugins_url( 'path/to/file.png', __FILE__ )
-      // see http://codex.wordpress.org/Function_Reference/plugins_url
-      // NB: given that URLs always use /, I see no need for DIR_SEP
-      $civilogo = plugins_url(
-        'civicrm/i/logo16px.png',
-        __FILE__
-      );
 
       // add top level menu item
       $menu_page = add_menu_page(
@@ -763,11 +757,6 @@ class CiviCRM_For_WordPress {
       add_action( 'load-' . $menu_page, array( $this, 'admin_page_load' ) );
 
     } else {
-
-      $civilogo = plugins_url(
-        'civicrm/i/logo16px.png',
-        __FILE__
-      );
 
       // add top level menu item
       $menu_page = add_menu_page(
@@ -1413,6 +1402,12 @@ class CiviCRM_For_WordPress {
    * Clone of CRM_Utils_System_WordPress::getBaseUrl() whose access is set to
    * private. Until it is public, we cannot access the URL of the basepage since
    * CRM_Utils_System_WordPress::url()
+   * 
+   * 27-09-2016
+   * CRM-16421 CRM-17633 WIP Changes to support WP in it's own directory
+   * https://wiki.civicrm.org/confluence/display/CRM/WordPress+installed+in+its+own+directory+issues
+   * For now leave hard coded wp-admin references.
+   * TODO: remove wp-admin references and replace with admin_url() in the future.  Look at best way to get path to admin_url
    *
    * @param bool $absolute Passing TRUE prepends the scheme and domain, FALSE doesn't
    * @param bool $frontend Passing FALSE returns the admin URL
@@ -1420,29 +1415,13 @@ class CiviCRM_For_WordPress {
    * @return mixed|null|string
    */
   public function get_base_url($absolute, $frontend, $forceBackend) {
-    $config    = CRM_Core_Config::singleton();
-
-    if (!isset($config->useFrameworkRelativeBase)) {
-      $base = parse_url($config->userFrameworkBaseURL);
-      $config->useFrameworkRelativeBase = $base['path'];
-    }
-
-    $base = $absolute ? $config->userFrameworkBaseURL : $config->useFrameworkRelativeBase;
-
+    $config = CRM_Core_Config::singleton();
     if ((is_admin() && !$frontend) || $forceBackend) {
-      $base .= admin_url( 'admin.php' );
-      return $base;
+      return Civi::paths()->getUrl('[wp.backend]/.', $absolute ? 'absolute' : 'relative');
     }
-    elseif (defined('CIVICRM_UF_WP_BASEPAGE')) {
-      $base .= CIVICRM_UF_WP_BASEPAGE;
-      return $base;
+    else {
+      return Civi::paths()->getUrl('[wp.frontend]/.', $absolute ? 'absolute' : 'relative');
     }
-    elseif (isset($config->wpBasePage)) {
-      $base .= $config->wpBasePage;
-      return $base;
-    }
-
-    return $base;
   }
 
 
