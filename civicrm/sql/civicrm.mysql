@@ -3482,8 +3482,9 @@ CREATE TABLE `civicrm_uf_group` (
 
      `id` int unsigned NOT NULL AUTO_INCREMENT  COMMENT 'Unique table ID',
      `is_active` tinyint   DEFAULT 1 COMMENT 'Is this form currently active? If false, hide all related fields for all sharing contexts.',
-     `group_type` varchar(255)    COMMENT 'This column will store a comma separated list of the type(s) of profile fields.',
+     `group_type` varchar(255)    COMMENT 'Comma separated list of the type(s) of profile fields.',
      `title` varchar(64) NOT NULL   COMMENT 'Form title.',
+     `frontend_title` varchar(64)    COMMENT 'Profile Form Public title',
      `description` text    COMMENT 'Optional verbose description of the profile.',
      `help_pre` text    COMMENT 'Description and/or help text to display before fields in form.',
      `help_post` text    COMMENT 'Description and/or help text to display after fields in form.',

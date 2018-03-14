@@ -4,11 +4,12 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit57d37bb730f97ffe68800793ac2ae81f
+class ComposerStaticInitf316b582a351da126714ec1e8a967afa
 {
     public static $files = array (
         'decc78cc4436b1292c6c0d151b19445c' => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib/bootstrap.php',
         '3919eeb97e98d4648304477f8ef734ba' => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib/Crypt/Random.php',
+        '5636a0a89fc28f9cfa8624493b142015' => __DIR__ . '/..' . '/civicrm/civicrm-setup/civicrm-setup-autoload.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -344,10 +345,10 @@ class ComposerStaticInit57d37bb730f97ffe68800793ac2ae81f
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit57d37bb730f97ffe68800793ac2ae81f::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit57d37bb730f97ffe68800793ac2ae81f::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInit57d37bb730f97ffe68800793ac2ae81f::$prefixesPsr0;
-            $loader->classMap = ComposerStaticInit57d37bb730f97ffe68800793ac2ae81f::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitf316b582a351da126714ec1e8a967afa::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitf316b582a351da126714ec1e8a967afa::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInitf316b582a351da126714ec1e8a967afa::$prefixesPsr0;
+            $loader->classMap = ComposerStaticInitf316b582a351da126714ec1e8a967afa::$classMap;
 
         }, null, ClassLoader::class);
     }
