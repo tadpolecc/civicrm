@@ -17,12 +17,12 @@
     "**/.*",
     "node_modules",
     "bower_components",
-    "src",
-    "lib",
-    "test",
-    "component.json",
     "package.json",
     "index.js",
-    "Makefile"
+    "src",
+    "component.json",
+    "media",
+    "test",
+    "tests"
   ]
 }

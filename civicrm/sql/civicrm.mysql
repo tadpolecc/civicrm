@@ -1,7 +1,7 @@
 -- +--------------------------------------------------------------------+
 -- | CiviCRM version 4.7                                                |
 -- +--------------------------------------------------------------------+
--- | Copyright CiviCRM LLC (c) 2004-2017                                |
+-- | Copyright CiviCRM LLC (c) 2004-2018                                |
 -- +--------------------------------------------------------------------+
 -- | This file is a part of CiviCRM.                                    |
 -- |                                                                    |
@@ -30,7 +30,7 @@
 -- +--------------------------------------------------------------------+
 -- | CiviCRM version 4.7                                                |
 -- +--------------------------------------------------------------------+
--- | Copyright CiviCRM LLC (c) 2004-2017                                |
+-- | Copyright CiviCRM LLC (c) 2004-2018                                |
 -- +--------------------------------------------------------------------+
 -- | This file is a part of CiviCRM.                                    |
 -- |                                                                    |
@@ -4188,6 +4188,7 @@ CREATE TABLE `civicrm_membership` (
      `source` varchar(128)    ,
      `status_id` int unsigned NOT NULL   COMMENT 'FK to Membership Status',
      `is_override` tinyint    COMMENT 'Admin users may set a manual status which overrides the calculated status. When this flag is true, automated status update scripts should NOT modify status for the record.',
+     `status_override_end_date` date   DEFAULT NULL COMMENT 'Then end date of membership status override if \'Override until selected date\' override type is selected.',
      `owner_membership_id` int unsigned    COMMENT 'Optional FK to Parent Membership.',
      `max_related` int    COMMENT 'Maximum number of related memberships (membership_type override).',
      `is_test` tinyint   DEFAULT 0 ,

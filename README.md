@@ -1,7 +1,7 @@
 CiviCRM (WordPress Integration)
 ===============================
 
-This is the repository for the *CiviCRM* plugin for *WordPress* maintained by Tadpole Collective. For the official installation code for  *CiviCRM* in *WordPress* -  please visit:
+This is the development repository for the *CiviCRM* plugin for *WordPress*. What you see here is not intended as the code for the installation of *CiviCRM* in *WordPress* - if you want to do that, please visit:
 
 [https://civicrm.org/download](https://civicrm.org/download)
 
@@ -9,14 +9,11 @@ This is the repository for the *CiviCRM* plugin for *WordPress* maintained by Ta
 
 If you want to contribute to the development of this plugin, please bear the following in mind:
 
-* Bug fixes should go in the branch 4.5 branch (stable)
-* Structural changes should go under master (trunk, i.e. 4.6).
+* Bug fixes should go in the branch 4.5 branch (stable)* Structural changes should go under master (trunk, i.e. 4.6).
 
 ----
-
-### About CiviCRM ###
-
-CiviCRM is web-based, open source, Constituent Relationship Management (CRM) software geared toward meeting the needs of non-profit and other civic-sector organizations.
+### About CiviCRM ###
+CiviCRM is web-based, open source, Constituent Relationship Management (CRM) software geared toward meeting the needs of non-profit and other civic-sector organizations.
 
 As a non profit committed to the public good itself, CiviCRM understands that forging and growing strong relationships with constituents is about more than collecting and tracking constituent data - it is about sustaining relationships with supporters over time.
 

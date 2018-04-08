@@ -4,12 +4,15 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInitf316b582a351da126714ec1e8a967afa
+class ComposerStaticInita318b0fcaa4c20a44a963b523c288fe0
 {
     public static $files = array (
         'decc78cc4436b1292c6c0d151b19445c' => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib/bootstrap.php',
         '3919eeb97e98d4648304477f8ef734ba' => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib/Crypt/Random.php',
+        'a0edc8309cc5e1d60e3047b5df6b7052' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/functions_include.php',
+        'c964ee0ededf28c96ebd9db5099ef910' => __DIR__ . '/..' . '/guzzlehttp/promises/src/functions_include.php',
         '5636a0a89fc28f9cfa8624493b142015' => __DIR__ . '/..' . '/civicrm/civicrm-setup/civicrm-setup-autoload.php',
+        '37a3dc5111fe8f707ab4c132ef1dbc62' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -21,6 +24,7 @@ class ComposerStaticInitf316b582a351da126714ec1e8a967afa
         ),
         'P' => 
         array (
+            'Psr\\Http\\Message\\' => 17,
             'PhpOffice\\PhpWord\\' => 18,
             'PhpOffice\\Common\\' => 17,
         ),
@@ -28,6 +32,12 @@ class ComposerStaticInitf316b582a351da126714ec1e8a967afa
         array (
             'MJS\\TopSort\\Tests\\' => 18,
             'MJS\\TopSort\\' => 12,
+        ),
+        'G' => 
+        array (
+            'GuzzleHttp\\Psr7\\' => 16,
+            'GuzzleHttp\\Promise\\' => 19,
+            'GuzzleHttp\\' => 11,
         ),
         'F' => 
         array (
@@ -56,6 +66,10 @@ class ComposerStaticInitf316b582a351da126714ec1e8a967afa
         array (
             0 => __DIR__ . '/..' . '/zendframework/zend-escaper/src',
         ),
+        'Psr\\Http\\Message\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/psr/http-message/src',
+        ),
         'PhpOffice\\PhpWord\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpoffice/phpword/src/PhpWord',
@@ -71,6 +85,18 @@ class ComposerStaticInitf316b582a351da126714ec1e8a967afa
         'MJS\\TopSort\\' => 
         array (
             0 => __DIR__ . '/..' . '/marcj/topsort/src',
+        ),
+        'GuzzleHttp\\Psr7\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/guzzlehttp/psr7/src',
+        ),
+        'GuzzleHttp\\Promise\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/guzzlehttp/promises/src',
+        ),
+        'GuzzleHttp\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/guzzlehttp/guzzle/src',
         ),
         'FontLib\\' => 
         array (
@@ -345,10 +371,10 @@ class ComposerStaticInitf316b582a351da126714ec1e8a967afa
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInitf316b582a351da126714ec1e8a967afa::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInitf316b582a351da126714ec1e8a967afa::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInitf316b582a351da126714ec1e8a967afa::$prefixesPsr0;
-            $loader->classMap = ComposerStaticInitf316b582a351da126714ec1e8a967afa::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInita318b0fcaa4c20a44a963b523c288fe0::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInita318b0fcaa4c20a44a963b523c288fe0::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInita318b0fcaa4c20a44a963b523c288fe0::$prefixesPsr0;
+            $loader->classMap = ComposerStaticInita318b0fcaa4c20a44a963b523c288fe0::$classMap;
 
         }, null, ClassLoader::class);
     }
