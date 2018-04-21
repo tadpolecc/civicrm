@@ -2,11 +2,10 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.0.0
+Version: 5.0.1
 Author: CiviCRM LLC
 Author URI: https://civicrm.org/
 Plugin URI: https://wiki.civicrm.org/confluence/display/CRMDOC/Installing+CiviCRM+for+WordPress
-GitLab Plugin URI: https://develop.tadpole.cc/plugins/civicrm
 License: AGPL3
 Text Domain: civicrm
 Domain Path: /languages
