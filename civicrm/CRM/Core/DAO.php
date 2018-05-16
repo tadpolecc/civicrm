@@ -1663,7 +1663,6 @@ FROM   civicrm_domain
    * @param $componentIDs
    * @param string $tableName
    * @param string $idField
-   *
    * @return array
    */
   public static function getContactIDsFromComponent($componentIDs, $tableName, $idField = 'id') {
