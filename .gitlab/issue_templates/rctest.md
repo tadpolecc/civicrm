@@ -28,8 +28,9 @@
 
 * [ ] Add a Membership Price Set
 * [ ] Add a new membership Contribution Page -- All Tabs
+* [ ] Add a Price set with both Public and Admin visibility on line items
 * [ ] Add a Premium
-* [ ] Complete Membership
+* [ ] Complete Membership - test with attention to public and private line items
 * [ ] Renew Membership Admin
 * [ ] Renew Membership Front End
 * [ ] Edit Membership back end
@@ -38,7 +39,8 @@
 # Events
 
 * [ ] Event Creation
-* [ ] Event Registration
+* [ ] Add a Price set with line items of both Public and Admin visibility
+* [ ] Event Registration - test with attention to Public/Admin visibility
 * [ ] Event Confirmation
 
 # Price Sets
