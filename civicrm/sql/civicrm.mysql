@@ -1,5 +1,5 @@
 -- +--------------------------------------------------------------------+
--- | CiviCRM version 4.7                                                |
+-- | CiviCRM version 5                                                  |
 -- +--------------------------------------------------------------------+
 -- | Copyright CiviCRM LLC (c) 2004-2018                                |
 -- +--------------------------------------------------------------------+
@@ -28,7 +28,7 @@
 
 
 -- +--------------------------------------------------------------------+
--- | CiviCRM version 4.7                                                |
+-- | CiviCRM version 5                                                  |
 -- +--------------------------------------------------------------------+
 -- | Copyright CiviCRM LLC (c) 2004-2018                                |
 -- +--------------------------------------------------------------------+
@@ -3601,15 +3601,15 @@ CREATE TABLE `civicrm_action_schedule` (
      `limit_to` tinyint    COMMENT 'Is this the recipient criteria limited to OR in addition to?',
      `entity_value` varchar(255)    COMMENT 'Entity value',
      `entity_status` varchar(64)    COMMENT 'Entity status',
-     `start_action_offset` int unsigned    COMMENT 'Reminder Interval.',
+     `start_action_offset` int unsigned   DEFAULT 0 COMMENT 'Reminder Interval.',
      `start_action_unit` varchar(8)    COMMENT 'Time units for reminder.',
      `start_action_condition` varchar(64)    COMMENT 'Reminder Action',
      `start_action_date` varchar(64)    COMMENT 'Entity date',
      `is_repeat` tinyint   DEFAULT 0 ,
      `repetition_frequency_unit` varchar(8)    COMMENT 'Time units for repetition of reminder.',
-     `repetition_frequency_interval` int unsigned    COMMENT 'Time interval for repeating the reminder.',
+     `repetition_frequency_interval` int unsigned   DEFAULT 0 COMMENT 'Time interval for repeating the reminder.',
      `end_frequency_unit` varchar(8)    COMMENT 'Time units till repetition of reminder.',
-     `end_frequency_interval` int unsigned    COMMENT 'Time interval till repeating the reminder.',
+     `end_frequency_interval` int unsigned   DEFAULT 0 COMMENT 'Time interval till repeating the reminder.',
      `end_action` varchar(32)    COMMENT 'Reminder Action till repeating the reminder.',
      `end_date` varchar(64)    COMMENT 'Entity end date',
      `is_active` tinyint   DEFAULT 1 COMMENT 'Is this option active?',
