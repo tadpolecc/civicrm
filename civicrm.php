@@ -14,7 +14,7 @@ Domain Path: /languages
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.7                                                |
+ | CiviCRM version 5                                                  |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2018                                |
  +--------------------------------------------------------------------+
@@ -70,7 +70,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '4.7' );
+define( 'CIVICRM_PLUGIN_VERSION', '5' );
 
 // store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
