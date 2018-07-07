@@ -56,7 +56,7 @@
 * [ ] Find Contributions
 * [ ] Find Memberships
 * [ ] Find Participants
-* [ ] e port results to csv for all searches
+* [ ] Export above search Results 
 
 # Mail
 
