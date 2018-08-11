@@ -3506,7 +3506,8 @@ CREATE TABLE `civicrm_uf_group` (
      `created_date` datetime    COMMENT 'Date and time this UF group was created.',
      `is_proximity_search` tinyint   DEFAULT 0 COMMENT 'Should we include proximity search feature in this profile search form?',
      `cancel_button_text` varchar(64)   DEFAULT NULL COMMENT 'Custom Text to display on the Cancel button when used in create or edit mode',
-     `submit_button_text` varchar(64)   DEFAULT NULL COMMENT 'Custom Text to display on the submit button on profile edit/create screens' 
+     `submit_button_text` varchar(64)   DEFAULT NULL COMMENT 'Custom Text to display on the submit button on profile edit/create screens',
+     `add_cancel_button` tinyint   DEFAULT 1 COMMENT 'Should a Cancel button be included in this Profile form.' 
 ,
         PRIMARY KEY (`id`)
  
