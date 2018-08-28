@@ -155,6 +155,9 @@ class CRM_Report_Form extends CRM_Core_Form {
    */
   protected $_groupFilter = FALSE;
 
+  // [ML] Required for civiexportexcel
+  public $supportsExportExcel = TRUE;
+
   /**
    * Has the report been optimised for group filtering.
    *
@@ -3475,6 +3478,9 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
     }
     elseif ($this->_outputMode == 'csv') {
       CRM_Report_Utils_Report::export2csv($this, $rows);
+    }
+    elseif ($this->_outputMode == 'excel2007') {
+      CRM_CiviExportExcel_Utils_Report::export2excel2007($this, $rows);
     }
     elseif ($this->_outputMode == 'group') {
       $group = $this->_params['groups'];
