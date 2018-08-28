@@ -2827,6 +2827,11 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
       $this->_absoluteUrl = TRUE;
       $this->addPaging = FALSE;
     }
+    elseif ($this->_outputMode == 'excel2007') {
+      $printOnly = TRUE;
+      $this->_absoluteUrl = TRUE;
+      $this->addPaging = FALSE;
+    }
     elseif ($this->_outputMode == 'group') {
       $this->assign('outputMode', 'group');
     }
