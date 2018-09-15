@@ -67,22 +67,7 @@ class CRM_Utils_Cache {
    */
   public static function &singleton() {
     if (self::$_singleton === NULL) {
-      $className = 'ArrayCache';   // default to ArrayCache for now
-
-      // Maintain backward compatibility for now.
-      // Setting CIVICRM_USE_MEMCACHE or CIVICRM_USE_ARRAYCACHE will
-      // override the CIVICRM_DB_CACHE_CLASS setting.
-      // Going forward, CIVICRM_USE_xxxCACHE should be deprecated.
-      if (defined('CIVICRM_USE_MEMCACHE') && CIVICRM_USE_MEMCACHE) {
-        $className = 'Memcache';
-      }
-      elseif (defined('CIVICRM_USE_ARRAYCACHE') && CIVICRM_USE_ARRAYCACHE) {
-        $className = 'ArrayCache';
-      }
-      elseif (defined('CIVICRM_DB_CACHE_CLASS') && CIVICRM_DB_CACHE_CLASS) {
-        $className = CIVICRM_DB_CACHE_CLASS;
-      }
-
+      $className = self::getCacheDriver();
       // a generic method for utilizing any of the available db caches.
       $dbCacheClass = 'CRM_Utils_Cache_' . $className;
       $settings = self::getCacheSettings($className);
@@ -175,6 +160,9 @@ class CRM_Utils_Cache {
    * @param array $params
    *   Array with keys:
    *   - name: string, unique symbolic name.
+   *     For a naming convention, use `snake_case` or `CamelCase` to maximize
+   *     portability/cleanliness. Any other punctuation or whitespace
+   *     should function correctly, but it can be harder to inspect/debug.
    *   - type: array|string, list of acceptable cache types, in order of preference.
    *   - prefetch: bool, whether to prefetch all data in cache (if possible).
    * @return CRM_Utils_Cache_Interface
@@ -183,6 +171,10 @@ class CRM_Utils_Cache {
    */
   public static function create($params = array()) {
     $types = (array) $params['type'];
+
+    if (!empty($params['name'])) {
+      $params['name'] = CRM_Core_BAO_Cache::cleanKey($params['name']);
+    }
 
     foreach ($types as $type) {
       switch ($type) {
@@ -238,6 +230,32 @@ class CRM_Utils_Cache {
     }
 
     return $key;
+  }
+
+  /**
+   * @return string
+   *   Ex: 'ArrayCache', 'Memcache', 'Redis'.
+   */
+  public static function getCacheDriver() {
+    $className = 'ArrayCache';   // default to ArrayCache for now
+
+    // Maintain backward compatibility for now.
+    // Setting CIVICRM_USE_MEMCACHE or CIVICRM_USE_ARRAYCACHE will
+    // override the CIVICRM_DB_CACHE_CLASS setting.
+    // Going forward, CIVICRM_USE_xxxCACHE should be deprecated.
+    if (defined('CIVICRM_USE_MEMCACHE') && CIVICRM_USE_MEMCACHE) {
+      $className = 'Memcache';
+      return $className;
+    }
+    elseif (defined('CIVICRM_USE_ARRAYCACHE') && CIVICRM_USE_ARRAYCACHE) {
+      $className = 'ArrayCache';
+      return $className;
+    }
+    elseif (defined('CIVICRM_DB_CACHE_CLASS') && CIVICRM_DB_CACHE_CLASS) {
+      $className = CIVICRM_DB_CACHE_CLASS;
+      return $className;
+    }
+    return $className;
   }
 
 }

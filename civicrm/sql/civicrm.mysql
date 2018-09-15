@@ -390,9 +390,9 @@ CREATE TABLE `civicrm_option_group` (
      `title` varchar(255)    COMMENT 'Option Group title.',
      `description` varchar(255)    COMMENT 'Option group description.',
      `data_type` varchar(128)    COMMENT 'Option group description.',
-     `is_reserved` tinyint   DEFAULT 1 COMMENT 'Is this a predefined system option group (i.e. it can not be deleted)?',
-     `is_active` tinyint    COMMENT 'Is this option group active?',
-     `is_locked` tinyint    COMMENT 'A lock to remove the ability to add new options via the UI.' 
+     `is_reserved` tinyint NOT NULL  DEFAULT 1 COMMENT 'Is this a predefined system option group (i.e. it can not be deleted)?',
+     `is_active` tinyint NOT NULL  DEFAULT 1 COMMENT 'Is this option group active?',
+     `is_locked` tinyint NOT NULL  DEFAULT 0 COMMENT 'A lock to remove the ability to add new options via the UI.' 
 ,
         PRIMARY KEY (`id`)
  
@@ -850,7 +850,7 @@ CREATE TABLE `civicrm_saved_search` (
         PRIMARY KEY (`id`)
  
  
-,          CONSTRAINT FK_civicrm_saved_search_mapping_id FOREIGN KEY (`mapping_id`) REFERENCES `civicrm_mapping`(`id`)   
+,          CONSTRAINT FK_civicrm_saved_search_mapping_id FOREIGN KEY (`mapping_id`) REFERENCES `civicrm_mapping`(`id`) ON DELETE SET NULL  
 )  ENGINE=InnoDB DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci  ;
 
 -- /*******************************************************
@@ -3713,8 +3713,8 @@ CREATE TABLE `civicrm_relationship` (
      `end_date` date    COMMENT 'date when the relationship ended',
      `is_active` tinyint   DEFAULT 1 COMMENT 'is the relationship active ?',
      `description` varchar(255)    COMMENT 'Optional verbose description for the relationship.',
-     `is_permission_a_b` tinyint   DEFAULT 0 COMMENT 'is contact a has permission to view / edit contact and\n      related data for contact b ?\n    ',
-     `is_permission_b_a` tinyint   DEFAULT 0 COMMENT 'is contact b has permission to view / edit contact and\n      related data for contact a ?\n    ',
+     `is_permission_a_b` int unsigned NOT NULL  DEFAULT 0 COMMENT 'Permission that Contact A has to view/update Contact B',
+     `is_permission_b_a` int unsigned NOT NULL  DEFAULT 0 COMMENT 'Permission that Contact B has to view/update Contact A',
      `case_id` int unsigned   DEFAULT NULL COMMENT 'FK to civicrm_case' 
 ,
         PRIMARY KEY (`id`)
