@@ -6,7 +6,7 @@ Version: 5.6.0
 Author: CiviCRM LLC
 Author URI: https://civicrm.org/
 Plugin URI: https://wiki.civicrm.org/confluence/display/CRMDOC/Installing+CiviCRM+for+WordPress
-GitLab Plugin URI: https://develop.tadpole.cc/plugins/civicrm
+GitHub Plugin URI: https://github.com/tadpolecc/civicrm.git
 License: AGPL3
 Text Domain: civicrm
 Domain Path: /languages
