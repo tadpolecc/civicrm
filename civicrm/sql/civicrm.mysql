@@ -522,7 +522,7 @@ CREATE TABLE `civicrm_prevnext_cache` (
      `id` int unsigned NOT NULL AUTO_INCREMENT  ,
      `entity_table` varchar(64)    COMMENT 'physical tablename for entity being joined to discount, e.g. civicrm_event',
      `entity_id1` int unsigned NOT NULL   COMMENT 'FK to entity table specified in entity_table column.',
-     `entity_id2` int unsigned NOT NULL   COMMENT 'FK to entity table specified in entity_table column.',
+     `entity_id2` int unsigned NULL   COMMENT 'FK to entity table specified in entity_table column.',
      `cacheKey` varchar(255)    COMMENT 'Unique path name for cache element of the searched item',
      `data` longtext    COMMENT 'cached snapshot of the serialized data',
      `is_selected` tinyint   DEFAULT 0  
@@ -1878,7 +1878,7 @@ CREATE TABLE `civicrm_custom_field` (
       , custom_group_id
   )
   
-,          CONSTRAINT FK_civicrm_custom_field_custom_group_id FOREIGN KEY (`custom_group_id`) REFERENCES `civicrm_custom_group`(`id`) ON DELETE CASCADE  
+,          CONSTRAINT FK_civicrm_custom_field_custom_group_id FOREIGN KEY (`custom_group_id`) REFERENCES `civicrm_custom_group`(`id`) ON DELETE CASCADE,          CONSTRAINT FK_civicrm_custom_field_option_group_id FOREIGN KEY (`option_group_id`) REFERENCES `civicrm_option_group`(`id`) ON DELETE SET NULL  
 )  ENGINE=InnoDB DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci  ;
 
 -- /*******************************************************

@@ -35,11 +35,10 @@ class Create extends DefaultCreate {
    * @inheritDoc
    */
   public function _run(Result $result) {
-    foreach (['streetParsing', 'skipGeocode', 'fixAddress'] as $fieldName) {
-      $this->values[_civicrm_api_get_entity_name_from_camel($fieldName)] = $this->$fieldName;
-    }
+    $this->values['street_parsing'] = $this->streetParsing;
+    $this->values['skip_geocode'] = $this->skipGeocode;
+    $this->values['fix_address'] = $this->fixAddress;
     parent::_run($result);
   }
-
 
 }

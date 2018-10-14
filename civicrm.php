@@ -2,11 +2,10 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.5.3
+Version: 5.6.0
 Author: CiviCRM LLC
 Author URI: https://civicrm.org/
 Plugin URI: https://wiki.civicrm.org/confluence/display/CRMDOC/Installing+CiviCRM+for+WordPress
-GitHub Plugin URI: https://github.com/tadpolecc/civicrm.git
 License: AGPL3
 Text Domain: civicrm
 Domain Path: /languages
@@ -15,7 +14,7 @@ Domain Path: /languages
 
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 5                                                  |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2018                                |
  +--------------------------------------------------------------------+
@@ -71,7 +70,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '5' );
+define( 'CIVICRM_PLUGIN_VERSION', '4.7' );
 
 // store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
