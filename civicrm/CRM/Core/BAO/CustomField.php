@@ -1662,7 +1662,7 @@ SELECT id
       $value = 0;
     }
 
-    $fileID = NULL;
+    $fileId = NULL;
 
     if ($customFields[$customFieldId]['data_type'] == 'File') {
       if (empty($value)) {
@@ -1701,20 +1701,20 @@ SELECT $columnName
   FROM $tableName
  WHERE id = %1";
         $params = array(1 => array($customValueId, 'Integer'));
-        $fileID = CRM_Core_DAO::singleValueQuery($query, $params);
+        $fileId = CRM_Core_DAO::singleValueQuery($query, $params);
       }
 
       $fileDAO = new CRM_Core_DAO_File();
 
-      if ($fileID) {
-        $fileDAO->id = $fileID;
+      if ($fileId) {
+        $fileDAO->id = $fileId;
       }
 
       $fileDAO->uri = $filename;
       $fileDAO->mime_type = $mimeType;
       $fileDAO->upload_date = date('YmdHis');
       $fileDAO->save();
-      $fileID = $fileDAO->id;
+      $fileId = $fileDAO->id;
       $value = $filename;
     }
 
@@ -1742,7 +1742,7 @@ SELECT $columnName
       'custom_group_id' => $groupID,
       'table_name' => $tableName,
       'column_name' => $columnName,
-      'file_id' => $fileID,
+      'file_id' => $fileId,
       'is_multiple' => $customFields[$customFieldId]['is_multiple'],
     );
 
