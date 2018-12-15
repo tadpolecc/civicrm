@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 5                                                  |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2018                                |
  +--------------------------------------------------------------------+
@@ -33,64 +33,88 @@
  */
 
 
-// this file must not accessed directly
+// This file must not accessed directly
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 /**
- * Define CiviCRM_For_WordPress_Users Class
+ * Define CiviCRM_For_WordPress_Users Class.
+ *
+ * @since 4.6
  */
 class CiviCRM_For_WordPress_Users {
 
-
   /**
-   * Declare our properties
+   * Plugin object reference.
+   *
+   * @since 4.6
+   * @access public
+   * @var object $civi The plugin object reference.
    */
-
-  // init property to store reference to Civi
   public $civi;
 
 
   /**
-   * Instance constructor
+   * Instance constructor.
    *
-   * @return object $this The object instance
+   * @since 4.6
    */
   function __construct() {
 
-    // store reference to Civi object
+    // Store reference to CiviCRM plugin object
     $this->civi = civi_wp();
+
+    // Always listen for activation action
+    add_action( 'civicrm_activation', array( $this, 'activate' ) );
 
   }
 
 
   /**
-   * Register hooks to handle CiviCRM in a WordPress wpBasePage context
+   * Plugin activation tasks.
    *
-   * @return void
+   * @since 5.6
+   */
+  public function activate() {
+
+    // Assign minimum capabilities for all WP roles and create 'anonymous_user' role
+    $this->set_wp_user_capabilities();
+
+  }
+
+
+  /**
+   * Register hooks.
+   *
+   * @since 4.6
    */
   public function register_hooks() {
 
-    // add CiviCRM access capabilities to WordPress roles
-    add_action( 'init', array( $this, 'set_access_capabilities' ) );
+    // Add CiviCRM access capabilities to WordPress roles
+    $this->set_access_capabilities();
 
-    // do not hook into user updates if Civi not installed yet
+    // Do not hook into user updates if CiviCRM not installed yet
     if ( ! CIVICRM_INSTALLED ) return;
 
-    // synchronise users on insert and update
+    // Synchronise users on insert and update
     add_action( 'user_register', array( $this, 'update_user' ) );
     add_action( 'profile_update', array( $this, 'update_user' ) );
 
-    // delete ufMatch record when a WordPress user is deleted
+    // Delete ufMatch record when a WordPress user is deleted
     add_action( 'deleted_user', array( $this, 'delete_user_ufmatch' ), 10, 1 );
 
   }
 
 
   /**
+   * Check permissions.
+   *
    * Authentication function used by basepage_register_hooks()
    *
-   * @return bool True if authenticated, false otherwise
+   * @since 4.6
+   *
+   * @param array $args The page arguments array.
+   * @return bool True if authenticated, false otherwise.
    */
   public function check_permission( $args ) {
 
@@ -100,12 +124,12 @@ class CiviCRM_For_WordPress_Users {
 
     $config = CRM_Core_Config::singleton();
 
-    // set frontend true
+    // Set frontend true
     $config->userFrameworkFrontend = TRUE;
 
     require_once 'CRM/Utils/Array.php';
 
-    // all profile and file urls, as well as user dashboard and tell-a-friend are valid
+    // All profile and file urls, as well as user dashboard and tell-a-friend are valid
     $arg1 = CRM_Utils_Array::value(1, $args);
     $invalidPaths = array('admin');
     if ( in_array( $arg1, $invalidPaths ) ) {
@@ -118,9 +142,13 @@ class CiviCRM_For_WordPress_Users {
 
 
   /**
+   * Get "permission denied" text.
+   *
    * Called when authentication fails in basepage_register_hooks()
    *
-   * @return string Warning message
+   * @since 4.6
+   *
+   * @return string Warning message.
    */
   public function get_permission_denied() {
     return __( 'You do not have permission to access this content.', 'civicrm' );
@@ -128,15 +156,17 @@ class CiviCRM_For_WordPress_Users {
 
 
   /**
-   * Keep WordPress user synced with CiviCRM Contact
+   * Handle WordPress user events.
+   *
    * Callback function for 'user_register' hook
    * Callback function for 'profile_update' hook
    *
    * CMW: seems to (wrongly) create new CiviCRM Contact every time a user changes their
    * first_name or last_name attributes in WordPress.
    *
+   * @since 4.6
+   *
    * @param int $user_id The numeric ID of the WordPress user
-   * @return void
    */
   public function update_user( $user_id ) {
 
@@ -149,14 +179,15 @@ class CiviCRM_For_WordPress_Users {
 
 
   /**
-   * Keep WordPress user synced with CiviCRM Contact
+   * Keep WordPress user synced with CiviCRM Contact.
    *
-   * @param object $user The WordPress user object
-   * @return void
+   * @since 4.6
+   *
+   * @param object $user The WordPress user object.
    */
   public function sync_user( $user = FALSE ) {
 
-    // sanity check
+    // Sanity check
     if ( $user === FALSE OR !is_a($user, 'WP_User') ) {
       return;
     }
@@ -167,27 +198,29 @@ class CiviCRM_For_WordPress_Users {
 
     require_once 'CRM/Core/BAO/UFMatch.php';
 
-    // this does not return anything, so if we want to do anything further
-    // to the CiviCRM Contact, we have to search for it all over again...
+    /*
+     * This does not return anything, so if we want to do anything further
+     * to the CiviCRM Contact, we have to search for it all over again.
+     */
     CRM_Core_BAO_UFMatch::synchronize(
-      $user, // user object
-      TRUE, // update = true
+      $user, // User object
+      TRUE, // Update = true
       'WordPress', // CMS
       'Individual' // contact type
     );
 
     /*
-    // IN progress: synchronizeUFMatch does return the contact object, however
+    // IN PROGRESS: synchronizeUFMatch does return the contact object, however
     $civi_contact = CRM_Core_BAO_UFMatch::synchronizeUFMatch(
-      $user, // user object
+      $user, // User object
       $user->ID, // ID
-      $user->user_mail, // unique identifier
-      null // unused
+      $user->user_mail, // Unique identifier
+      null // Unused
       'WordPress' // CMS
       'Individual' // contact type
     );
 
-    // now we can allow other plugins to do their thing
+    // Now we can allow other plugins to do their thing
     do_action( 'civicrm_contact_synced', $user, $civi_contact );
     */
 
@@ -195,11 +228,13 @@ class CiviCRM_For_WordPress_Users {
 
 
   /**
-   * When a WordPress user is deleted, delete the ufMatch record
+   * When a WordPress user is deleted, delete the ufMatch record.
+   *
    * Callback function for 'delete_user' hook
    *
-   * @param $user_id The numerical ID of the WordPress user
-   * @return void
+   * @since 4.6
+   *
+   * @param $user_id The numerical ID of the WordPress user.
    */
   public function delete_user_ufmatch( $user_id ) {
 
@@ -207,7 +242,7 @@ class CiviCRM_For_WordPress_Users {
       return;
     }
 
-    // delete the ufMatch record
+    // Delete the ufMatch record
     require_once 'CRM/Core/BAO/UFMatch.php';
     CRM_Core_BAO_UFMatch::deleteUser($user_id);
 
@@ -215,13 +250,16 @@ class CiviCRM_For_WordPress_Users {
 
 
   /**
-   * Function to create 'anonymous_user' role, if 'anonymous_user' role is not in
-   * the WordPress installation and assign minimum capabilities for all WordPress roles
+   * Create anonymous role and define capabilities.
    *
-   * The legacy global scope function civicrm_wp_set_capabilities() is called from
-   * upgrade_4_3_alpha1()
+   * Function to create 'anonymous_user' role, if 'anonymous_user' role is not
+   * in the WordPress installation and assign minimum capabilities for all
+   * WordPress roles.
    *
-   * @return void
+   * The legacy global scope function civicrm_wp_set_capabilities() is called
+   * from upgrade_4_3_alpha1()
+   *
+   * @since 4.6
    */
   public function set_wp_user_capabilities() {
 
@@ -245,7 +283,14 @@ class CiviCRM_For_WordPress_Users {
       'view_public_civimail_content' => 1,
     );
 
-    // allow other plugins to filter
+    /**
+     * Allow minimum capabilities to be filtered.
+     *
+     * @since 4.6
+     *
+     * @param array $default_min_capabilities The minimum capabilities.
+     * @return array $default_min_capabilities The modified capabilities.
+     */
     $min_capabilities = apply_filters( 'civicrm_min_capabilities', $default_min_capabilities );
 
     // Assign the Minimum capabilities (Civicrm permissions) to all WP roles
@@ -269,24 +314,37 @@ class CiviCRM_For_WordPress_Users {
 
 
   /**
-   * Add CiviCRM access capabilities to WordPress roles
-   * this is a callback for the 'init' hook in register_hooks()
+   * Add CiviCRM access capabilities to WordPress roles.
+   *
+   * This is a callback for the 'init' hook in register_hooks().
    *
    * The legacy global scope function wp_civicrm_capability() is called by
    * postProcess() in civicrm/CRM/ACL/Form/WordPress/Permissions.php
    *
-   * @return void
+   * @since 4.6
    */
   public function set_access_capabilities() {
 
-    // test for existing global
+    // Test for existing global
     global $wp_roles;
     if ( ! isset( $wp_roles ) ) {
       $wp_roles = new WP_Roles();
     }
 
-    // give access to civicrm page menu link to particular roles
+    /**
+     * Filter the default roles with access to CiviCRM.
+     *
+     * The 'access_civicrm' capability is the most basic CiviCRM capability and
+     * is required to see the CiviCRM menu link in the WordPress Admin menu.
+     *
+     * @since 4.6
+     *
+     * @param array The default roles with access to CiviCRM.
+     * @return array The modified roles with access to CiviCRM.
+     */
     $roles = apply_filters( 'civicrm_access_roles', array( 'super admin', 'administrator' ) );
+
+     // Give access to CiviCRM to particular roles.
     foreach ( $roles as $role ) {
       $roleObj = $wp_roles->get_role( $role );
       if (
@@ -302,15 +360,17 @@ class CiviCRM_For_WordPress_Users {
 
 
   /**
-   * Get CiviCRM contact type
+   * Get CiviCRM contact type.
    *
-   * @param string $default contact type
-   * @return string $ctype contact type
+   * @since 4.6
+   *
+   * @param string $default The requested contact type.
+   * @return string $ctype The computed contact type.
    */
   public function get_civicrm_contact_type( $default = NULL ) {
 
-    // here we are creating a new contact
-    // get the contact type from the POST variables if any
+    // Here we are creating a new contact
+    // Get the contact type from the POST variables if any
     if ( isset( $_REQUEST['ctype'] ) ) {
       $ctype = $_REQUEST['ctype'];
     } elseif (
@@ -335,6 +395,6 @@ class CiviCRM_For_WordPress_Users {
   }
 
 
-} // class CiviCRM_For_WordPress_Users ends
+} // Class CiviCRM_For_WordPress_Users ends
 
 
