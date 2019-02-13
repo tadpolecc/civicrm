@@ -769,10 +769,7 @@ WHERE li.contribution_id = %1";
           ));
           unset($updateFinancialItemInfoValues['financialTrxn']);
         }
-        elseif ($newFinancialItem->amount != 0 && (// bug in EntityFinancialTrxn.create API which doesn't recognize 0 amount
-          !empty($updateFinancialItemInfoValues['link-financial-trxn']) ||
-           in_array($contributionStatus, ['Pending refund', 'Partially paid'])
-        )) {
+        elseif (!empty($updateFinancialItemInfoValues['link-financial-trxn']) && $newFinancialItem->amount != 0) {
           civicrm_api3('EntityFinancialTrxn', 'create', array(
             'entity_id' => $newFinancialItem->id,
             'entity_table' => 'civicrm_financial_item',
