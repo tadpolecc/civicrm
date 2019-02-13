@@ -165,6 +165,12 @@ if ( ! defined( 'CIVICRM_WPCLI_LOADED' ) ) {
 				return WP_CLI::error( "Unrecognized command - '$command'" );
 			}
 
+			# if --path is set, save for later use by Civi
+			global $civicrm_paths;
+			if (!empty(WP_CLI::get_config('path'))) {
+				$civicrm_paths['cms.root']['path'] = WP_CLI::get_config('path');
+			}
+
 			# run command
 			return $this->{$command_router[ $command ]}();
 
