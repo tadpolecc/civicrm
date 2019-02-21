@@ -827,11 +827,13 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     $contactCreated = 0;
     $contactMatching = 0;
 
-    global $wpdb;
-    $wpUserIds = $wpdb->get_col("SELECT $wpdb->users.ID FROM $wpdb->users");
+    // previously used $wpdb - which means WordPress *must* be bootstrapped
+    $wpUsers = get_users(array(
+      'blog_id' => get_current_blog_id(),
+      'number' => -1,
+    ));
 
-    foreach ($wpUserIds as $wpUserId) {
-      $wpUserData = get_userdata($wpUserId);
+    foreach ($wpUsers as $wpUserData) {
       $contactCount++;
       if ($match = CRM_Core_BAO_UFMatch::synchronizeUFMatch($wpUserData,
         $wpUserData->$id,
