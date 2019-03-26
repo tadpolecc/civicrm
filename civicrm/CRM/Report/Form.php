@@ -1633,6 +1633,7 @@ class CRM_Report_Form extends CRM_Core_Form {
           )),
         ),
       );
+      unset($actions['report_instance.delete']);
     }
 
     if (!$this->_csvSupported) {
@@ -2864,7 +2865,16 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
     $this->storeGroupByArray();
 
     if (!empty($this->_groupByArray)) {
-      $this->_groupBy = CRM_Contact_BAO_Query::getGroupByFromSelectColumns($this->_selectClauses, $this->_groupByArray);
+      if ($this->optimisedForOnlyFullGroupBy) {
+        // We should probably deprecate this code path. What happens here is that
+        // the group by is amended to reflect the select columns. This often breaks the
+        // results. Retrofitting group strict group by onto existing report classes
+        // went badly.
+        $this->_groupBy = CRM_Contact_BAO_Query::getGroupByFromSelectColumns($this->_selectClauses, $this->_groupByArray);
+      }
+      else {
+        $this->_groupBy = ' GROUP BY ' . implode($this->_groupByArray);
+      }
     }
   }
 
@@ -4483,8 +4493,8 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
             $rows[$rowNum]["{$fieldName}_link"] = $url;
             $rows[$rowNum]["{$fieldName}_hover"] = ts("%1 for this %2.", array(1 => $linkText, 2 => $addressField));
           }
-          $entryFound = TRUE;
         }
+        $entryFound = TRUE;
       }
     }
 
@@ -4824,9 +4834,11 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
   /**
    * Get a standard set of contact filters.
    *
+   * @param array $defaults
+   *
    * @return array
    */
-  public function getBasicContactFilters() {
+  public function getBasicContactFilters($defaults = array()) {
     return array(
       'sort_name' => array(
         'title' => ts('Contact Name'),
@@ -4862,7 +4874,7 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
       'is_deceased' => array(
         'title' => ts('Deceased'),
         'type' => CRM_Utils_Type::T_BOOLEAN,
-        'default' => 0,
+        'default' => CRM_Utils_Array::value('deceased', $defaults, 0),
       ),
       'do_not_email' => array(
         'title' => ts('Do not email'),

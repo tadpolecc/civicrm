@@ -64,7 +64,9 @@ class CRM_UF_Form_Group extends CRM_Core_Form {
       'title' => ['name' => 'title'],
       'frontend_title' => ['name' => 'frontend_title'],
       'description' => ['name' => 'description', 'help' => ['id' => 'id-description', 'file' => 'CRM/UF/Form/Group.hlp']],
-      'uf_group_type' => ['name' => 'uf_group_type', 'not-auto-addable' => TRUE, 'help' => ['id' => 'id-used_for', 'file' => 'CRM/UF/Form/Group.hlp'], 'post_html_text' => ' ' . $this->getOtherModuleString()]
+      'uf_group_type' => ['name' => 'uf_group_type', 'not-auto-addable' => TRUE, 'help' => ['id' => 'id-used_for', 'file' => 'CRM/UF/Form/Group.hlp'], 'post_html_text' => ' ' . $this->getOtherModuleString()],
+      'cancel_button_text' => ['name' => 'cancel_button_text', 'help' => ['id' => 'id-cancel_button_text', 'file' => 'CRM/UF/Form/Group.hlp'], 'class' => 'cancel_button_section'],
+      'submit_button_text' => ['name' => 'submit_button_text', 'help' => ['id' => 'id-submit_button_text', 'file' => 'CRM/UF/Form/Group.hlp'], 'class' => ''],
     ];
   }
 
@@ -182,7 +184,7 @@ class CRM_UF_Form_Group extends CRM_Core_Form {
     $this->add('wysiwyg', 'help_post', ts('Post-form Help'), CRM_Core_DAO::getAttribute('CRM_Core_DAO_UFGroup', 'help_post'));
 
     // weight
-    $this->add('text', 'weight', ts('Order'), CRM_Core_DAO::getAttribute('CRM_Core_DAO_UFJoin', 'weight'), TRUE);
+    $this->add('number', 'weight', ts('Order'), CRM_Core_DAO::getAttribute('CRM_Core_DAO_UFJoin', 'weight'), TRUE);
     $this->addRule('weight', ts('is a numeric field'), 'numeric');
 
     // is this group active ?

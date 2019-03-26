@@ -495,19 +495,6 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
       }
     }
 
-    //if contribution is created with cancelled or refunded status, add credit note id
-    if (!empty($params['contribution_status_id'])) {
-      $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
-
-      if (($params['contribution_status_id'] == array_search('Refunded', $contributionStatus)
-          || $params['contribution_status_id'] == array_search('Cancelled', $contributionStatus))
-      ) {
-        if (empty($params['creditnote_id']) || $params['creditnote_id'] == "null") {
-          $params['creditnote_id'] = self::createCreditNoteId();
-        }
-      }
-    }
-
     $transaction = new CRM_Core_Transaction();
 
     try {
@@ -4478,92 +4465,6 @@ WHERE ft.is_payment = 1
   }
 
   /**
-   * Function to process additional payment for partial and refund contributions.
-   *
-   * This function is called via API payment.create function. All forms that add payments
-   * should use this.
-   *
-   * @param array $params
-   *   - contribution_id
-   *   - total_amount
-   *   - line_item
-   * @return \CRM_Financial_DAO_FinancialTrxn
-   *
-   * @throws \API_Exception
-   * @throws \CRM_Core_Exception
-   */
-  public static function addPayment($params) {
-    $contribution = civicrm_api3('Contribution', 'getsingle', ['id' => $params['contribution_id']]);
-    $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus($contribution['contribution_status_id'], 'name');
-    if ($contributionStatus != 'Partially paid'
-      && !($contributionStatus == 'Pending' && $contribution['is_pay_later'] == TRUE)
-    ) {
-      throw new API_Exception('Please select a contribution which has a partial or pending payment');
-    }
-    else {
-      // Check if pending contribution
-      $fullyPaidPayLater = FALSE;
-      if ($contributionStatus == 'Pending') {
-        $cmp = bccomp($contribution['total_amount'], $params['total_amount'], 5);
-        // Total payment amount is the whole amount paid against pending contribution
-        if ($cmp == 0 || $cmp == -1) {
-          civicrm_api3('Contribution', 'completetransaction', ['id' => $contribution['id']]);
-          // Get the trxn
-          $trxnId = CRM_Core_BAO_FinancialTrxn::getFinancialTrxnId($contribution['id'], 'DESC');
-          $ftParams = ['id' => $trxnId['financialTrxnId']];
-          $trxn = CRM_Core_BAO_FinancialTrxn::retrieve($ftParams, CRM_Core_DAO::$_nullArray);
-          $fullyPaidPayLater = TRUE;
-        }
-        else {
-          civicrm_api3('Contribution', 'create',
-            [
-              'id' => $contribution['id'],
-              'contribution_status_id' => 'Partially paid',
-            ]
-          );
-        }
-      }
-      if (!$fullyPaidPayLater) {
-        $trxn = CRM_Core_BAO_FinancialTrxn::getPartialPaymentTrxn($contribution, $params);
-        if (CRM_Utils_Array::value('line_item', $params) && !empty($trxn)) {
-          foreach ($params['line_item'] as $values) {
-            foreach ($values as $id => $amount) {
-              $p = ['id' => $id];
-              $check = CRM_Price_BAO_LineItem::retrieve($p, $defaults);
-              if (empty($check)) {
-                throw new API_Exception('Please specify a valid Line Item.');
-              }
-              // get financial item
-              $sql = "SELECT fi.id
-              FROM civicrm_financial_item fi
-              INNER JOIN civicrm_line_item li ON li.id = fi.entity_id and fi.entity_table = 'civicrm_line_item'
-              WHERE li.contribution_id = %1 AND li.id = %2";
-              $sqlParams = [
-                1 => [$params['contribution_id'], 'Integer'],
-                2 => [$id, 'Integer'],
-              ];
-              $fid = CRM_Core_DAO::singleValueQuery($sql, $sqlParams);
-              // Record Entity Financial Trxn
-              $eftParams = [
-                'entity_table' => 'civicrm_financial_item',
-                'financial_trxn_id' => $trxn->id,
-                'amount' => $amount,
-                'entity_id' => $fid,
-              ];
-              civicrm_api3('EntityFinancialTrxn', 'create', $eftParams);
-            }
-          }
-        }
-        elseif (!empty($trxn)) {
-          CRM_Contribute_BAO_Contribution::assignProportionalLineItems($params, $trxn->id, $contribution['total_amount']);
-        }
-      }
-    }
-    return $trxn;
-
-  }
-
-  /**
    * Complete an order.
    *
    * Do not call this directly - use the contribution.completetransaction api as this function is being refactored.
@@ -4842,7 +4743,7 @@ WHERE ft.is_payment = 1
   public static function createCreditNoteId() {
     $prefixValue = Civi::settings()->get('contribution_invoice_settings');
 
-    $creditNoteNum = CRM_Core_DAO::singleValueQuery("SELECT count(creditnote_id) as creditnote_number FROM civicrm_contribution");
+    $creditNoteNum = CRM_Core_DAO::singleValueQuery("SELECT count(creditnote_id) as creditnote_number FROM civicrm_contribution WHERE creditnote_id IS NOT NULL");
     $creditNoteId = NULL;
 
     do {
@@ -5667,31 +5568,32 @@ LIMIT 1;";
     }
     $startDate = "$year$monthDay";
     $endDate = "$nextYear$monthDay";
-    $financialTypes = [];
-    CRM_Financial_BAO_FinancialType::getAvailableFinancialTypes($financialTypes);
-    // this is a clumsy way of saying never return anything
-    // @todo improve!
-    $liWhere = " AND i.financial_type_id IN (0)";
-    if (!empty($financialTypes)) {
-      $liWhere = " AND i.financial_type_id NOT IN (" . implode(',', array_keys($financialTypes)) . ")";
-    }
+
     $whereClauses = [
-      'b.contact_id IN (' . $contactIDs . ')',
-      'b.contribution_status_id = ' . (int) CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_Contribution', 'contribution_status_id', 'Completed'),
-      'b.is_test = 0',
-      'b.receive_date >= ' . $startDate,
-      'b.receive_date <  ' . $endDate,
+      'contact_id' => 'IN (' . $contactIDs . ')',
+      'is_test' => ' = 0',
+      'receive_date' => ['>=' . $startDate, '<  ' . $endDate],
     ];
-    CRM_Financial_BAO_FinancialType::buildPermissionedClause($whereClauses, NULL, 'b');
+    $havingClause = 'contribution_status_id = ' . (int) CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_Contribution', 'contribution_status_id', 'Completed');
+    CRM_Financial_BAO_FinancialType::addACLClausesToWhereClauses($whereClauses);
+
+    $clauses = [];
+    foreach ($whereClauses as $key => $clause) {
+      $clauses[] = 'b.' . $key . " "  . implode(' AND b.' . $key, (array) $clause);
+    }
+    $whereClauseString = implode(' AND ', $clauses);
+
+    // See https://github.com/civicrm/civicrm-core/pull/13512 for discussion of how
+    // this group by + having on contribution_status_id improves performance
     $query = "
       SELECT COUNT(*) as count,
              SUM(total_amount) as amount,
              AVG(total_amount) as average,
              currency
       FROM civicrm_contribution b
-      LEFT JOIN civicrm_line_item i ON i.contribution_id = b.id AND i.entity_table = 'civicrm_contribution' $liWhere
-      WHERE " . implode(' AND ', $whereClauses) . "
-      GROUP BY currency
+      WHERE " . $whereClauseString . "
+      GROUP BY currency, contribution_status_id
+      HAVING $havingClause
       ";
     return $query;
   }

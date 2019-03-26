@@ -1287,6 +1287,35 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
   }
 
   /**
+   * Add a search for a range using date picker fields.
+   *
+   * @param string $fieldName
+   * @param string $label
+   * @param bool $required
+   * @param string $fromLabel
+   * @param string $toLabel
+   */
+  public function addDatePickerRange($fieldName, $label, $required = FALSE, $fromLabel = 'From', $toLabel = 'To') {
+
+    $options = array(
+      '' => ts('- any -'),
+      0 => ts('Choose Date Range'),
+    ) + CRM_Core_OptionGroup::values('relative_date_filters');
+
+    $this->add('select',
+      "{$fieldName}_relative",
+      $label,
+      $options,
+      $required,
+      NULL
+    );
+    $attributes = ['format' => 'searchDate'];
+    $extra = ['time' => FALSE];
+    $this->add('datepicker', $fieldName . '_low', ts($fromLabel), $attributes, $required, $extra);
+    $this->add('datepicker', $fieldName . '_high', ts($toLabel), $attributes, $required, $extra);
+  }
+
+  /**
    * Based on form action, return a string representing the api action.
    * Used by addField method.
    *
@@ -1925,7 +1954,12 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     $props['entity'] = _civicrm_api_get_entity_name_from_camel(CRM_Utils_Array::value('entity', $props, 'contact'));
     $props['class'] = ltrim(CRM_Utils_Array::value('class', $props, '') . ' crm-form-entityref');
 
-    if ($props['entity'] == 'contact' && isset($props['create']) && !(CRM_Core_Permission::check('edit all contacts') || CRM_Core_Permission::check('add contacts'))) {
+    if (isset($props['create']) && $props['create'] === TRUE) {
+      require_once "api/v3/utils.php";
+      $baoClass = _civicrm_api3_get_BAO($props['entity']);
+      $props['create'] = $baoClass && is_callable([$baoClass, 'entityRefCreateLinks']) ? $baoClass::entityRefCreateLinks() : FALSE;
+    }
+    if (array_key_exists('create', $props) && empty($props['create'])) {
       unset($props['create']);
     }
 

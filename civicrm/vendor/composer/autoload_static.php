@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInitc5b733dde8aafbae6e2efa95d0e10a1b
+class ComposerStaticInit1b1584de67d2926d88597d9255555455
 {
     public static $files = array (
         '320cde22f66dd4f5d3fd621d3e88b98f' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
@@ -38,6 +38,7 @@ class ComposerStaticInitc5b733dde8aafbae6e2efa95d0e10a1b
         'P' => 
         array (
             'Psr\\SimpleCache\\' => 16,
+            'Psr\\Log\\' => 8,
             'Psr\\Http\\Message\\' => 17,
             'PhpOffice\\PhpWord\\' => 18,
             'PhpOffice\\Common\\' => 17,
@@ -116,6 +117,10 @@ class ComposerStaticInitc5b733dde8aafbae6e2efa95d0e10a1b
         array (
             0 => __DIR__ . '/..' . '/psr/simple-cache/src',
         ),
+        'Psr\\Log\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/psr/log/Psr/Log',
+        ),
         'Psr\\Http\\Message\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/http-message/src',
@@ -187,10 +192,6 @@ class ComposerStaticInitc5b733dde8aafbae6e2efa95d0e10a1b
         ),
         'P' => 
         array (
-            'Psr\\Log\\' => 
-            array (
-                0 => __DIR__ . '/..' . '/psr/log',
-            ),
             'PHPUnit_' => 
             array (
                 0 => __DIR__ . '/../..' . '/packages',
@@ -397,10 +398,10 @@ class ComposerStaticInitc5b733dde8aafbae6e2efa95d0e10a1b
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInitc5b733dde8aafbae6e2efa95d0e10a1b::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInitc5b733dde8aafbae6e2efa95d0e10a1b::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInitc5b733dde8aafbae6e2efa95d0e10a1b::$prefixesPsr0;
-            $loader->classMap = ComposerStaticInitc5b733dde8aafbae6e2efa95d0e10a1b::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit1b1584de67d2926d88597d9255555455::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit1b1584de67d2926d88597d9255555455::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInit1b1584de67d2926d88597d9255555455::$prefixesPsr0;
+            $loader->classMap = ComposerStaticInit1b1584de67d2926d88597d9255555455::$classMap;
 
         }, null, ClassLoader::class);
     }

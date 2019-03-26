@@ -257,11 +257,6 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
 
     $queryParts = array();
 
-    // CRM_Core_Payment::getReturnSuccessUrl() passes $query as an array
-    if (isset($query) && is_array($query)) {
-      $query = implode($separator, $query);
-    }
-
     if (
       // not using clean URLs
       !$config->cleanURL
@@ -283,7 +278,7 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
       if ($wpPageParam) {
         $queryParts[] = $wpPageParam;
       }
-      if (isset($query)) {
+      if (!empty($query)) {
         $queryParts[] = $query;
       }
 
@@ -815,13 +810,11 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     $contactCreated = 0;
     $contactMatching = 0;
 
-    // previously used $wpdb - which means WordPress *must* be bootstrapped
-    $wpUsers = get_users(array(
-      'blog_id' => get_current_blog_id(),
-      'number' => -1,
-    ));
+    global $wpdb;
+    $wpUserIds = $wpdb->get_col("SELECT $wpdb->users.ID FROM $wpdb->users");
 
-    foreach ($wpUsers as $wpUserData) {
+    foreach ($wpUserIds as $wpUserId) {
+      $wpUserData = get_userdata($wpUserId);
       $contactCount++;
       if ($match = CRM_Core_BAO_UFMatch::synchronizeUFMatch($wpUserData,
         $wpUserData->$id,

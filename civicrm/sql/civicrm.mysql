@@ -4399,7 +4399,7 @@ CREATE TABLE `civicrm_price_field_value` (
      `price_field_id` int unsigned NOT NULL   COMMENT 'FK to civicrm_price_field',
      `name` varchar(255)    COMMENT 'Price field option name',
      `label` varchar(255)    COMMENT 'Price field option label',
-     `description` text   DEFAULT NULL COMMENT '>Price field option description.',
+     `description` text   DEFAULT NULL COMMENT 'Price field option description.',
      `help_pre` text   DEFAULT NULL COMMENT 'Price field option pre help text.',
      `help_post` text   DEFAULT NULL COMMENT 'Price field option post field help.',
      `amount` decimal(18,9) NOT NULL   COMMENT 'Price field option amount',
