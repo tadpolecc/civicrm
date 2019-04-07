@@ -1497,8 +1497,8 @@ CREATE TABLE `civicrm_dedupe_exception` (
 
 
      `id` int unsigned NOT NULL AUTO_INCREMENT  COMMENT 'Unique dedupe exception id',
-     `contact_id1` int unsigned    COMMENT 'FK to Contact ID',
-     `contact_id2` int unsigned    COMMENT 'FK to Contact ID' 
+     `contact_id1` int unsigned NOT NULL   COMMENT 'FK to Contact ID',
+     `contact_id2` int unsigned NOT NULL   COMMENT 'FK to Contact ID' 
 ,
         PRIMARY KEY (`id`)
  
@@ -4084,7 +4084,7 @@ CREATE TABLE `civicrm_contribution_recur` (
 
 
      `id` int unsigned NOT NULL AUTO_INCREMENT  COMMENT 'Contribution Recur ID',
-     `contact_id` int unsigned NOT NULL   COMMENT 'Foreign key to civicrm_contact.id .',
+     `contact_id` int unsigned NOT NULL   COMMENT 'Foreign key to civicrm_contact.id.',
      `amount` decimal(20,2) NOT NULL   COMMENT 'Amount to be contributed or charged each recurrence.',
      `currency` varchar(3)   DEFAULT NULL COMMENT '3 character string, value from config setting or input via user.',
      `frequency_unit` varchar(8)   DEFAULT 'month' COMMENT 'Time units for recurrence of payment.',

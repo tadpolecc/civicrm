@@ -1125,15 +1125,20 @@ ORDER BY    fixed_sort_order
    * @inheritDoc
    */
   public function addSelectWhereClause() {
-    $clauses = parent::addSelectWhereClause();
-    if (!CRM_Core_Permission::check('view all activities')) {
-      $permittedActivityTypeIDs = self::getPermittedActivityTypes();
-      if (empty($permittedActivityTypeIDs)) {
-        // This just prevents a mysql fail if they have no access - should be extremely edge case.
-        $permittedActivityTypeIDs = [0];
-      }
-      $clauses['activity_type_id'] = ('IN (' . implode(', ', $permittedActivityTypeIDs) . ')');
+    $clauses = [];
+    $permittedActivityTypeIDs = self::getPermittedActivityTypes();
+    if (empty($permittedActivityTypeIDs)) {
+      // This just prevents a mysql fail if they have no access - should be extremely edge case.
+      $permittedActivityTypeIDs = [0];
     }
+    $clauses['activity_type_id'] = ('IN (' . implode(', ', $permittedActivityTypeIDs) . ')');
+
+    $contactClause = CRM_Utils_SQL::mergeSubquery('Contact');
+    if ($contactClause) {
+      $contactClause = implode(' AND contact_id ', $contactClause);
+      $clauses['id'][] = "IN (SELECT activity_id FROM civicrm_activity_contact WHERE contact_id $contactClause)";
+    }
+    CRM_Utils_Hook::selectWhereClause($this, $clauses);
     return $clauses;
   }
 
@@ -2361,7 +2366,6 @@ AND cl.modified_id  = c.id
           $priorActivities[$index][$dao->activityID]['name'] = $dao->name;
           $priorActivities[$index][$dao->activityID]['date'] = $dao->date;
         }
-        $dao->free();
       }
     }
     return $priorActivities[$index];
@@ -2678,10 +2682,8 @@ AND cl.modified_id  = c.id
         $result = self::deleteActivity($activityParams);
       }
 
-      $activityContactOther->free();
     }
 
-    $activityContact->free();
     $transaction->commit();
 
     return $result;
@@ -3229,6 +3231,16 @@ INNER JOIN  civicrm_option_group grp ON (grp.id = option_group_id AND grp.name =
       return $result;
     }
     return FALSE;
+  }
+
+  /**
+   * @return array
+   */
+  public static function getEntityRefFilters() {
+    return [
+      ['key' => 'activity_type_id', 'value' => ts('Activity Type')],
+      ['key' => 'status_id', 'value' => ts('Activity Status')],
+    ];
   }
 
 }
