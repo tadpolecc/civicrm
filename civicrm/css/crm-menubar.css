@@ -134,6 +134,7 @@ input#crm-qsearch-input {
   height: 30px;
   width: 30px;
   transition: width .5s .05s, background-color .3s .05s;
+  color: black;
 }
 a.highlighted #crm-qsearch-input,
 #crm-qsearch-input:focus,
@@ -238,6 +239,10 @@ body.crm-menubar-over-cms-menu #crm-menubar-toggle-position a i {
 
   body.crm-menubar-over-cms-menu #civicrm-menu {
     z-index: 99999;
+  }
+
+  body.crm-menubar-above-crm-container #civicrm-menu {
+    z-index: 100;
   }
 
   body.crm-menubar-hidden #civicrm-menu {
