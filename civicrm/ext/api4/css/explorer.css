@@ -13,6 +13,9 @@
   position: relative;
   top: -5px;
 }
+#bootstrap-theme .explorer-params-panel .panel-heading .form-inline > .select2-container {
+  max-width: 25% !important;
+}
 #bootstrap-theme.api4-explorer-page .api4-explorer-row {
   display: flex;
 }
@@ -25,7 +28,7 @@
   flex: 2;
 }
 /* Fix weird shorditch style */
-#bootstrap-theme.api4-explorer-page .panel .panel-heading {
+#bootstrap-theme.api4-explorer-page .api4-explorer-row .panel .panel-heading {
   border-bottom-right-radius: 0;
   border-bottom-left-radius: 0;
   margin-bottom: 0;
@@ -36,6 +39,10 @@
 
 #bootstrap-theme.api4-explorer-page .explorer-params-panel > .panel-body > div.api4-input {
   margin-bottom: 10px;
+}
+
+#bootstrap-theme.api4-explorer-page .explorer-help-panel .panel-body {
+  word-break: break-word;
 }
 
 #bootstrap-theme.api4-explorer-page form label {
@@ -133,8 +140,14 @@
   display: inline-block;
 }
 
-#bootstrap-theme.api4-explorer-page .api4-operator {
+#bootstrap-theme.api4-explorer-page .api4-operator,
+#bootstrap-theme.api4-explorer-page .api4-chain-index,
+#bootstrap-theme.api4-explorer-page .api4-index,
+#bootstrap-theme.api4-explorer-page .api4-chain-action {
   width: 70px;
+}
+#bootstrap-theme.api4-explorer-page .api4-chain-params {
+  width: calc( 100% - 346px);
 }
 
 #bootstrap-theme.api4-explorer-page .api4-add-where-group-menu {

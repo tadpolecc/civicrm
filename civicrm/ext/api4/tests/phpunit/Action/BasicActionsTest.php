@@ -88,4 +88,67 @@ class BasicActionsTest extends UnitTestCase {
     $this->assertEquals([400, 1600], \CRM_Utils_Array::collect('frobnication', (array) $result));
   }
 
+  public function testGetFields() {
+    $getFields = MockBasicEntity::getFields()->execute()->indexBy('name');
+
+    $this->assertCount(6, $getFields);
+    $this->assertEquals('Id', $getFields['id']['title']);
+    // Ensure default data type is "String" when not specified
+    $this->assertEquals('String', $getFields['color']['data_type']);
+
+    // Getfields should default to loadOptions = false and reduce them to bool
+    $this->assertTrue($getFields['group']['options']);
+    $this->assertFalse($getFields['id']['options']);
+
+    // Now load options
+    $getFields = MockBasicEntity::getFields()
+      ->addWhere('name', '=', 'group')
+      ->setLoadOptions(TRUE)
+      ->execute()->indexBy('name');
+
+    $this->assertCount(1, $getFields);
+    $this->assertArrayHasKey('one', $getFields['group']['options']);
+  }
+
+  public function testItemsToGet() {
+    $get = MockBasicEntity::get()
+      ->addWhere('color', 'NOT IN', ['yellow'])
+      ->addWhere('color', 'IN', ['red', 'blue'])
+      ->addWhere('color', '!=', 'green')
+      ->addWhere('group', '=', 'one');
+
+    $this->assertEquals(['red', 'blue'], $get->_itemsToGet('color'));
+    $this->assertEquals(['one'], $get->_itemsToGet('group'));
+  }
+
+  public function testFieldsToGet() {
+    $get = MockBasicEntity::get()
+      ->addWhere('color', '!=', 'green');
+
+    // If no "select" is set, should always return true
+    $this->assertTrue($get->_isFieldSelected('color'));
+    $this->assertTrue($get->_isFieldSelected('shape'));
+    $this->assertTrue($get->_isFieldSelected('size'));
+
+    // With a non-empty "select" fieldsToSelect() will return fields needed to evaluate each clause.
+    $get->addSelect('id');
+    $this->assertTrue($get->_isFieldSelected('color'));
+    $this->assertTrue($get->_isFieldSelected('id'));
+    $this->assertFalse($get->_isFieldSelected('shape'));
+    $this->assertFalse($get->_isFieldSelected('size'));
+    $this->assertFalse($get->_isFieldSelected('weight'));
+    $this->assertFalse($get->_isFieldSelected('group'));
+
+    $get->addClause('OR', ['shape', '=', 'round'], ['AND', [['size', '=', 'big'], ['weight', '!=', 'small']]]);
+    $this->assertTrue($get->_isFieldSelected('color'));
+    $this->assertTrue($get->_isFieldSelected('id'));
+    $this->assertTrue($get->_isFieldSelected('shape'));
+    $this->assertTrue($get->_isFieldSelected('size'));
+    $this->assertTrue($get->_isFieldSelected('weight'));
+    $this->assertFalse($get->_isFieldSelected('group'));
+
+    $get->addOrderBy('group');
+    $this->assertTrue($get->_isFieldSelected('group'));
+  }
+
 }

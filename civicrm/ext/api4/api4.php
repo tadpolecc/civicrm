@@ -11,29 +11,39 @@ use Symfony\Component\Config\FileLocator;
 /**
  * Procedural wrapper for the OO api version 4.
  *
- * @param $entity
- * @param $action
+ * @param string $entity
+ * @param string $action
  * @param array $params
+ * @param string|int $index
+ *   If $index is a string, the results array will be indexed by that key.
+ *   If $index is an integer, only the result at that index will be returned.
  *
  * @return \Civi\Api4\Generic\Result
+ * @throws \API_Exception
+ * @throws \Civi\API\Exception\NotImplementedException
  */
-function civicrm_api4($entity, $action, $params = []) {
-  // For custom pseudo-entities
-  if (strpos($entity, 'Custom_') === 0) {
-    $apiCall = Civi\Api4\CustomValue::$action(substr($entity, 7));
-  }
-  else {
-    $callable = ["Civi\\Api4\\$entity", $action];
-    if (!is_callable($callable)) {
-      throw new Exception\NotImplementedException("API ($entity, $action) does not exist (join the API team and implement it!)");
-    }
-    $apiCall = call_user_func($callable);
-  }
+function civicrm_api4($entity, $action, $params = [], $index = NULL) {
+  $apiCall = \Civi\Api4\Utils\ActionUtil::getAction($entity, $action);
   foreach ($params as $name => $param) {
     $setter = 'set' . ucfirst($name);
     $apiCall->$setter($param);
   }
-  return $apiCall->execute();
+  $result = $apiCall->execute();
+
+  // Index results by key
+  if ($index && is_string($index) && !CRM_Utils_Rule::integer($index)) {
+    $result->indexBy($index);
+  }
+  // Return result at index
+  if (CRM_Utils_Rule::integer($index)) {
+    $item = $result->itemAt($index);
+    if (is_null($item)) {
+      throw new \API_Exception("Index $index not found in api results");
+    }
+    $result->exchangeArray($item);
+
+  }
+  return $result;
 }
 
 /**

@@ -71,8 +71,7 @@ class Html
         }
 
         // Load DOM
-        $orignalLibEntityLoader = libxml_disable_entity_loader();
-        libxml_disable_entity_loader(true);
+        $orignalLibEntityLoader = libxml_disable_entity_loader(true);
         $dom = new \DOMDocument();
         $dom->preserveWhiteSpace = $preserveWhiteSpace;
         $dom->loadXML($html);

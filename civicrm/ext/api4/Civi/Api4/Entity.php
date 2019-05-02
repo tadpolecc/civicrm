@@ -17,14 +17,20 @@ class Entity extends Generic\AbstractEntity {
   }
 
   /**
-   * @return Action\Entity\GetFields
+   * @return \Civi\Api4\Generic\BasicGetFieldsAction
    */
   public static function getFields() {
-    return new Action\Entity\GetFields('Entity', __FUNCTION__);
+    return new \Civi\Api4\Generic\BasicGetFieldsAction('Entity', __FUNCTION__, function() {
+      return [
+        ['name' => 'name'],
+        ['name' => 'description'],
+        ['name' => 'comment'],
+      ];
+    });
   }
 
   /**
-   * @return Action\Entity\GetFields
+   * @return Action\Entity\GetLinks
    */
   public static function getLinks() {
     return new Action\Entity\GetLinks('Entity', __FUNCTION__);
@@ -34,7 +40,9 @@ class Entity extends Generic\AbstractEntity {
    * @return array
    */
   public static function permissions() {
-    return [];
+    return [
+      'default' => ['access CiviCRM']
+    ];
   }
 
 }

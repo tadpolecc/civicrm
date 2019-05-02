@@ -11,6 +11,8 @@ use Civi\Api4\Utils\ReflectionUtils;
  *
  * @method $this setCheckPermissions(bool $value)
  * @method bool getCheckPermissions()
+ * @method $this setChain(array $chain)
+ * @method array getChain()
  */
 abstract class AbstractAction implements \ArrayAccess {
 
@@ -21,13 +23,25 @@ abstract class AbstractAction implements \ArrayAccess {
    */
   protected $version = 4;
 
-  /*
-   * Todo: not implemented.
+  /**
+   * Additional api requests - will be called once per result.
+   *
+   * Keys can be any string - this will be the name given to the output.
+   *
+   * You can reference other values in the api results in this call by prefixing them with $
+   *
+   * For example, you could create a contact and place them in a group by chaining the
+   * GroupContact api to the Contact api:
+   *
+   * Contact::create()
+   *   ->setValue('first_name', 'Hello')
+   *   ->addChain('add_to_a_group', GroupContact::create()->setValue('contact_id', '$id')->setValue('group_id', 123))
+   *
+   * This will substitute the id of the newly created contact with $id.
    *
    * @var array
-   *
-  protected $chain = [];
    */
+  protected $chain = [];
 
   /**
    * Whether to enforce acl permissions based on the current user.
@@ -40,16 +54,19 @@ abstract class AbstractAction implements \ArrayAccess {
   protected $checkPermissions = TRUE;
 
   /* @var string */
-  private $entityName;
+  protected $_entityName;
 
   /* @var string */
-  private $actionName;
+  protected $_actionName;
 
   /* @var \ReflectionClass */
   private $thisReflection;
 
   /* @var array */
   private $thisParamInfo;
+
+  /* @var array */
+  private $entityFields;
 
   /* @var array */
   private $thisArrayStorage;
@@ -66,8 +83,8 @@ abstract class AbstractAction implements \ArrayAccess {
     if (strpos($entityName, '\\') !== FALSE) {
       $entityName = substr($entityName, strrpos($entityName, '\\') + 1);
     }
-    $this->entityName = $entityName;
-    $this->actionName = $actionName;
+    $this->_entityName = $entityName;
+    $this->_actionName = $actionName;
   }
 
   /**
@@ -89,6 +106,20 @@ abstract class AbstractAction implements \ArrayAccess {
     if ($val != 4) {
       throw new \API_Exception('Cannot modify api version');
     }
+    return $this;
+  }
+
+  /**
+   * @param string $name
+   *   Unique name for this chained request
+   * @param \Civi\Api4\Generic\AbstractAction $apiRequest
+   * @param string|int $index
+   *   Either a string for how the results should be indexed e.g. 'name'
+   *   or the index of a single result to return e.g. 0 for the first result.
+   * @return $this
+   */
+  public function addChain($name, AbstractAction $apiRequest, $index = NULL) {
+    $this->chain[$name] = [$apiRequest->getEntityName(), $apiRequest->getActionName(), $apiRequest->getParams(), $index];
     return $this;
   }
 
@@ -116,13 +147,7 @@ abstract class AbstractAction implements \ArrayAccess {
           return $this->$param;
 
         case 'set':
-          if (is_array($this->$param)) {
-            // Don't overwrite any defaults
-            $this->$param = $arguments[0] + $this->$param;
-          }
-          else {
-            $this->$param = $arguments[0];
-          }
+          $this->$param = $arguments[0];
           return $this;
 
         case 'add':
@@ -202,7 +227,7 @@ abstract class AbstractAction implements \ArrayAccess {
    * @return string
    */
   public function getEntityName() {
-    return $this->entityName;
+    return $this->_entityName;
   }
 
   /**
@@ -210,7 +235,7 @@ abstract class AbstractAction implements \ArrayAccess {
    * @return string
    */
   public function getActionName() {
-    return $this->actionName;
+    return $this->_actionName;
   }
 
   /**
@@ -295,7 +320,7 @@ abstract class AbstractAction implements \ArrayAccess {
   }
 
   public function getPermissions() {
-    $permissions = call_user_func(["\\Civi\\Api4\\" . $this->entityName, 'permissions']);
+    $permissions = call_user_func(["\\Civi\\Api4\\" . $this->_entityName, 'permissions']);
     $permissions += [
       // applies to getFields, getActions, etc.
       'meta' => ['access CiviCRM'],
@@ -313,6 +338,23 @@ abstract class AbstractAction implements \ArrayAccess {
   }
 
   /**
+   * Returns schema fields for this entity & action.
+   *
+   * @return array
+   * @throws \API_Exception
+   */
+  protected function getEntityFields() {
+    if (!$this->entityFields) {
+      $params = ['action' => $this->getActionName()];
+      if (method_exists($this, 'getBaoName')) {
+        $params['includeCustom'] = FALSE;
+      }
+      $this->entityFields = (array) civicrm_api4($this->getEntityName(), 'getFields', $params, 'name');
+    }
+    return $this->entityFields;
+  }
+
+  /**
    * @return \ReflectionClass
    */
   protected function getReflection() {
@@ -320,6 +362,27 @@ abstract class AbstractAction implements \ArrayAccess {
       $this->thisReflection = new \ReflectionClass($this);
     }
     return $this->thisReflection;
+  }
+
+  /**
+   * This function is used internally for evaluating field annotations.
+   *
+   * It should never be passed raw user input.
+   *
+   * @param string $expr
+   *   Conditional in php format e.g. $foo > $bar
+   * @param array $vars
+   *   Variable name => value
+   * @return bool
+   * @throws \API_Exception
+   * @throws \Exception
+   */
+  protected function evaluateCondition($expr, $vars) {
+    if (strpos($expr, '}') !== FALSE || strpos($expr, '{') !== FALSE) {
+      throw new \API_Exception('Illegal character in expression');
+    }
+    $tpl = "{if $expr}1{else}0{/if}";
+    return (bool) trim(\CRM_Core_Smarty::singleton()->fetchWith('string:' . $tpl, $vars));
   }
 
 }

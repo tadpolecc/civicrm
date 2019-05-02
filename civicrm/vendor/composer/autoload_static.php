@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342
+class ComposerStaticInit643e97e2eb0fe07bf7451a69c57d1202
 {
     public static $files = array (
         '320cde22f66dd4f5d3fd621d3e88b98f' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
@@ -13,6 +13,7 @@ class ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342
         'a0edc8309cc5e1d60e3047b5df6b7052' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/functions_include.php',
         'c964ee0ededf28c96ebd9db5099ef910' => __DIR__ . '/..' . '/guzzlehttp/promises/src/functions_include.php',
         '5636a0a89fc28f9cfa8624493b142015' => __DIR__ . '/..' . '/civicrm/civicrm-setup/civicrm-setup-autoload.php',
+        '2cffec82183ee1cea088009cef9a6fc3' => __DIR__ . '/..' . '/ezyang/htmlpurifier/library/HTMLPurifier.composer.php',
         '37a3dc5111fe8f707ab4c132ef1dbc62' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
         'def43f6c87e4f8dfd0c9e1b1bab14fe8' => __DIR__ . '/..' . '/symfony/polyfill-iconv/bootstrap.php',
     );
@@ -229,6 +230,20 @@ class ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342
                 0 => __DIR__ . '/..' . '/pear/mail',
             ),
         ),
+        'L' => 
+        array (
+            'Log' => 
+            array (
+                0 => __DIR__ . '/..' . '/pear/log',
+            ),
+        ),
+        'H' => 
+        array (
+            'HTMLPurifier' => 
+            array (
+                0 => __DIR__ . '/..' . '/ezyang/htmlpurifier/library',
+            ),
+        ),
         'F' => 
         array (
             'File' => 
@@ -310,6 +325,7 @@ class ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342
         'ezcBaseConfigurationInitializer' => __DIR__ . '/..' . '/zetacomponents/base/src/interfaces/configuration_initializer.php',
         'ezcBaseDoubleClassRepositoryPrefixException' => __DIR__ . '/..' . '/zetacomponents/base/src/exceptions/double_class_repository_prefix.php',
         'ezcBaseException' => __DIR__ . '/..' . '/zetacomponents/base/src/exceptions/exception.php',
+        'ezcBaseExportable' => __DIR__ . '/..' . '/zetacomponents/base/src/interfaces/exportable.php',
         'ezcBaseExtensionNotFoundException' => __DIR__ . '/..' . '/zetacomponents/base/src/exceptions/extension_not_found.php',
         'ezcBaseFeatures' => __DIR__ . '/..' . '/zetacomponents/base/src/features.php',
         'ezcBaseFile' => __DIR__ . '/..' . '/zetacomponents/base/src/file.php',
@@ -373,6 +389,7 @@ class ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342
         'ezcMailMultipartReportParser' => __DIR__ . '/..' . '/zetacomponents/mail/src/parser/parts/multipart_report_parser.php',
         'ezcMailNoSuchMessageException' => __DIR__ . '/..' . '/zetacomponents/mail/src/exceptions/no_such_message.php',
         'ezcMailOffsetOutOfRangeException' => __DIR__ . '/..' . '/zetacomponents/mail/src/exceptions/offset_out_of_range.php',
+        'ezcMailOptions' => __DIR__ . '/..' . '/zetacomponents/mail/src/options/mail_options.php',
         'ezcMailParser' => __DIR__ . '/..' . '/zetacomponents/mail/src/parser/parser.php',
         'ezcMailParserOptions' => __DIR__ . '/..' . '/zetacomponents/mail/src/options/parser_options.php',
         'ezcMailParserSet' => __DIR__ . '/..' . '/zetacomponents/mail/src/parser/interfaces/parser_set.php',
@@ -418,11 +435,11 @@ class ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342::$prefixesPsr0;
-            $loader->fallbackDirsPsr0 = ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342::$fallbackDirsPsr0;
-            $loader->classMap = ComposerStaticInit7f6acb755f5ca824ad1c9525def6d342::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit643e97e2eb0fe07bf7451a69c57d1202::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit643e97e2eb0fe07bf7451a69c57d1202::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInit643e97e2eb0fe07bf7451a69c57d1202::$prefixesPsr0;
+            $loader->fallbackDirsPsr0 = ComposerStaticInit643e97e2eb0fe07bf7451a69c57d1202::$fallbackDirsPsr0;
+            $loader->classMap = ComposerStaticInit643e97e2eb0fe07bf7451a69c57d1202::$classMap;
 
         }, null, ClassLoader::class);
     }

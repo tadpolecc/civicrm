@@ -71,11 +71,11 @@ class XMLReader
      */
     public function getDomFromString($content)
     {
-        $original = libxml_disable_entity_loader();
-        libxml_disable_entity_loader(true);
+        $originalLibXMLEntityValue = libxml_disable_entity_loader(true);
         $this->dom = new \DOMDocument();
         $this->dom->loadXML($content);
-        libxml_disable_entity_loader($original);
+        libxml_disable_entity_loader($originalLibXMLEntityValue);
+
         return $this->dom;
     }
 

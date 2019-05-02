@@ -10,6 +10,7 @@ return array(
     $vendorDir . '/phpseclib/phpseclib/phpseclib',
     $vendorDir . '/pear/pear_exception',
     $vendorDir . '/pear/auth_sasl',
+    $vendorDir . '/pear/log',
     $vendorDir . '/pear/console_getopt',
     $vendorDir . '/pear/pear-core-minimal/src',
     $vendorDir . '/pear/mail',

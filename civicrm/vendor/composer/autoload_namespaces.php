@@ -15,6 +15,8 @@ return array(
     'Net' => array($vendorDir . '/phpseclib/phpseclib/phpseclib', $vendorDir . '/pear/net_socket', $vendorDir . '/pear/net_smtp'),
     'Math' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
     'Mail' => array($vendorDir . '/pear/mail'),
+    'Log' => array($vendorDir . '/pear/log'),
+    'HTMLPurifier' => array($vendorDir . '/ezyang/htmlpurifier/library'),
     'File' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
     'Crypt' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
     'Console' => array($vendorDir . '/pear/console_getopt'),
