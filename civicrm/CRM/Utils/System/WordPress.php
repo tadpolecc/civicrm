@@ -472,9 +472,6 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
 
     $name = CRM_Utils_Array::value('name', $params);
     $pass = CRM_Utils_Array::value('pass', $params);
-    if (isset($params['uid'])) {
-      throw new \RuntimeException("Not implemented WordPress::loadBootStrap([uid=>\$num]))");
-    }
 
     if (!defined('WP_USE_THEMES')) {
       define('WP_USE_THEMES', FALSE);
@@ -500,7 +497,7 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
       CRM_Core_Config::singleton()->userSystem->setMySQLTimeZone();
     }
     require_once $cmsRootPath . DIRECTORY_SEPARATOR . 'wp-includes/pluggable.php';
-    $uid = CRM_Utils_Array::value('uid', $name);
+    $uid = CRM_Utils_Array::value('uid', $params);
     if (!$uid) {
       $name = $name ? $name : trim(CRM_Utils_Array::value('name', $_REQUEST));
       $pass = $pass ? $pass : trim(CRM_Utils_Array::value('pass', $_REQUEST));
@@ -823,13 +820,11 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     $contactCreated = 0;
     $contactMatching = 0;
 
-    // previously used $wpdb - which means WordPress *must* be bootstrapped
-    $wpUsers = get_users(array(
-      'blog_id' => get_current_blog_id(),
-      'number' => -1,
-    ));
+    global $wpdb;
+    $wpUserIds = $wpdb->get_col("SELECT $wpdb->users.ID FROM $wpdb->users");
 
-    foreach ($wpUsers as $wpUserData) {
+    foreach ($wpUserIds as $wpUserId) {
+      $wpUserData = get_userdata($wpUserId);
       $contactCount++;
       if ($match = CRM_Core_BAO_UFMatch::synchronizeUFMatch($wpUserData,
         $wpUserData->$id,
