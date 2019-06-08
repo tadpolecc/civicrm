@@ -914,9 +914,17 @@ abstract class CRM_Utils_System_Base {
   /**
    * Append to coreResourcesList.
    *
-   * @param array $list
+   * @param \Civi\Core\Event\GenericHookEvent $e
    */
-  public function appendCoreResources(&$list) {
+  public function appendCoreResources(\Civi\Core\Event\GenericHookEvent $e) {
+  }
+
+  /**
+   * Modify dynamic assets.
+   *
+   * @param \Civi\Core\Event\GenericHookEvent $e
+   */
+  public function alterAssetUrl(\Civi\Core\Event\GenericHookEvent $e) {
   }
 
   /**

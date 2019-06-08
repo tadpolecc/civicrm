@@ -798,10 +798,20 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
   /**
    * Append WP js to coreResourcesList.
    *
-   * @param array $list
+   * @param \Civi\Core\Event\GenericHookEvent $e
    */
-  public function appendCoreResources(&$list) {
-    $list[] = 'js/crm.wordpress.js';
+  public function appendCoreResources(\Civi\Core\Event\GenericHookEvent $e) {
+    $e->list[] = 'js/crm.wordpress.js';
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function alterAssetUrl(\Civi\Core\Event\GenericHookEvent $e) {
+    // Set menubar breakpoint to match WP admin theme
+    if ($e->asset == 'crm-menubar.css') {
+      $e->params['breakpoint'] = 783;
+    }
   }
 
   /**
@@ -820,13 +830,11 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     $contactCreated = 0;
     $contactMatching = 0;
 
-    // previously used $wpdb - which means WordPress *must* be bootstrapped
-    $wpUsers = get_users(array(
-      'blog_id' => get_current_blog_id(),
-      'number' => -1,
-    ));
+    global $wpdb;
+    $wpUserIds = $wpdb->get_col("SELECT $wpdb->users.ID FROM $wpdb->users");
 
-    foreach ($wpUsers as $wpUserData) {
+    foreach ($wpUserIds as $wpUserId) {
+      $wpUserData = get_userdata($wpUserId);
       $contactCount++;
       if ($match = CRM_Core_BAO_UFMatch::synchronizeUFMatch($wpUserData,
         $wpUserData->$id,

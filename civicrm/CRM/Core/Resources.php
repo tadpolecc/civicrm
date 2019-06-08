@@ -767,6 +767,9 @@ class CRM_Core_Resources {
       $items[] = 'js/crm.menubar.js';
       $items[] = Civi::service('asset_builder')->getUrl('crm-menubar.css', [
         'color' => Civi::settings()->get('menubar_color'),
+        'height' => 40,
+        'breakpoint' => 768,
+        'opacity' => .88,
       ]);
       $items[] = [
         'menubar' => [
@@ -821,8 +824,8 @@ class CRM_Core_Resources {
     ) {
       return TRUE;
     }
-    $url = CRM_Utils_System::getUrlPath();
-    return (strpos($url, 'civicrm/ajax') === 0) || (strpos($url, 'civicrm/angular') === 0);
+    list($arg0, $arg1) = array_pad(explode('/', CRM_Utils_System::getUrlPath()), 2, '');
+    return ($arg0 === 'civicrm' && in_array($arg1, ['ajax', 'angularprofiles', 'asset']));
   }
 
   /**
@@ -852,8 +855,11 @@ class CRM_Core_Resources {
     }
     $vars = [
       'resourceBase' => rtrim($config->resourceBase, '/'),
+      'menubarHeight' => $e->params['height'] . 'px',
+      'breakMin' => $e->params['breakpoint'] . 'px',
+      'breakMax' => ($e->params['breakpoint'] - 1) . 'px',
       'menubarColor' => $color,
-      'semiTransparentMenuColor' => 'rgba(' . implode(', ', CRM_Utils_Color::getRgb($color)) . ', .85)',
+      'menuItemColor' => 'rgba(' . implode(', ', CRM_Utils_Color::getRgb($color)) . ", {$e->params['opacity']})",
       'highlightColor' => CRM_Utils_Color::getHighlight($color),
       'textColor' => CRM_Utils_Color::getContrast($color, '#333', '#ddd'),
     ];

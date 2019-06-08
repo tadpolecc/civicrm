@@ -2709,7 +2709,7 @@ class CRM_Contact_BAO_Query {
       case 'civicrm_worldregion':
         // We can be sure from the calling function that country will already be joined in.
         // we really don't need world_region - we could use a pseudoconstant for it.
-        return "$side JOIN civicrm_worldregion ON civicrm_country.region_id = civicrm_worldregion.id ";
+        return " $side JOIN civicrm_worldregion ON civicrm_country.region_id = civicrm_worldregion.id ";
 
       case 'civicrm_location_type':
         return " $side JOIN civicrm_location_type ON civicrm_address.location_type_id = civicrm_location_type.id ";
@@ -4952,7 +4952,7 @@ civicrm_relationship.start_date > {$today}
   public function alphabetQuery() {
     $sqlParts = $this->getSearchSQLParts(NULL, NULL, NULL, FALSE, FALSE, TRUE);
     $query = "SELECT DISTINCT LEFT(contact_a.sort_name, 1) as sort_name
-      {$this->_simpleFromClause}
+      {$sqlParts['from']}
       {$sqlParts['where']}
       {$sqlParts['having']}
       GROUP BY sort_name
@@ -5681,10 +5681,8 @@ civicrm_relationship.start_date > {$today}
     }
     else {
       // create temp table with contact ids
-      $tableName = CRM_Core_DAO::createTempTableName('civicrm_transform', TRUE);
 
-      $sql = "CREATE TEMPORARY TABLE $tableName ( contact_id int primary key) ENGINE=HEAP";
-      CRM_Core_DAO::executeQuery($sql);
+      $tableName = CRM_Utils_SQL_TempTable::build()->createWithColumns('contact_id int primary key')->setMemory(TRUE)->getName();
 
       $sql = "
 REPLACE INTO $tableName ( contact_id )

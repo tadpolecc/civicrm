@@ -272,6 +272,10 @@ class CRM_Contact_BAO_Contact extends CRM_Contact_DAO_Contact {
       return $contact;
     }
 
+    if (!empty($params['contact_id']) && empty($params['contact_type'])) {
+      $params['contact_type'] = self::getContactType($params['contact_id']);
+    }
+
     $isEdit = TRUE;
     if ($invokeHooks) {
       if (!empty($params['contact_id'])) {
@@ -2945,7 +2949,6 @@ AND       civicrm_openid.is_primary = 1";
       while ($blockDAO->fetch()) {
         $locBlockIds[$name][] = $blockDAO->id;
       }
-      $blockDAO->free();
     }
 
     return $locBlockIds;
@@ -3556,7 +3559,6 @@ LEFT JOIN civicrm_address ON ( civicrm_address.contact_id = civicrm_contact.id )
       }
     }
     CRM_Utils_Hook::post('delete', $type, $id, $obj);
-    $obj->free();
     return TRUE;
   }
 
