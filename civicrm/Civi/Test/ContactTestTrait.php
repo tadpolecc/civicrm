@@ -14,8 +14,6 @@ namespace Civi\Test;
  */
 trait ContactTestTrait {
 
-  abstract public function callAPISuccess($entity, $action, $params, $checkAgainst = NULL);
-
   /**
    * Emulate a logged in user since certain functions use that.
    * value to store a record in the DB (like activity)
@@ -73,6 +71,7 @@ trait ContactTestTrait {
    *
    * @return int
    *   id of Individual created
+   * @throws \Exception
    */
   public function individualCreate($params = array(), $seq = 0, $random = FALSE) {
     $params = array_merge($this->sampleContact('Individual', $seq, $random), $params);
@@ -89,6 +88,7 @@ trait ContactTestTrait {
    *
    * @return int
    *   id of Household created
+   * @throws \Exception
    */
   public function householdCreate($params = array(), $seq = 0) {
     $params = array_merge($this->sampleContact('Household', $seq), $params);

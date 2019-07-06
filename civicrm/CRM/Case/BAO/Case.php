@@ -1066,7 +1066,6 @@ SELECT case_status.label AS case_status, status_id, civicrm_case_type.title AS c
       }
 
       // Activity Status Label for Case activities list
-      $caseActivities[$caseActivityId]['status_id'] = CRM_Core_PseudoConstant::getLabel('CRM_Activity_BAO_Activity', 'activity_status_id', $dao->status);
       $deleted = '';
       if ($dao->deleted) {
         $deleted = '<br /> ' . ts('(deleted)');
@@ -2046,7 +2045,8 @@ SELECT civicrm_contact.id as casemanager_id,
    *
    * @param bool $changeClient
    *
-   * @return int|NULL
+   * @return int|null
+   * @throws \CRM_Core_Exception
    */
   public static function mergeCases(
     $mainContactId, $mainCaseId = NULL, $otherContactId = NULL,
@@ -2965,7 +2965,7 @@ WHERE id IN (' . implode(',', $copiedActivityIds) . ')';
    */
   public static function createCaseViewsQuery($section = 'upcoming') {
     $sql = "";
-    $scheduled_id = CRM_Core_Pseudoconstant::getKey('CRM_Activity_BAO_Activity', 'activity_status_id', 'Scheduled');
+    $scheduled_id = CRM_Core_PseudoConstant::getKey('CRM_Activity_BAO_Activity', 'activity_status_id', 'Scheduled');
     switch ($section) {
       case 'upcoming':
         $sql = "CREATE OR REPLACE VIEW `civicrm_view_case_activity_upcoming`

@@ -39,12 +39,16 @@ class CRM_Contribute_Form_ContributionRecur extends CRM_Core_Form {
   use CRM_Core_Form_EntityFormTrait;
 
   /**
-   * @var int Contribution ID
+   * Contribution ID.
+   *
+   * @var int
    */
   protected $_coid = NULL;
 
   /**
-   * @var int Contribution Recur ID
+   * Contribution Recur ID.
+   *
+   * @var int
    */
   protected $_crid = NULL;
 
@@ -59,7 +63,9 @@ class CRM_Contribute_Form_ContributionRecur extends CRM_Core_Form {
   protected $contributionRecurID = NULL;
 
   /**
-   * @var int Membership ID
+   * Membership ID.
+   *
+   * @var int
    */
   protected $_mid = NULL;
 
@@ -71,10 +77,11 @@ class CRM_Contribute_Form_ContributionRecur extends CRM_Core_Form {
   protected $_paymentProcessorObj = NULL;
 
   /**
-   * @var array
+   * Current payment processor.
    *
-   * Current payment processor including a copy of the object in 'object' key for
-   * legacy reasons.
+   * This includes a copy of the object in 'object' key for legacy reasons.
+   *
+   * @var array
    */
   public $_paymentProcessor = [];
 
@@ -115,6 +122,15 @@ class CRM_Contribute_Form_ContributionRecur extends CRM_Core_Form {
   }
 
   /**
+   * Get the entity id being edited.
+   *
+   * @return int|null
+   */
+  public function getEntityId() {
+    return $this->contributionRecurID;
+  }
+
+  /**
    * Set variables up before form is built.
    *
    * @throws \CRM_Core_Exception
@@ -146,6 +162,10 @@ class CRM_Contribute_Form_ContributionRecur extends CRM_Core_Form {
       }
       $this->_paymentProcessorObj = $this->_paymentProcessor['object'];
     }
+    elseif ($this->_mid) {
+      $this->_paymentProcessorObj = CRM_Financial_BAO_PaymentProcessor::getProcessorForEntity($this->_mid, 'membership', 'obj');
+      $this->_paymentProcessor = $this->_paymentProcessorObj->getPaymentProcessor();
+    }
   }
 
   /**
@@ -158,6 +178,11 @@ class CRM_Contribute_Form_ContributionRecur extends CRM_Core_Form {
     elseif ($this->_coid) {
       $this->subscriptionDetails = $this->_subscriptionDetails = CRM_Contribute_BAO_ContributionRecur::getSubscriptionDetails($this->_coid, 'contribution');
     }
+    elseif ($this->_mid) {
+      $this->subscriptionDetails = CRM_Contribute_BAO_ContributionRecur::getSubscriptionDetails($this->_mid, 'membership');
+    }
+    // This is being set temporarily - we should eventually just use the getter fn.
+    $this->_subscriptionDetails = $this->subscriptionDetails;
   }
 
   /**

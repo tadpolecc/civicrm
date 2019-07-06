@@ -579,13 +579,10 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
     // Allow hook_civicrm_merge() to add SQL statements for the merge operation.
     CRM_Utils_Hook::merge('sqls', $sqls, $mainId, $otherId, $tables);
 
-    // call the SQL queries in one transaction
-    $transaction = new CRM_Core_Transaction();
     foreach ($sqls as $sql) {
       CRM_Core_DAO::executeQuery($sql, [], TRUE, NULL, TRUE);
     }
     CRM_Dedupe_Merger::addMembershipToRealtedContacts($mainId);
-    $transaction->commit();
   }
 
   /**
@@ -696,7 +693,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
       // explicitly set to NULL if not 1 or 0 as part of grandfathering out the mystical '2' value.
       $isSelected = NULL;
     }
-    $dupePairs = self::getDuplicatePairs($rgid, $gid, $reloadCacheIfEmpty, $batchLimit, $isSelected, '', ($mode == 'aggressive'), $criteria, $checkPermissions);
+    $dupePairs = self::getDuplicatePairs($rgid, $gid, $reloadCacheIfEmpty, $batchLimit, $isSelected, ($mode == 'aggressive'), $criteria, $checkPermissions);
 
     $cacheParams = [
       'cache_key_string' => self::getMergeCacheKeyString($rgid, $gid, $criteria, $checkPermissions),
@@ -755,13 +752,13 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
     }
 
     // get previous stats
-    $previousStats = CRM_Core_BAO_PrevNextCache::retrieve("{$cacheKeyString}_stats");
+    $previousStats = CRM_Dedupe_Merger::getMergeStats($cacheKeyString);
     if (!empty($previousStats)) {
-      if ($previousStats[0]['merged']) {
-        $merged = $merged + $previousStats[0]['merged'];
+      if ($previousStats['merged']) {
+        $merged = $merged + $previousStats['merged'];
       }
-      if ($previousStats[0]['skipped']) {
-        $skipped = $skipped + $previousStats[0]['skipped'];
+      if ($previousStats['skipped']) {
+        $skipped = $skipped + $previousStats['skipped'];
       }
     }
 
@@ -796,13 +793,15 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    *
    * @return array
    *   Array of how many were merged and how many were skipped.
+   *
+   * @throws \CiviCRM_API3_Exception
    */
   public static function getMergeStats($cacheKeyString) {
-    $stats = CRM_Core_BAO_PrevNextCache::retrieve("{$cacheKeyString}_stats");
+    $stats = civicrm_api3('Dedupe', 'get', ['cachekey' => "{$cacheKeyString}_stats", 'sequential' => 1])['values'];
     if (!empty($stats)) {
-      $stats = $stats[0];
+      return $stats[0]['data'];
     }
-    return $stats;
+    return [];
   }
 
   /**
@@ -874,15 +873,8 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
           // return error
           return FALSE;
         }
-        // Generate var $migrationInfo. The variable structure is exactly same as
-        // $formValues submitted during a UI merge for a pair of contacts.
-        $rowsElementsAndInfo = CRM_Dedupe_Merger::getRowsElementsAndInfo($mainId, $otherId, $checkPermissions);
-        // add additional details that we might need to resolve conflicts
-        $rowsElementsAndInfo['migration_info']['main_details'] = &$rowsElementsAndInfo['main_details'];
-        $rowsElementsAndInfo['migration_info']['other_details'] = &$rowsElementsAndInfo['other_details'];
-        $rowsElementsAndInfo['migration_info']['rows'] = &$rowsElementsAndInfo['rows'];
 
-        self::dedupePair($rowsElementsAndInfo['migration_info'], $resultStats, $deletedContacts, $mode, $checkPermissions, $mainId, $otherId, $cacheKeyString);
+        self::dedupePair($resultStats, $deletedContacts, $mode, $checkPermissions, $mainId, $otherId, $cacheKeyString);
       }
 
       if ($cacheKeyString && !$redirectForPerformance) {
@@ -1080,8 +1072,6 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
 
     $main = self::getMergeContactDetails($mainId);
     $other = self::getMergeContactDetails($otherId);
-    $specialValues['main'] = self::getSpecialValues($main);
-    $specialValues['other'] = self::getSpecialValues($other);
 
     $compareFields = self::retrieveFields($main, $other);
 
@@ -1092,14 +1082,22 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
         // CRM-15681 don't display sub-types in UI
         continue;
       }
-      foreach (['main', 'other'] as $moniker) {
-        $contact = &$$moniker;
-        $value = CRM_Utils_Array::value($field, $contact);
-        if (isset($specialValues[$moniker][$field]) && is_string($specialValues[$moniker][$field])) {
-          $value = CRM_Core_DAO::VALUE_SEPARATOR . trim($specialValues[$moniker][$field], CRM_Core_DAO::VALUE_SEPARATOR) . CRM_Core_DAO::VALUE_SEPARATOR;
+      foreach (['main' => $main, 'other' => $other] as $moniker => $contact) {
+        $value = $label = CRM_Utils_Array::value($field, $contact);
+        $fieldSpec = $fields[$field];
+        if (!empty($fieldSpec['serialize']) && is_array($value)) {
+          // In practice this only applies to preferred_communication_method as the sub types are skipped above
+          // and no others are serialized.
+          $labels = [];
+          foreach ($value as $individualValue) {
+            $labels[] = CRM_Core_PseudoConstant::getLabel('CRM_Contact_BAO_Contact', $field, $individualValue);
+          }
+          $label = implode(', ', $labels);
+          // We serialize this due to historic handling but it's likely that if we just left it as an
+          // array all would be well & we would have less code.
+          $value = CRM_Core_DAO::serializeField($value, $fieldSpec['serialize']);
         }
-        $label = isset($specialValues[$moniker]["{$field}_display"]) ? $specialValues[$moniker]["{$field}_display"] : $value;
-        if (!empty($fields[$field]['type']) && $fields[$field]['type'] == CRM_Utils_Type::T_DATE) {
+        elseif (!empty($fieldSpec['type']) && $fieldSpec['type'] == CRM_Utils_Type::T_DATE) {
           if ($value) {
             $value = str_replace('-', '', $value);
             $label = CRM_Utils_Date::customFormat($label);
@@ -1116,15 +1114,8 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
             $label = ts('[x]');
           }
         }
-        elseif ($field == 'prefix_id') {
-          $label = CRM_Utils_Array::value('individual_prefix', $contact);
-        }
-        elseif ($field == 'suffix_id') {
-          $label = CRM_Utils_Array::value('individual_suffix', $contact);
-        }
-        elseif ($field == 'gender_id' && !empty($value)) {
-          $genderOptions = civicrm_api3('contact', 'getoptions', ['field' => 'gender_id']);
-          $label = $genderOptions['values'][$value];
+        elseif (!empty($fieldSpec['pseudoconstant'])) {
+          $label = CRM_Core_PseudoConstant::getLabel('CRM_Contact_BAO_Contact', $field, $value);
         }
         elseif ($field == 'current_employer_id' && !empty($value)) {
           $label = "$value (" . CRM_Contact_BAO_Contact::displayName($value) . ")";
@@ -1516,17 +1507,20 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    * @param int $otherId
    *   Duplicate contact which would be deleted after merge operation.
    *
-   * @param $migrationInfo
+   * @param array $migrationInfo
    *
    * @param bool $checkPermissions
    *   Respect logged in user permissions.
    *
    * @return bool
+   * @throws \CiviCRM_API3_Exception
    */
   public static function moveAllBelongings($mainId, $otherId, $migrationInfo, $checkPermissions = TRUE) {
     if (empty($migrationInfo)) {
       return FALSE;
     }
+    // Encapsulate in a transaction to avoid half-merges.
+    $transaction = new CRM_Core_Transaction();
 
     $contactType = $migrationInfo['main_details']['contact_type'];
     $relTables = CRM_Dedupe_Merger::relTables();
@@ -1560,6 +1554,10 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
 
     // **** Do contact related migrations
     $customTablesToCopyValues = self::getAffectedCustomTables($submittedCustomFields);
+    // @todo - move all custom field processing to the move class & eventually have an
+    // overridable DAO class for it.
+    $customFieldBAO = new CRM_Core_BAO_CustomField();
+    $customFieldBAO->move($otherId, $mainId, $submittedCustomFields);
     CRM_Dedupe_Merger::moveContactBelongings($mainId, $otherId, $moveTables, $tableOperations, $customTablesToCopyValues);
     unset($moveTables, $tableOperations);
 
@@ -1603,12 +1601,9 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
     if (!isset($submitted)) {
       $submitted = [];
     }
-    $customFiles = [];
     foreach ($submitted as $key => $value) {
-      list($cFields, $customFiles, $submitted) = self::processCustomFields($mainId, $key, $cFields, $customFiles, $submitted, $value);
+      list($cFields, $submitted) = self::processCustomFields($mainId, $key, $cFields, $submitted, $value);
     }
-
-    self::processCustomFieldFiles($mainId, $otherId, $customFiles);
 
     // move view only custom fields CRM-5362
     $viewOnlyCustomFields = [];
@@ -1623,6 +1618,22 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
     if (!empty($viewOnlyCustomFields)) {
       $viewOnlyCustomFields['entityID'] = $mainId;
       CRM_Core_BAO_CustomValueTable::setValues($viewOnlyCustomFields);
+    }
+
+    // dev/core#996 Ensure that the earliest created date is stored against the kept contact id
+    $mainCreatedDate = civicrm_api3('Contact', 'getsingle', [
+      'id' => $mainId,
+      'return' => ['created_date'],
+    ])['created_date'];
+    $otherCreatedDate = civicrm_api3('Contact', 'getsingle', [
+      'id' => $otherId,
+      'return' => ['created_date'],
+    ])['created_date'];
+    if ($otherCreatedDate < $mainCreatedDate) {
+      CRM_Core_DAO::executeQuery("UPDATE civicrm_contact SET created_date = %1 WHERE id = %2", [
+        1 => [$otherCreatedDate, 'String'],
+        2 => [$mainId, 'Positive'],
+      ]);
     }
 
     if (!$checkPermissions || (CRM_Core_Permission::check('merge duplicate contacts') &&
@@ -1671,7 +1682,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
 
       CRM_Contact_BAO_Contact::createProfileContact($submitted, CRM_Core_DAO::$_nullArray, $mainId);
     }
-
+    $transaction->commit();
     CRM_Utils_Hook::post('merge', 'Contact', $mainId);
     self::createMergeActivities($mainId, $otherId);
 
@@ -1818,7 +1829,6 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    * @param int $batchLimit
    * @param bool $isSelected
    *   Limit to selected pairs.
-   * @param array|string $orderByClause
    * @param bool $includeConflicts
    * @param array $criteria
    *   Additional criteria to narrow down the merge group.
@@ -1831,19 +1841,18 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    *
    * @return array
    *   Array of matches meeting the criteria.
+   *
+   * @throws \CRM_Core_Exception
+   * @throws \CiviCRM_API3_Exception
    */
-  public static function getDuplicatePairs($rule_group_id, $group_id, $reloadCacheIfEmpty, $batchLimit, $isSelected, $orderByClause = '', $includeConflicts = TRUE, $criteria = [], $checkPermissions = TRUE, $searchLimit = 0) {
-    $where = self::getWhereString($isSelected);
-    $cacheKeyString = self::getMergeCacheKeyString($rule_group_id, $group_id, $criteria, $checkPermissions);
-    $join = self::getJoinOnDedupeTable();
-    $dupePairs = CRM_Core_BAO_PrevNextCache::retrieve($cacheKeyString, $join, $where, 0, $batchLimit, [], $orderByClause, $includeConflicts);
+  public static function getDuplicatePairs($rule_group_id, $group_id, $reloadCacheIfEmpty, $batchLimit, $isSelected, $includeConflicts = TRUE, $criteria = [], $checkPermissions = TRUE, $searchLimit = 0) {
+    $dupePairs = self::getCachedDuplicateMatches($rule_group_id, $group_id, $batchLimit, $isSelected, $includeConflicts, $criteria, $checkPermissions);
     if (empty($dupePairs) && $reloadCacheIfEmpty) {
       // If we haven't found any dupes, probably cache is empty.
       // Try filling cache and give another try. We don't need to specify include conflicts here are there will not be any
       // until we have done some processing.
-      CRM_Core_BAO_PrevNextCache::refillCache($rule_group_id, $group_id, $cacheKeyString, $criteria, $checkPermissions, $searchLimit);
-      $dupePairs = CRM_Core_BAO_PrevNextCache::retrieve($cacheKeyString, $join, $where, 0, $batchLimit, [], $orderByClause, $includeConflicts);
-      return $dupePairs;
+      CRM_Core_BAO_PrevNextCache::refillCache($rule_group_id, $group_id, $criteria, $checkPermissions, $searchLimit);
+      return self::getCachedDuplicateMatches($rule_group_id, $group_id, $batchLimit, $isSelected, FALSE, $criteria, $checkPermissions);
     }
     return $dupePairs;
   }
@@ -1880,38 +1889,6 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
       $cacheKeyString .= '_0';
     }
     return $cacheKeyString;
-  }
-
-  /**
-   * @param array $contact
-   * @return array
-   *   $specialValues
-   */
-  public static function getSpecialValues($contact) {
-    $preferred_communication_method = CRM_Utils_Array::value('preferred_communication_method', $contact);
-    $value = empty($preferred_communication_method) ? [] : $preferred_communication_method;
-    $specialValues = [
-      'preferred_communication_method' => $value,
-      'communication_style_id' => $value,
-    ];
-
-    if (!empty($contact['preferred_communication_method'])) {
-      // api 3 returns pref_comm_method as an array, which breaks the lookup; so we reconstruct
-      $prefCommList = is_array($specialValues['preferred_communication_method']) ? implode(CRM_Core_DAO::VALUE_SEPARATOR, $specialValues['preferred_communication_method']) : $specialValues['preferred_communication_method'];
-      $specialValues['preferred_communication_method'] = CRM_Core_DAO::VALUE_SEPARATOR . $prefCommList . CRM_Core_DAO::VALUE_SEPARATOR;
-    }
-    $names = [
-      'preferred_communication_method' => [
-        'newName' => 'preferred_communication_method_display',
-        'groupName' => 'preferred_communication_method',
-      ],
-    ];
-    CRM_Core_OptionGroup::lookupValues($specialValues, $names);
-
-    if (!empty($contact['communication_style'])) {
-      $specialValues['communication_style_id_display'] = $contact['communication_style'];
-    }
-    return $specialValues;
   }
 
   /**
@@ -2119,7 +2096,6 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
   /**
    * Dedupe a pair of contacts.
    *
-   * @param array $migrationInfo
    * @param array $resultStats
    * @param array $deletedContacts
    * @param string $mode
@@ -2127,10 +2103,13 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    * @param int $mainId
    * @param int $otherId
    * @param string $cacheKeyString
+   *
+   * @throws \CRM_Core_Exception
+   * @throws \CiviCRM_API3_Exception
    */
-  protected static function dedupePair(&$migrationInfo, &$resultStats, &$deletedContacts, $mode, $checkPermissions, $mainId, $otherId, $cacheKeyString) {
+  protected static function dedupePair(&$resultStats, &$deletedContacts, $mode, $checkPermissions, $mainId, $otherId, $cacheKeyString) {
 
-    // go ahead with merge if there is no conflict
+    $migrationInfo = [];
     $conflicts = [];
     if (!CRM_Dedupe_Merger::skipMerge($mainId, $otherId, $migrationInfo, $mode, $conflicts)) {
       CRM_Dedupe_Merger::moveAllBelongings($mainId, $otherId, $migrationInfo, $checkPermissions);
@@ -2155,9 +2134,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
       CRM_Core_BAO_PrevNextCache::markConflict($mainId, $otherId, $cacheKeyString, $conflicts);
     }
     else {
-      // delete entry from PrevNextCache table so we don't consider the pair next time
-      // pair may have been flipped, so make sure we delete using both orders
-      CRM_Core_BAO_PrevNextCache::deletePair($mainId, $otherId, $cacheKeyString, TRUE);
+      CRM_Core_BAO_PrevNextCache::deletePair($mainId, $otherId, $cacheKeyString);
     }
   }
 
@@ -2183,29 +2160,37 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
   /**
    * Honestly - what DOES this do - hopefully some refactoring will reveal it's purpose.
    *
+   * Update this function formats fields in preparation for them to be submitted to the
+   * 'ProfileContactCreate action. This is a lot of code to do this & for
+   * - for some fields it fails - e.g Country - per testMergeCustomFields.
+   *
+   * Goal is to move all custom field handling into 'move' functions on the various BAO
+   * with an underlying DAO function. For custom fields it has been started on the BAO.
+   *
    * @param $mainId
    * @param $key
    * @param $cFields
-   * @param $customFiles
    * @param $submitted
    * @param $value
    *
    * @return array
+   * @throws \Exception
    */
-  protected static function processCustomFields($mainId, $key, $cFields, $customFiles, $submitted, $value) {
+  protected static function processCustomFields($mainId, $key, $cFields, $submitted, $value) {
     if (substr($key, 0, 7) == 'custom_') {
       $fid = (int) substr($key, 7);
       if (empty($cFields[$fid])) {
-        return [$cFields, $customFiles, $submitted];
+        return [$cFields, $submitted];
       }
       $htmlType = $cFields[$fid]['attributes']['html_type'];
       switch ($htmlType) {
         case 'File':
-          $customFiles[] = $fid;
+          // Handled in CustomField->move(). Tested in testMergeCustomFields.
           unset($submitted["custom_$fid"]);
           break;
 
         case 'Select Country':
+          // @todo Test in testMergeCustomFields disabled as this does not work, Handle in CustomField->move().
         case 'Select State/Province':
           $submitted[$key] = CRM_Core_BAO_CustomField::displayValue($value, $fid);
           break;
@@ -2284,7 +2269,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
           break;
       }
     }
-    return [$cFields, $customFiles, $submitted];
+    return [$cFields, $submitted];
   }
 
   /**
@@ -2339,9 +2324,21 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    *   -  Does a force merge otherwise (aggressive mode).
    *
    * @return array
+   *
+   * @throws \CRM_Core_Exception
+   * @throws \CiviCRM_API3_Exception
    */
   public static function getConflicts(&$migrationInfo, $mainId, $otherId, $mode) {
     $conflicts = [];
+    // Generate var $migrationInfo. The variable structure is exactly same as
+    // $formValues submitted during a UI merge for a pair of contacts.
+    $rowsElementsAndInfo = CRM_Dedupe_Merger::getRowsElementsAndInfo($mainId, $otherId, FALSE);
+    // add additional details that we might need to resolve conflicts
+    $migrationInfo = $rowsElementsAndInfo['migration_info'];
+    $migrationInfo['main_details'] = &$rowsElementsAndInfo['main_details'];
+    $migrationInfo['other_details'] = &$rowsElementsAndInfo['other_details'];
+    $migrationInfo['rows'] = &$rowsElementsAndInfo['rows'];
+    // go ahead with merge if there is no conflict
     $originalMigrationInfo = $migrationInfo;
     foreach ($migrationInfo as $key => $val) {
       if ($val === "null") {
@@ -2428,60 +2425,27 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
   }
 
   /**
-   * Do file custom fields related migrations.
-   * FIXME: move this someplace else (one of the BAOs) after discussing
-   * where to, and whether CRM_Core_BAO_File::deleteFileReferences() shouldn't actually,
-   * like, delete a file...
+   * Get any duplicate merge pairs that have been previously cached.
    *
-   * Note outstanding bug https://lab.civicrm.org/dev/core/issues/723
-   * relates to this code....
+   * @param int $rule_group_id
+   * @param int $group_id
+   * @param int $batchLimit
+   * @param bool $isSelected
+   * @param bool $includeConflicts
+   * @param array $criteria
+   * @param int $checkPermissions
    *
-   * @param $mainId
-   * @param $otherId
-   * @param $customFiles
+   * @return array
    */
-  protected static function processCustomFieldFiles($mainId, $otherId, $customFiles) {
-    foreach ($customFiles as $customId) {
-      list($tableName, $columnName, $groupID) = CRM_Core_BAO_CustomField::getTableColumnGroup($customId);
-
-      // get the contact_id -> file_id mapping
-      $fileIds = [];
-      $sql = "SELECT entity_id, {$columnName} AS file_id FROM {$tableName} WHERE entity_id IN ({$mainId}, {$otherId})";
-      $dao = CRM_Core_DAO::executeQuery($sql);
-      while ($dao->fetch()) {
-        $fileIds[$dao->entity_id] = $dao->file_id;
-        if ($dao->entity_id == $mainId) {
-          CRM_Core_BAO_File::deleteFileReferences($fileIds[$mainId], $mainId, $customId);
-        }
-      }
-
-      // move the other contact's file to main contact
-      //NYSS need to INSERT or UPDATE depending on whether main contact has an existing record
-      if (CRM_Core_DAO::singleValueQuery("SELECT id FROM {$tableName} WHERE entity_id = {$mainId}")) {
-        $sql = "UPDATE {$tableName} SET {$columnName} = {$fileIds[$otherId]} WHERE entity_id = {$mainId}";
-      }
-      else {
-        $sql = "INSERT INTO {$tableName} ( entity_id, {$columnName} ) VALUES ( {$mainId}, {$fileIds[$otherId]} )";
-      }
-      CRM_Core_DAO::executeQuery($sql);
-
-      if (CRM_Core_DAO::singleValueQuery("
-        SELECT id
-        FROM civicrm_entity_file
-        WHERE entity_table = '{$tableName}' AND file_id = {$fileIds[$otherId]}")
-      ) {
-        $sql = "
-          UPDATE civicrm_entity_file
-          SET entity_id = {$mainId}
-          WHERE entity_table = '{$tableName}' AND file_id = {$fileIds[$otherId]}";
-      }
-      else {
-        $sql = "
-          INSERT INTO civicrm_entity_file ( entity_table, entity_id, file_id )
-          VALUES ( '{$tableName}', {$mainId}, {$fileIds[$otherId]} )";
-      }
-      CRM_Core_DAO::executeQuery($sql);
-    }
+  protected static function getCachedDuplicateMatches($rule_group_id, $group_id, $batchLimit, $isSelected, $includeConflicts, $criteria, $checkPermissions) {
+    return CRM_Core_BAO_PrevNextCache::retrieve(
+      self::getMergeCacheKeyString($rule_group_id, $group_id, $criteria, $checkPermissions),
+      self::getJoinOnDedupeTable(),
+      self::getWhereString($isSelected),
+      0, $batchLimit,
+      [], '',
+      $includeConflicts
+    );
   }
 
 }

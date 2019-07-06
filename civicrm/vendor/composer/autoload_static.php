@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc
+class ComposerStaticInitcd1781a8dacad44c5937da68edcd9b09
 {
     public static $files = array (
         '320cde22f66dd4f5d3fd621d3e88b98f' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
@@ -44,6 +44,7 @@ class ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc
             'Psr\\SimpleCache\\' => 16,
             'Psr\\Log\\' => 8,
             'Psr\\Http\\Message\\' => 17,
+            'Psr\\Cache\\' => 10,
             'PhpOffice\\PhpWord\\' => 18,
             'PhpOffice\\Common\\' => 17,
         ),
@@ -70,6 +71,8 @@ class ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc
         'C' => 
         array (
             'Civi\\Cxn\\Rpc\\' => 13,
+            'Cache\\TagInterop\\' => 17,
+            'Cache\\IntegrationTests\\' => 23,
         ),
     );
 
@@ -134,6 +137,10 @@ class ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc
         array (
             0 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
+        'Psr\\Cache\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/psr/cache/src',
+        ),
         'PhpOffice\\PhpWord\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpoffice/phpword/src/PhpWord',
@@ -177,6 +184,14 @@ class ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc
         'Civi\\Cxn\\Rpc\\' => 
         array (
             0 => __DIR__ . '/..' . '/civicrm/civicrm-cxn-rpc/src',
+        ),
+        'Cache\\TagInterop\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/cache/tag-interop',
+        ),
+        'Cache\\IntegrationTests\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/cache/integration-tests/src',
         ),
     );
 
@@ -432,11 +447,11 @@ class ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc::$prefixesPsr0;
-            $loader->fallbackDirsPsr0 = ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc::$fallbackDirsPsr0;
-            $loader->classMap = ComposerStaticInitb6f4f3d70d9ea49303c9889a68adb8cc::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitcd1781a8dacad44c5937da68edcd9b09::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitcd1781a8dacad44c5937da68edcd9b09::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInitcd1781a8dacad44c5937da68edcd9b09::$prefixesPsr0;
+            $loader->fallbackDirsPsr0 = ComposerStaticInitcd1781a8dacad44c5937da68edcd9b09::$fallbackDirsPsr0;
+            $loader->classMap = ComposerStaticInitcd1781a8dacad44c5937da68edcd9b09::$classMap;
 
         }, null, ClassLoader::class);
     }

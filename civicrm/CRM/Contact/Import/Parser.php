@@ -37,18 +37,20 @@ abstract class CRM_Contact_Import_Parser extends CRM_Import_Parser {
   /**
    * Total number of lines in file
    *
-   * @var integer
+   * @var int
    */
   protected $_rowCount;
 
   /**
    * Running total number of un-matched Contacts.
+   *
    * @var int
    */
   protected $_unMatchCount;
 
   /**
-   * Array of unmatched lines
+   * Array of unmatched lines.
+   *
    * @var array
    */
   protected $_unMatch;
@@ -1345,7 +1347,9 @@ abstract class CRM_Contact_Import_Parser extends CRM_Import_Parser {
    *   Input values
    * @param string $entity
    *  - address, email, phone
-   * @param int|NULL $contactID
+   * @param int|null $contactID
+   *
+   * @throws \CiviCRM_API3_Exception
    */
   protected function fillPrimary(&$params, $values, $entity, $contactID) {
     if ($values['location_type_id'] === 'Primary') {
@@ -1354,7 +1358,7 @@ abstract class CRM_Contact_Import_Parser extends CRM_Import_Parser {
           'return' => 'location_type_id',
           'contact_id' => $contactID,
           'is_primary' => 1,
-          'sequential' => 1
+          'sequential' => 1,
         ]);
       }
       $defaultLocationType = CRM_Core_BAO_LocationType::getDefault();

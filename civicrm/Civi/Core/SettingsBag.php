@@ -70,7 +70,7 @@ class SettingsBag {
    * The result of combining default values, mandatory
    * values, and user values.
    *
-   * @var array|NULL
+   * @var array|null
    *   Array(string $settingName => mixed $value).
    */
   protected $combined;
@@ -83,7 +83,7 @@ class SettingsBag {
   /**
    * @param int $domainId
    *   The domain for which we want settings.
-   * @param int|NULL $contactId
+   * @param int|null $contactId
    *   The contact for which we want settings. Use NULL for domain settings.
    */
   public function __construct($domainId, $contactId) {

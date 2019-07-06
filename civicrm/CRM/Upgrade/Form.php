@@ -63,7 +63,7 @@ class CRM_Upgrade_Form extends CRM_Core_Form {
   /**
    * Upgrade for multilingual.
    *
-   * @var boolean
+   * @var bool
    */
   public $multilingual = FALSE;
 
