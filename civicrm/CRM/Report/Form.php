@@ -155,9 +155,6 @@ class CRM_Report_Form extends CRM_Core_Form {
    */
   protected $_groupFilter = FALSE;
 
-  // [ML] Required for civiexportexcel
-  public $supportsExportExcel = TRUE;
-
   /**
    * Has the report been optimised for group filtering.
    *
@@ -2827,11 +2824,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
       $this->_absoluteUrl = TRUE;
       $this->addPaging = FALSE;
     }
-    elseif ($this->_outputMode == 'excel2007') {
-      $printOnly = TRUE;
-      $this->_absoluteUrl = TRUE;
-      $this->addPaging = FALSE;
-    }
     elseif ($this->_outputMode == 'group') {
       $this->assign('outputMode', 'group');
     }
@@ -3483,9 +3475,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
     }
     elseif ($this->_outputMode == 'csv') {
       CRM_Report_Utils_Report::export2csv($this, $rows);
-    }
-    elseif ($this->_outputMode == 'excel2007') {
-      CRM_CiviExportExcel_Utils_Report::export2excel2007($this, $rows);
     }
     elseif ($this->_outputMode == 'group') {
       $group = $this->_params['groups'];
@@ -5939,7 +5928,7 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
     if ($this->groupConcatTested && (!empty($this->_groupByArray) || $this->isForceGroupBy)) {
       if ((empty($field['statistics']) || in_array('GROUP_CONCAT', $field['statistics']))) {
         $label = CRM_Utils_Array::value('title', $field);
-        $alias = "{$tableName}_{$fieldName}";
+        $alias = $field['tplField'] ?? "{$tableName}_{$fieldName}";
         $this->_columnHeaders["{$tableName}_{$fieldName}"]['title'] = $label;
         $this->_selectAliases[] = $alias;
         if (empty($this->_groupByArray[$tableName . '_' . $fieldName])) {

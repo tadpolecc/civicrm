@@ -301,7 +301,13 @@ class CRM_Contribute_Form_Task_Invoice extends CRM_Contribute_Form_Task {
       $invoiceDate = date("F j, Y");
       $dueDate = date('F j, Y', strtotime($contributionReceiveDate . "+" . $prefixValue['due_date'] . "" . $prefixValue['due_date_period']));
 
-      $lineItem = CRM_Price_BAO_LineItem::getLineItemsByContributionID($contribID);
+      if ($input['component'] == 'contribute') {
+        $lineItem = CRM_Price_BAO_LineItem::getLineItemsByContributionID($contribID);
+      }
+      else {
+        $eid = $contribution->_relatedObjects['participant']->id;
+        $lineItem = CRM_Price_BAO_LineItem::getLineItems($eid, 'participant', NULL, TRUE, FALSE, TRUE);
+      }
 
       $resultPayments = civicrm_api3('Payment', 'get', [
         'sequential' => 1,
