@@ -155,9 +155,6 @@ class CRM_Report_Form extends CRM_Core_Form {
    */
   protected $_groupFilter = FALSE;
 
-  // [ML] Required for civiexportexcel
-  public $supportsExportExcel = TRUE;
-
   /**
    * Has the report been optimised for group filtering.
    *
@@ -2132,12 +2129,30 @@ class CRM_Report_Form extends CRM_Core_Form {
    * @return string
    */
   public function whereSubtypeClause($field, $value, $op) {
+    // Get the correct SQL operator.
+    switch ($op) {
+      case 'notin':
+        $op = 'nhas';
+        $clauseSeparator = 'AND';
+        break;
+
+      case 'in':
+        $op = 'has';
+        $clauseSeparator = 'OR';
+        break;
+    }
+    $sqlOp = $this->getSQLOperator($op);
     $clause = '( ';
     $subtypeFilters = count($value);
-    for ($i = 0; $i < $subtypeFilters; $i++) {
-      $clause .= "{$field['dbAlias']} LIKE '%$value[$i]%'";
-      if ($i !== ($subtypeFilters - 1)) {
-        $clause .= " OR ";
+    if ($sqlOp == 'IS NULL' || $sqlOp == 'IS NOT NULL') {
+      $clause .= "{$field['dbAlias']} $sqlOp";
+    }
+    else {
+      for ($i = 0; $i < $subtypeFilters; $i++) {
+        $clause .= "{$field['dbAlias']} $sqlOp '%$value[$i]%'";
+        if ($i !== ($subtypeFilters - 1)) {
+          $clause .= " $clauseSeparator ";
+        }
       }
     }
     $clause .= ' )';
@@ -2827,11 +2842,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
       $this->_absoluteUrl = TRUE;
       $this->addPaging = FALSE;
     }
-    elseif ($this->_outputMode == 'excel2007') {
-      $printOnly = TRUE;
-      $this->_absoluteUrl = TRUE;
-      $this->addPaging = FALSE;
-    }
     elseif ($this->_outputMode == 'group') {
       $this->assign('outputMode', 'group');
     }
@@ -3483,9 +3493,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
     }
     elseif ($this->_outputMode == 'csv') {
       CRM_Report_Utils_Report::export2csv($this, $rows);
-    }
-    elseif ($this->_outputMode == 'excel2007') {
-      CRM_CiviExportExcel_Utils_Report::export2excel2007($this, $rows);
     }
     elseif ($this->_outputMode == 'group') {
       $group = $this->_params['groups'];
