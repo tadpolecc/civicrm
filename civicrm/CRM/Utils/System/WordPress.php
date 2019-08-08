@@ -270,11 +270,7 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
       // pre-existing logic
       if (isset($path)) {
         $queryParts[] = 'page=CiviCRM';
-        // Encode all but the *path* placeholder
-        if ($path !== '*path*') {
-          $path = rawurlencode($path);
-        }
-        $queryParts[] = "q={$path}";
+        $queryParts[] = 'q=' . rawurlencode($path);
       }
       if ($wpPageParam) {
         $queryParts[] = $wpPageParam;
@@ -831,13 +827,11 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     $contactCreated = 0;
     $contactMatching = 0;
 
-    // previously used $wpdb - which means WordPress *must* be bootstrapped
-    $wpUsers = get_users(array(
-      'blog_id' => get_current_blog_id(),
-      'number' => -1,
-    ));
+    global $wpdb;
+    $wpUserIds = $wpdb->get_col("SELECT $wpdb->users.ID FROM $wpdb->users");
 
-    foreach ($wpUsers as $wpUserData) {
+    foreach ($wpUserIds as $wpUserId) {
+      $wpUserData = get_userdata($wpUserId);
       $contactCount++;
       if ($match = CRM_Core_BAO_UFMatch::synchronizeUFMatch($wpUserData,
         $wpUserData->$id,

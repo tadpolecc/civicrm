@@ -594,6 +594,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
    * @throws \CiviCRM_API3_Exception
    */
   public function buildQuickForm() {
+
     $participantStatuses = CRM_Event_PseudoConstant::participantStatus();
     $partiallyPaidStatusId = array_search('Partially paid', $participantStatuses);
     $this->assign('partiallyPaidStatusId', $partiallyPaidStatusId);

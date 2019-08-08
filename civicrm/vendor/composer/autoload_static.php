@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit74c53cd33f5acb326b2e2d0c9fd7a2cc
+class ComposerStaticInitd5a4836e150dcf81a7364359449f0717
 {
     public static $files = array (
         '320cde22f66dd4f5d3fd621d3e88b98f' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
@@ -14,6 +14,7 @@ class ComposerStaticInit74c53cd33f5acb326b2e2d0c9fd7a2cc
         'c964ee0ededf28c96ebd9db5099ef910' => __DIR__ . '/..' . '/guzzlehttp/promises/src/functions_include.php',
         '5636a0a89fc28f9cfa8624493b142015' => __DIR__ . '/..' . '/civicrm/civicrm-setup/civicrm-setup-autoload.php',
         '37a3dc5111fe8f707ab4c132ef1dbc62' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+        '9e4824c5afbdc1482b6025ce3d4dfde8' => __DIR__ . '/..' . '/league/csv/src/functions_include.php',
         'def43f6c87e4f8dfd0c9e1b1bab14fe8' => __DIR__ . '/..' . '/symfony/polyfill-iconv/bootstrap.php',
     );
 
@@ -53,6 +54,10 @@ class ComposerStaticInit74c53cd33f5acb326b2e2d0c9fd7a2cc
             'MimeType\\' => 9,
             'MJS\\TopSort\\Tests\\' => 18,
             'MJS\\TopSort\\' => 12,
+        ),
+        'L' => 
+        array (
+            'League\\Csv\\' => 11,
         ),
         'G' => 
         array (
@@ -160,6 +165,10 @@ class ComposerStaticInit74c53cd33f5acb326b2e2d0c9fd7a2cc
         'MJS\\TopSort\\' => 
         array (
             0 => __DIR__ . '/..' . '/marcj/topsort/src',
+        ),
+        'League\\Csv\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/league/csv/src',
         ),
         'GuzzleHttp\\Psr7\\' => 
         array (
@@ -447,11 +456,11 @@ class ComposerStaticInit74c53cd33f5acb326b2e2d0c9fd7a2cc
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit74c53cd33f5acb326b2e2d0c9fd7a2cc::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit74c53cd33f5acb326b2e2d0c9fd7a2cc::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInit74c53cd33f5acb326b2e2d0c9fd7a2cc::$prefixesPsr0;
-            $loader->fallbackDirsPsr0 = ComposerStaticInit74c53cd33f5acb326b2e2d0c9fd7a2cc::$fallbackDirsPsr0;
-            $loader->classMap = ComposerStaticInit74c53cd33f5acb326b2e2d0c9fd7a2cc::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitd5a4836e150dcf81a7364359449f0717::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitd5a4836e150dcf81a7364359449f0717::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInitd5a4836e150dcf81a7364359449f0717::$prefixesPsr0;
+            $loader->fallbackDirsPsr0 = ComposerStaticInitd5a4836e150dcf81a7364359449f0717::$fallbackDirsPsr0;
+            $loader->classMap = ComposerStaticInitd5a4836e150dcf81a7364359449f0717::$classMap;
 
         }, null, ClassLoader::class);
     }

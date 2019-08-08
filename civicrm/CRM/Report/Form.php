@@ -155,9 +155,6 @@ class CRM_Report_Form extends CRM_Core_Form {
    */
   protected $_groupFilter = FALSE;
 
-  // [ML] Required for civiexportexcel
-  public $supportsExportExcel = TRUE;
-
   /**
    * Has the report been optimised for group filtering.
    *
@@ -2845,11 +2842,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
       $this->_absoluteUrl = TRUE;
       $this->addPaging = FALSE;
     }
-    elseif ($this->_outputMode == 'excel2007') {
-      $printOnly = TRUE;
-      $this->_absoluteUrl = TRUE;
-      $this->addPaging = FALSE;
-    }
     elseif ($this->_outputMode == 'group') {
       $this->assign('outputMode', 'group');
     }
@@ -3501,9 +3493,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
     }
     elseif ($this->_outputMode == 'csv') {
       CRM_Report_Utils_Report::export2csv($this, $rows);
-    }
-    elseif ($this->_outputMode == 'excel2007') {
-      CRM_CiviExportExcel_Utils_Report::export2excel2007($this, $rows);
     }
     elseif ($this->_outputMode == 'group') {
       $group = $this->_params['groups'];
@@ -4329,7 +4318,8 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
         }
         if (array_key_exists('filters', $table)) {
           foreach ($table['filters'] as $filterName => $filter) {
-            if (!empty($this->_params["{$filterName}_value"])
+            if ((isset($this->_params["{$filterName}_value"])
+                && !CRM_Utils_System::isNull($this->_params["{$filterName}_value"]))
               || !empty($this->_params["{$filterName}_relative"])
               || CRM_Utils_Array::value("{$filterName}_op", $this->_params) ==
               'nll'
