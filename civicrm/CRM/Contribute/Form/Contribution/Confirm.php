@@ -117,7 +117,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
         $pledgeParams['frequency_day'] = 1;
       }
       $pledgeParams['create_date'] = $pledgeParams['start_date'] = $pledgeParams['scheduled_date'] = date("Ymd");
-      if (CRM_Utils_Array::value('start_date', $params)) {
+      if (!empty($params['start_date'])) {
         $pledgeParams['frequency_day'] = intval(date("d", strtotime(CRM_Utils_Array::value('start_date', $params))));
         $pledgeParams['start_date'] = $pledgeParams['scheduled_date'] = date('Ymd', strtotime(CRM_Utils_Array::value('start_date', $params)));
       }
@@ -1364,7 +1364,6 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     $membershipTypeIDs = (array) $membershipParams['selectMembership'];
     $membershipTypes = CRM_Member_BAO_Membership::buildMembershipTypeValues($this, $membershipTypeIDs);
     $membershipType = empty($membershipTypes) ? [] : reset($membershipTypes);
-    $isPending = $this->getIsPending();
 
     $this->assign('membership_name', CRM_Utils_Array::value('name', $membershipType));
     $this->_values['membership_name'] = CRM_Utils_Array::value('name', $membershipType);
@@ -1392,7 +1391,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
 
     $this->postProcessMembership($membershipParams, $contactID,
       $this, $premiumParams, $customFieldsFormatted, $fieldTypes, $membershipType, $membershipTypeIDs, $isPaidMembership, $this->_membershipId, $isProcessSeparateMembershipTransaction, $financialTypeID,
-      $membershipLineItems, $isPending);
+      $membershipLineItems);
 
     $this->assign('membership_assign', TRUE);
     $this->set('membershipTypeID', $membershipParams['selectMembership']);
@@ -1424,14 +1423,15 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
    * @param int $financialTypeID
    * @param array $unprocessedLineItems
    *   Line items for payment options chosen on the form.
-   * @param bool $isPending
    *
    * @throws \CRM_Core_Exception
+   * @throws \CiviCRM_API3_Exception
+   * @throws \Civi\Payment\Exception\PaymentProcessorException
    */
   protected function postProcessMembership(
     $membershipParams, $contactID, &$form, $premiumParams,
     $customFieldsFormatted = NULL, $includeFieldTypes = NULL, $membershipDetails, $membershipTypeIDs, $isPaidMembership, $membershipID,
-    $isProcessSeparateMembershipTransaction, $financialTypeID, $unprocessedLineItems, $isPending) {
+    $isProcessSeparateMembershipTransaction, $financialTypeID, $unprocessedLineItems) {
 
     $membershipContribution = NULL;
     $isTest = CRM_Utils_Array::value('is_test', $membershipParams, FALSE);
@@ -1532,13 +1532,6 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
         }
         $i++;
         $numTerms = CRM_Utils_Array::value($memType, $typesTerms, 1);
-        if (!empty($membershipContribution)) {
-          $pendingStatus = CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_Contribution', 'contribution_status_id', 'Pending');
-          $pending = ($membershipContribution->contribution_status_id == $pendingStatus) ? TRUE : FALSE;
-        }
-        else {
-          $pending = $isPending;
-        }
         $contributionRecurID = isset($form->_params['contributionRecurID']) ? $form->_params['contributionRecurID'] : NULL;
 
         $membershipSource = NULL;
@@ -1560,6 +1553,13 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
           }
         }
 
+        // @todo Move this into CRM_Member_BAO_Membership::processMembership
+        if (!empty($membershipContribution)) {
+          $pending = ($membershipContribution->contribution_status_id == array_search('Pending', CRM_Contribute_PseudoConstant::contributionStatus())) ? TRUE : FALSE;
+        }
+        else {
+          $pending = $this->getIsPending();
+        }
         list($membership, $renewalMode, $dates) = CRM_Member_BAO_Membership::processMembership(
           $contactID, $memType, $isTest,
           date('YmdHis'), CRM_Utils_Array::value('cms_contactID', $membershipParams),
@@ -1942,7 +1942,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     $form->_fields['billing_first_name'] = 1;
     $form->_fields['billing_last_name'] = 1;
     // CRM-18854 - Set form values to allow pledge to be created for api test.
-    if (CRM_Utils_Array::value('pledge_block_id', $params)) {
+    if (!empty($params['pledge_block_id'])) {
       $form->_values['pledge_id'] = CRM_Utils_Array::value('pledge_id', $params, NULL);
       $form->_values['pledge_block_id'] = $params['pledge_block_id'];
       $pledgeBlock = CRM_Pledge_BAO_PledgeBlock::getPledgeBlock($params['id']);

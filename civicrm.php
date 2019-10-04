@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.17.5
+Version: 5.18.0
 Author: CiviCRM LLC
 Author URI: https://civicrm.org/
 Plugin URI: https://wiki.civicrm.org/confluence/display/CRMDOC/Installing+CiviCRM+for+WordPress
@@ -136,17 +136,6 @@ if ( file_exists( CIVICRM_SETTINGS_PATH )  ) {
 
 // Prevent CiviCRM from rendering its own header
 define( 'CIVICRM_UF_HEAD', TRUE );
-
-/**
- * Setting this to 'true' will replace all mailing URLs calls to 'extern/url.php'
- * and 'extern/open.php' with their REST counterpart 'civicrm/v3/url' and 'civicrm/v3/open'.
- *
- * Use for test purposes, may affect mailing
- * performance, see Plugin->replace_tracking_urls() method.
- */
-if ( ! defined( 'CIVICRM_WP_REST_REPLACE_MAILING_TRACKING' ) ) {
-  define( 'CIVICRM_WP_REST_REPLACE_MAILING_TRACKING', false );
-}
 
 
 /**
@@ -527,9 +516,6 @@ class CiviCRM_For_WordPress {
     include_once CIVICRM_PLUGIN_DIR . 'includes/civicrm.basepage.php';
     $this->basepage = new CiviCRM_For_WordPress_Basepage;
 
-    // Include REST API autoloader class
-    require_once( CIVICRM_PLUGIN_DIR . 'wp-rest/Autoloader.php' );
-
   }
 
 
@@ -641,12 +627,6 @@ class CiviCRM_For_WordPress {
 
     // Register hooks for clean URLs.
     $this->register_hooks_clean_urls();
-
-    // Set up REST API.
-    CiviCRM_WP_REST\Autoloader::add_source( $source_path = trailingslashit( CIVICRM_PLUGIN_DIR . 'wp-rest' ) );
-
-    // Init REST API.
-    new CiviCRM_WP_REST\Plugin;
 
   }
 
@@ -852,12 +832,17 @@ class CiviCRM_For_WordPress {
   // CiviCRM Initialisation
   // ---------------------------------------------------------------------------
 
+  /**
+   * Check that the PHP version is supported. If not, raise a fatal error with a pointed message.
+   *
+   * One should check this before bootstrapping Civi - after we start the class-loader, the
+   * PHP-compatibility errors will become more ugly.
+   */
   protected function assertPhpSupport() {
-    // Need to check this before bootstrapping - once we start bootstrapping, the error messages will become ugly.
     if ( version_compare( PHP_VERSION, CIVICRM_WP_PHP_MINIMUM ) < 0 ) {
       echo '<p>' .
          sprintf(
-          __( 'CiviCRM requires PHP version %s or greater. You are running PHP version %s', 'civicrm' ),
+          __( 'CiviCRM requires PHP version %1$s or greater. You are running PHP version %2$s', 'civicrm' ),
           CIVICRM_WP_PHP_MINIMUM,
           PHP_VERSION
          ) .

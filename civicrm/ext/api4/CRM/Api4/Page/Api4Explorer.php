@@ -6,10 +6,14 @@ class CRM_Api4_Page_Api4Explorer extends CRM_Core_Page {
     $vars = [
       'operators' => \CRM_Core_DAO::acceptedSQLOperators(),
       'basePath' => Civi::resources()->getUrl('org.civicrm.api4'),
+      'schema' => (array) \Civi\Api4\Entity::get()->setChain(['fields' => ['$name', 'getFields']])->execute(),
+      'links' => (array) \Civi\Api4\Entity::getLinks()->execute(),
     ];
     Civi::resources()
       ->addVars('api4', $vars)
-      ->addScriptFile('org.civicrm.api4', 'js/load-bootstrap.js');
+      ->addScriptFile('org.civicrm.api4', 'js/load-bootstrap.js')
+      ->addScriptFile('civicrm', 'bower_components/google-code-prettify/bin/prettify.min.js')
+      ->addStyleFile('civicrm', 'bower_components/google-code-prettify/bin/prettify.min.css');
 
     $loader = new Civi\Angular\AngularLoader();
     $loader->setModules(['api4Explorer']);

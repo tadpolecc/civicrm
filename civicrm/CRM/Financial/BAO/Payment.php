@@ -59,12 +59,7 @@ class CRM_Financial_BAO_Payment {
 
     $isPaymentCompletesContribution = self::isPaymentCompletesContribution($params['contribution_id'], $params['total_amount']);
 
-    // For legacy reasons Pending payments are completed through completetransaction.
-    // @todo completetransaction should transition components but financial transactions
-    // should be handled through Payment.create.
-    $isSkipRecordingPaymentHereForLegacyHandlingReasons = ($contributionStatus == 'Pending' && $isPaymentCompletesContribution);
-
-    if (!$isSkipRecordingPaymentHereForLegacyHandlingReasons && $params['total_amount'] > 0) {
+    if ($params['total_amount'] > 0) {
       $balanceTrxnParams['to_financial_account_id'] = CRM_Contribute_BAO_Contribution::getToFinancialAccount($contribution, $params);
       $balanceTrxnParams['from_financial_account_id'] = CRM_Financial_BAO_FinancialAccount::getFinancialAccountForFinancialTypeByRelationship($contribution['financial_type_id'], 'Accounts Receivable Account is');
       $balanceTrxnParams['total_amount'] = $params['total_amount'];
@@ -88,7 +83,7 @@ class CRM_Financial_BAO_Payment {
       $trxn = CRM_Core_BAO_FinancialTrxn::create($balanceTrxnParams);
 
       // @todo - this is just weird & historical & inconsistent - why 2 tracks?
-      if (CRM_Utils_Array::value('line_item', $params) && !empty($trxn)) {
+      if (!empty($params['line_item']) && !empty($trxn)) {
         foreach ($params['line_item'] as $values) {
           foreach ($values as $id => $amount) {
             $p = ['id' => $id];
@@ -164,7 +159,11 @@ class CRM_Financial_BAO_Payment {
         );
       }
       else {
-        civicrm_api3('Contribution', 'completetransaction', ['id' => $contribution['id']]);
+        civicrm_api3('Contribution', 'completetransaction', [
+          'id' => $contribution['id'],
+          'is_post_payment_create' => TRUE,
+          'is_email_receipt' => $params['is_send_contribution_notification'],
+        ]);
         // Get the trxn
         $trxnId = CRM_Core_BAO_FinancialTrxn::getFinancialTrxnId($contribution['id'], 'DESC');
         $ftParams = ['id' => $trxnId['financialTrxnId']];
@@ -362,8 +361,6 @@ class CRM_Financial_BAO_Payment {
    * @param $updateStatus
    *   - deprecate this param
    *
-   * @todo  - make this protected once recordAdditionalPayment no longer calls it.
-   *
    * @return CRM_Financial_DAO_FinancialTrxn
    */
   protected static function recordRefundPayment($contributionId, $trxnData, $updateStatus) {
@@ -387,31 +384,6 @@ class CRM_Financial_BAO_Payment {
     // are coded below i.e. just updating financial_item status to 'Paid'
     if ($updateStatus) {
       CRM_Core_DAO::setFieldValue('CRM_Contribute_BAO_Contribution', $contributionId, 'contribution_status_id', $completedStatusId);
-    }
-    // add financial item entry
-    $lineItems = CRM_Price_BAO_LineItem::getLineItemsByContributionID($contributionDAO->id);
-    if (!empty($lineItems)) {
-      foreach ($lineItems as $lineItemId => $lineItemValue) {
-        // don't record financial item for cancelled line-item
-        if ($lineItemValue['qty'] == 0) {
-          continue;
-        }
-        $paid = $financialTrxn->total_amount;
-        if (!empty(floatval($contributionDAO->total_amount))) {
-          $paid = $lineItemValue['line_total'] * ($financialTrxn->total_amount / $contributionDAO->total_amount);
-        }
-        $addFinancialEntry = [
-          'transaction_date' => $financialTrxn->trxn_date,
-          'contact_id' => $contributionDAO->contact_id,
-          'amount' => round($paid, 2),
-          'currency' => $contributionDAO->currency,
-          'status_id' => $paidStatus,
-          'entity_id' => $lineItemId,
-          'entity_table' => 'civicrm_line_item',
-        ];
-        $trxnIds = ['id' => $financialTrxn->id];
-        CRM_Financial_BAO_FinancialItem::create($addFinancialEntry, NULL, $trxnIds);
-      }
     }
     return $financialTrxn;
   }
