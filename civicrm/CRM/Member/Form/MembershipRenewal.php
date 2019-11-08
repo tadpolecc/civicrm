@@ -576,7 +576,7 @@ class CRM_Member_Form_MembershipRenewal extends CRM_Member_Form {
 
     //if contribution status is pending then set pay later
     $this->_params['is_pay_later'] = FALSE;
-    if ($this->_params['contribution_status_id'] == array_search('Pending', CRM_Contribute_PseudoConstant::contributionStatus())) {
+    if ($this->_params['contribution_status_id'] == array_search('Pending', CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'label'))) {
       $this->_params['is_pay_later'] = 1;
     }
 

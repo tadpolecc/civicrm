@@ -2608,7 +2608,8 @@ CREATE TABLE `civicrm_status_pref` (
      `hush_until` date   DEFAULT NULL COMMENT 'expires ignore_severity.  NULL never hushes.',
      `ignore_severity` int unsigned   DEFAULT 1 COMMENT 'Hush messages up to and including this severity.',
      `prefs` varchar(255)    COMMENT 'These settings are per-check, and can\'t be compared across checks.',
-     `check_info` varchar(255)    COMMENT 'These values are per-check, and can\'t be compared across checks.' 
+     `check_info` varchar(255)    COMMENT 'These values are per-check, and can\'t be compared across checks.',
+     `is_active` tinyint   DEFAULT 1 COMMENT 'Is this status check active?' 
 ,
         PRIMARY KEY (`id`)
  
@@ -4514,6 +4515,10 @@ CREATE TABLE `civicrm_address` (
   )
   ,     INDEX `index_city`(
         city
+  )
+  ,     INDEX `index_geo_code_1_geo_code_2`(
+        geo_code_1
+      , geo_code_2
   )
   
 ,          CONSTRAINT FK_civicrm_address_contact_id FOREIGN KEY (`contact_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE CASCADE,          CONSTRAINT FK_civicrm_address_county_id FOREIGN KEY (`county_id`) REFERENCES `civicrm_county`(`id`) ON DELETE SET NULL,          CONSTRAINT FK_civicrm_address_state_province_id FOREIGN KEY (`state_province_id`) REFERENCES `civicrm_state_province`(`id`) ON DELETE SET NULL,          CONSTRAINT FK_civicrm_address_country_id FOREIGN KEY (`country_id`) REFERENCES `civicrm_country`(`id`) ON DELETE SET NULL,          CONSTRAINT FK_civicrm_address_master_id FOREIGN KEY (`master_id`) REFERENCES `civicrm_address`(`id`) ON DELETE SET NULL  
