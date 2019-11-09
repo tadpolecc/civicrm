@@ -1163,8 +1163,8 @@ ORDER BY   civicrm_email.is_bulkmail DESC
 
     // push the tracking url on to the html email if necessary
     if ($this->open_tracking && $html) {
-      array_push($html, "\n" . '<img src="' . CRM_Utils_System::externUrl('extern/open', "q=$event_queue_id")
-        . '" width="1" height="1" alt="" border="0">'
+      array_push($html, "\n" . '<img src="' . $config->userFrameworkResourceURL .
+        "extern/open.php?q=$event_queue_id\" width='1' height='1' alt='' border='0'>"
       );
     }
 
@@ -2028,6 +2028,9 @@ ORDER BY   civicrm_email.is_bulkmail DESC
       $report['event_totals']['optout'] += $row['optout'];
 
       foreach (array_keys(CRM_Mailing_BAO_MailingJob::fields()) as $field) {
+        // Get the field name from the MailingJob fields as that will not have any prefixing.
+        // dev/mailing#56
+        $field = CRM_Mailing_BAO_MailingJob::fields()[$field]['name'];
         $row[$field] = $mailing->$field;
       }
 
