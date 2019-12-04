@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.19.4
+Version: 5.20.0
 Author: CiviCRM LLC
 Author URI: https://civicrm.org/
 Plugin URI: https://wiki.civicrm.org/confluence/display/CRMDOC/Installing+CiviCRM+for+WordPress
@@ -136,17 +136,6 @@ if ( file_exists( CIVICRM_SETTINGS_PATH )  ) {
 
 // Prevent CiviCRM from rendering its own header
 define( 'CIVICRM_UF_HEAD', TRUE );
-
-/**
- * Setting this to 'true' will replace all mailing URLs calls to 'extern/url.php'
- * and 'extern/open.php' with their REST counterpart 'civicrm/v3/url' and 'civicrm/v3/open'.
- *
- * Use for test purposes, may affect mailing
- * performance, see Plugin->replace_tracking_urls() method.
- */
-if ( ! defined( 'CIVICRM_WP_REST_REPLACE_MAILING_TRACKING' ) ) {
-  define( 'CIVICRM_WP_REST_REPLACE_MAILING_TRACKING', false );
-}
 
 
 /**
@@ -321,7 +310,10 @@ class CiviCRM_For_WordPress {
 
     // Change option so this action never fires again
     update_option( 'civicrm_activation_in_progress', 'false' );
-
+    if ( ! is_multisite() && !isset($_GET['activate-multi']) && ! CIVICRM_INSTALLED ) {
+      wp_redirect(admin_url("options-general.php?page=civicrm-install"));
+      exit;
+    }
   }
 
 
@@ -536,9 +528,6 @@ class CiviCRM_For_WordPress {
     include_once CIVICRM_PLUGIN_DIR . 'includes/civicrm.basepage.php';
     $this->basepage = new CiviCRM_For_WordPress_Basepage;
 
-    // Include REST API autoloader class
-    require_once( CIVICRM_PLUGIN_DIR . 'wp-rest/Autoloader.php' );
-
   }
 
 
@@ -582,8 +571,20 @@ class CiviCRM_For_WordPress {
    * Register hooks for the front end.
    *
    * @since 5.6
+   *
+   * @param WP_Query $query The WP_Query instance (passed by reference).
    */
-  public function register_hooks_front_end() {
+  public function register_hooks_front_end( $query ) {
+
+    // Bail if $query is not the main loop.
+    if ( ! $query->is_main_query() ) {
+      return;
+    }
+
+    // Bail if filters are suppressed on this query.
+    if ( true == $query->get( 'suppress_filters' ) ) {
+      return;
+    }
 
     // Prevent multiple calls
     static $alreadyRegistered = FALSE;
@@ -650,12 +651,6 @@ class CiviCRM_For_WordPress {
 
     // Register hooks for clean URLs.
     $this->register_hooks_clean_urls();
-
-    // Set up REST API.
-    CiviCRM_WP_REST\Autoloader::add_source( $source_path = trailingslashit( CIVICRM_PLUGIN_DIR . 'wp-rest' ) );
-
-    // Init REST API.
-    new CiviCRM_WP_REST\Plugin;
 
   }
 

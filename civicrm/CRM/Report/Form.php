@@ -155,9 +155,6 @@ class CRM_Report_Form extends CRM_Core_Form {
    */
   protected $_groupFilter = FALSE;
 
-  // [ML] Required for civiexportexcel
-  public $supportsExportExcel = TRUE;
-
   /**
    * Has the report been optimised for group filtering.
    *
@@ -2845,11 +2842,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
       $this->_absoluteUrl = TRUE;
       $this->addPaging = FALSE;
     }
-    elseif ($this->_outputMode == 'excel2007') {
-      $printOnly = TRUE;
-      $this->_absoluteUrl = TRUE;
-      $this->addPaging = FALSE;
-    }
     elseif ($this->_outputMode == 'group') {
       $this->assign('outputMode', 'group');
     }
@@ -3384,7 +3376,7 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
             if ($value && empty($field['no_display'])) {
               $statistics['filters'][] = [
                 'title' => CRM_Utils_Array::value('title', $field),
-                'value' => $value,
+                'value' => CRM_Utils_String::htmlToText($value),
               ];
             }
           }
@@ -3473,37 +3465,24 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
         echo $content;
       }
       else {
-        if ($chartType = CRM_Utils_Array::value('charts', $this->_params)) {
-          $config = CRM_Core_Config::singleton();
-          //get chart image name
-          $chartImg = $this->_chartId . '.png';
-          //get image url path
-          $uploadUrl
-            = str_replace('/persist/contribute/', '/persist/', $config->imageUploadURL) .
-            'openFlashChart/';
-          $uploadUrl .= $chartImg;
-          //get image doc path to overwrite
-          $uploadImg
-            = str_replace('/persist/contribute/', '/persist/', $config->imageUploadDir) .
-            'openFlashChart/' . $chartImg;
-          //Load the image
-          $chart = imagecreatefrompng($uploadUrl);
-          //convert it into formatted png
-          CRM_Utils_System::setHttpHeader('Content-type', 'image/png');
-          //overwrite with same image
-          imagepng($chart, $uploadImg);
-          //delete the object
-          imagedestroy($chart);
-        }
+        // Nb. Once upon a time we used a package called Open Flash Charts to
+        // draw charts, and we had a feature whereby a browser could send the
+        // server a PNG version of the chart, which could then be included in a
+        // PDF by including <img> tags in the HTML for the conversion below.
+        //
+        // This feature stopped working when browsers stopped supporting Flash,
+        // and although we have a different client-side charting library in
+        // place, we decided not to reimplement the (rather convoluted)
+        // browser-sending-rendered-chart-to-server process.
+        //
+        // If this feature is required in future we should find a better way to
+        // render charts on the server side, e.g. server-created SVG.
         CRM_Utils_PDF_Utils::html2pdf($content, "CiviReport.pdf", FALSE, ['orientation' => 'landscape']);
       }
       CRM_Utils_System::civiExit();
     }
     elseif ($this->_outputMode == 'csv') {
       CRM_Report_Utils_Report::export2csv($this, $rows);
-    }
-    elseif ($this->_outputMode == 'excel2007') {
-      CRM_CiviExportExcel_Utils_Report::export2excel2007($this, $rows);
     }
     elseif ($this->_outputMode == 'group') {
       $group = $this->_params['groups'];
@@ -5050,37 +5029,6 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
       else {
         CRM_Core_Session::setStatus(ts("The listed records(s) cannot be added to the group."));
       }
-    }
-  }
-
-  /**
-   * Show charts on print screen.
-   */
-  public static function uploadChartImage() {
-    // upload strictly for '.png' images
-    $name = trim(basename(CRM_Utils_Request::retrieve('name', 'String', CRM_Core_DAO::$_nullObject, FALSE, NULL, 'GET')));
-    if (preg_match('/\.png$/', $name)) {
-
-      // Get the RAW .png from the input.
-      $httpRawPostData = file_get_contents("php://input");
-
-      // prepare the directory
-      $config = CRM_Core_Config::singleton();
-      $defaultPath
-        = str_replace('/persist/contribute/', '/persist/', $config->imageUploadDir) .
-        '/openFlashChart/';
-      if (!file_exists($defaultPath)) {
-        mkdir($defaultPath, 0777, TRUE);
-      }
-
-      // full path to the saved image including filename
-      $destination = $defaultPath . $name;
-
-      //write and save
-      $jfh = fopen($destination, 'w') or die("can't open file");
-      fwrite($jfh, $httpRawPostData);
-      fclose($jfh);
-      CRM_Utils_System::civiExit();
     }
   }
 
