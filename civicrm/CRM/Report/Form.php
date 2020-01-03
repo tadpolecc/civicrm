@@ -1,28 +1,12 @@
 <?php
 /*
-  +--------------------------------------------------------------------+
-  | CiviCRM version 5                                                  |
-  +--------------------------------------------------------------------+
-  | Copyright CiviCRM LLC (c) 2004-2019                                |
-  +--------------------------------------------------------------------+
-  | This file is a part of CiviCRM.                                    |
-  |                                                                    |
-  | CiviCRM is free software; you can copy, modify, and distribute it  |
-  | under the terms of the GNU Affero General Public License           |
-  | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
-  |                                                                    |
-  | CiviCRM is distributed in the hope that it will be useful, but     |
-  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
-  | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.               |
-  | See the GNU Affero General Public License for more details.        |
-  |                                                                    |
-  | You should have received a copy of the GNU Affero General Public   |
-  | License and the CiviCRM Licensing Exception along                  |
-  | with this program; if not, contact CiviCRM LLC                     |
-  | at info[AT]civicrm[DOT]org. If you have questions about the        |
-  | GNU Affero General Public License or the licensing of CiviCRM,     |
-  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
-  +--------------------------------------------------------------------+
+ +--------------------------------------------------------------------+
+ | Copyright CiviCRM LLC. All rights reserved.                        |
+ |                                                                    |
+ | This work is published under the GNU AGPLv3 license with some      |
+ | permitted exceptions and without any warranty. For full license    |
+ | and copyright information, see https://civicrm.org/licensing       |
+ +--------------------------------------------------------------------+
  */
 
 /**
@@ -154,9 +138,6 @@ class CRM_Report_Form extends CRM_Core_Form {
    * @var bool
    */
   protected $_groupFilter = FALSE;
-
-  // [ML] Required for civiexportexcel
-  public $supportsExportExcel = TRUE;
 
   /**
    * Has the report been optimised for group filtering.
@@ -2133,32 +2114,34 @@ class CRM_Report_Form extends CRM_Core_Form {
    */
   public function whereSubtypeClause($field, $value, $op) {
     // Get the correct SQL operator.
+    $orNull = FALSE;
     switch ($op) {
       case 'notin':
         $op = 'nhas';
-        $clauseSeparator = 'AND';
+        $clauseSeparator = ' AND ';
+        $orNull = TRUE;
         break;
 
       case 'in':
         $op = 'has';
-        $clauseSeparator = 'OR';
+        $clauseSeparator = ' OR ';
         break;
     }
     $sqlOp = $this->getSQLOperator($op);
-    $clause = '( ';
-    $subtypeFilters = count($value);
     if ($sqlOp == 'IS NULL' || $sqlOp == 'IS NOT NULL') {
-      $clause .= "{$field['dbAlias']} $sqlOp";
+      $clause = "{$field['dbAlias']} $sqlOp";
     }
     else {
-      for ($i = 0; $i < $subtypeFilters; $i++) {
-        $clause .= "{$field['dbAlias']} $sqlOp '%$value[$i]%'";
-        if ($i !== ($subtypeFilters - 1)) {
-          $clause .= " $clauseSeparator ";
-        }
+      $subclauses = [];
+      foreach ($value as $item) {
+        $subclauses[] = "( {$field['dbAlias']} $sqlOp '%" . CRM_Core_DAO::VALUE_SEPARATOR . $item . CRM_Core_DAO::VALUE_SEPARATOR . "%' )";
       }
+      $clause = implode($clauseSeparator, $subclauses);
     }
-    $clause .= ' )';
+    $clause = "( $clause )";
+    if ($orNull) {
+      $clause = "( ( {$field['dbAlias']} IS NULL ) OR $clause )";
+    }
     return $clause;
   }
 
@@ -2444,7 +2427,7 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
       // Run the alter display functions
       foreach ($rows as $index => & $row) {
         foreach ($row as $selectedField => $value) {
-          if (array_key_exists($selectedField, $alterFunctions)) {
+          if (array_key_exists($selectedField, $alterFunctions) && isset($value)) {
             $rows[$index][$selectedField] = $this->{$alterFunctions[$selectedField]}($value, $row, $selectedField, $alterMap[$selectedField], $alterSpecs[$selectedField]);
           }
         }
@@ -2841,11 +2824,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
       $this->_absoluteUrl = TRUE;
     }
     elseif ($this->_outputMode == 'csv') {
-      $printOnly = TRUE;
-      $this->_absoluteUrl = TRUE;
-      $this->addPaging = FALSE;
-    }
-    elseif ($this->_outputMode == 'excel2007') {
       $printOnly = TRUE;
       $this->_absoluteUrl = TRUE;
       $this->addPaging = FALSE;
@@ -3491,9 +3469,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
     }
     elseif ($this->_outputMode == 'csv') {
       CRM_Report_Utils_Report::export2csv($this, $rows);
-    }
-    elseif ($this->_outputMode == 'excel2007') {
-      CRM_CiviExportExcel_Utils_Report::export2excel2007($this, $rows);
     }
     elseif ($this->_outputMode == 'group') {
       $group = $this->_params['groups'];
