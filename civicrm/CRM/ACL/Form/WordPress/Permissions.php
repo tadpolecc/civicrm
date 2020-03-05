@@ -38,7 +38,7 @@ class CRM_ACL_Form_WordPress_Permissions extends CRM_Core_Form {
     }
     foreach ($wp_roles->role_names as $role => $name) {
       // Don't show the permissions options for administrator, as they have all permissions
-      if ( is_multisite() OR $role !== 'administrator') {
+      if ($role !== 'administrator') {
         $roleObj = $wp_roles->get_role($role);
         if (!empty($roleObj->capabilities)) {
           foreach ($roleObj->capabilities as $ckey => $cname) {
@@ -194,7 +194,6 @@ class CRM_ACL_Form_WordPress_Permissions extends CRM_Core_Form {
    *   civicrm permissions
    */
   public static function getPermissionArray($descriptions = FALSE) {
-    global $civicrm_root;
 
     $permissions = CRM_Core_Permission::basicPermissions(FALSE, $descriptions);
 

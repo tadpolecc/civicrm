@@ -417,8 +417,11 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     elseif (defined('ICL_LANGUAGE_CODE')) {
       $language = ICL_LANGUAGE_CODE;
     }
-
-    // TODO: set language variable for others WordPress plugin
+    // Wordpress "standard" single language mode
+    // We still have to check if the function exists as it may not during bootstrap
+    elseif (function_exists('get_locale')) {
+      $language = get_locale();
+    }
 
     if (!empty($language)) {
       return CRM_Core_I18n_PseudoConstant::longForShort(substr($language, 0, 2));
@@ -835,13 +838,11 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     $contactCreated = 0;
     $contactMatching = 0;
 
-    // previously used $wpdb - which means WordPress *must* be bootstrapped
-    $wpUsers = get_users(array(
-      'blog_id' => get_current_blog_id(),
-      'number' => -1,
-    ));
+    global $wpdb;
+    $wpUserIds = $wpdb->get_col("SELECT $wpdb->users.ID FROM $wpdb->users");
 
-    foreach ($wpUsers as $wpUserData) {
+    foreach ($wpUserIds as $wpUserId) {
+      $wpUserData = get_userdata($wpUserId);
       $contactCount++;
       if ($match = CRM_Core_BAO_UFMatch::synchronizeUFMatch($wpUserData,
         $wpUserData->$id,
