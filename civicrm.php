@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.23.1
+Version: 5.23.2
 Author: CiviCRM LLC
 Author URI: https://civicrm.org/
 Plugin URI: https://docs.civicrm.org/sysadmin/en/latest/install/wordpress/
@@ -54,7 +54,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // Set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '5.23.1' );
+define( 'CIVICRM_PLUGIN_VERSION', '5.23.2' );
 
 // Store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
