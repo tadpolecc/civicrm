@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.23.3
+Version: 5.23.4
 Author: CiviCRM LLC
 Author URI: https://civicrm.org/
 Plugin URI: https://docs.civicrm.org/sysadmin/en/latest/install/wordpress/
@@ -54,7 +54,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // Set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '5.23.3' );
+define( 'CIVICRM_PLUGIN_VERSION', '5.23.4' );
 
 // Store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -120,17 +120,6 @@ if ( file_exists( CIVICRM_SETTINGS_PATH )  ) {
 
 // Prevent CiviCRM from rendering its own header
 define( 'CIVICRM_UF_HEAD', TRUE );
-
-/**
- * Setting this to 'true' will replace all mailing URLs calls to 'extern/url.php'
- * and 'extern/open.php' with their REST counterpart 'civicrm/v3/url' and 'civicrm/v3/open'.
- *
- * Use for test purposes, may affect mailing
- * performance, see Plugin->replace_tracking_urls() method.
- */
-if ( ! defined( 'CIVICRM_WP_REST_REPLACE_MAILING_TRACKING' ) ) {
-  define( 'CIVICRM_WP_REST_REPLACE_MAILING_TRACKING', false );
-}
 
 
 /**
@@ -523,11 +512,6 @@ class CiviCRM_For_WordPress {
     include_once CIVICRM_PLUGIN_DIR . 'includes/civicrm.basepage.php';
     $this->basepage = new CiviCRM_For_WordPress_Basepage;
 
-    if ( ! class_exists( 'CiviCRM_WP_REST\Autoloader' ) ) {
-      // Include REST API autoloader class
-      require_once( CIVICRM_PLUGIN_DIR . 'wp-rest/Autoloader.php' );
-    }
-
   }
 
 
@@ -651,16 +635,6 @@ class CiviCRM_For_WordPress {
 
     // Register hooks for clean URLs.
     $this->register_hooks_clean_urls();
-
-    if ( ! class_exists( 'CiviCRM_WP_REST\Plugin' ) ) {
-
-      // Set up REST API.
-      CiviCRM_WP_REST\Autoloader::add_source( $source_path = trailingslashit( CIVICRM_PLUGIN_DIR . 'wp-rest' ) );
-
-      // Init REST API.
-      new CiviCRM_WP_REST\Plugin;
-
-    }
 
   }
 
