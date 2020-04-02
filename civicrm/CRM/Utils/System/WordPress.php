@@ -838,7 +838,7 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     $contactCreated = 0;
     $contactMatching = 0;
 
-    // previously used $wpdb - which means WordPress *must* be bootstrapped
+    // Previously used the $wpdb global - which means WordPress *must* be bootstrapped.
     $wpUsers = get_users(array(
       'blog_id' => get_current_blog_id(),
       'number' => -1,
@@ -859,6 +859,9 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
       }
       else {
         $contactMatching++;
+      }
+      if (is_object($match)) {
+        $match->free();
       }
     }
 
