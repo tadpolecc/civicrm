@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.24.5
+Version: 5.24.6
 Author: CiviCRM LLC
 Author URI: https://civicrm.org/
 Plugin URI: https://docs.civicrm.org/sysadmin/en/latest/install/wordpress/
@@ -54,7 +54,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // Set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '5.24.5' );
+define( 'CIVICRM_PLUGIN_VERSION', '5.24.6' );
 
 // Store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -120,17 +120,6 @@ if ( file_exists( CIVICRM_SETTINGS_PATH )  ) {
 
 // Prevent CiviCRM from rendering its own header
 define( 'CIVICRM_UF_HEAD', TRUE );
-
-/**
- * Setting this to 'true' will replace all mailing URLs calls to 'extern/url.php'
- * and 'extern/open.php' with their REST counterpart 'civicrm/v3/url' and 'civicrm/v3/open'.
- *
- * Use for test purposes, may affect mailing
- * performance, see Plugin->replace_tracking_urls() method.
- */
-if ( ! defined( 'CIVICRM_WP_REST_REPLACE_MAILING_TRACKING' ) ) {
-  define( 'CIVICRM_WP_REST_REPLACE_MAILING_TRACKING', false );
-}
 
 
 /**
@@ -202,15 +191,6 @@ class CiviCRM_For_WordPress {
    * @var object CiviCRM_For_WordPress_Users The user management object.
    */
   public $users;
-
-  /**
-   * Compatibility object.
-   *
-   * @since 5.24
-   * @access public
-   * @var object CiviCRM_For_WordPress_Compat The plugin compatibility object.
-   */
-  public $compat;
 
 
   // ---------------------------------------------------------------------------
@@ -532,15 +512,6 @@ class CiviCRM_For_WordPress {
     include_once CIVICRM_PLUGIN_DIR . 'includes/civicrm.basepage.php';
     $this->basepage = new CiviCRM_For_WordPress_Basepage;
 
-    // Include compatibility class
-    include_once CIVICRM_PLUGIN_DIR . 'includes/civicrm.compat.php';
-    $this->compat = new CiviCRM_For_WordPress_Compat;
-
-    if ( ! class_exists( 'CiviCRM_WP_REST\Autoloader' ) ) {
-      // Include REST API autoloader class
-      require_once( CIVICRM_PLUGIN_DIR . 'wp-rest/Autoloader.php' );
-    }
-
   }
 
 
@@ -664,16 +635,6 @@ class CiviCRM_For_WordPress {
 
     // Register hooks for clean URLs.
     $this->register_hooks_clean_urls();
-
-    if ( ! class_exists( 'CiviCRM_WP_REST\Plugin' ) ) {
-
-      // Set up REST API.
-      CiviCRM_WP_REST\Autoloader::add_source( $source_path = trailingslashit( CIVICRM_PLUGIN_DIR . 'wp-rest' ) );
-
-      // Init REST API.
-      new CiviCRM_WP_REST\Plugin;
-
-    }
 
   }
 
@@ -822,12 +783,10 @@ class CiviCRM_For_WordPress {
      * Broadcast the rewrite rules event.
      *
      * @since 5.7
-     * @since 5.24 Added $basepage parameter.
      *
      * @param bool $flush_rewrite_rules True if rules flushed, false otherwise.
-     * @param WP_Post $basepage The Basepage post object.
      */
-    do_action( 'civicrm_after_rewrite_rules', $flush_rewrite_rules, $basepage );
+    do_action( 'civicrm_after_rewrite_rules', $flush_rewrite_rules );
 
   }
 
