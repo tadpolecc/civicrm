@@ -202,8 +202,8 @@ class CRM_Core_DAO extends DB_DataObject {
    * @param array $params
    */
   protected function assignTestFK($fieldName, $fieldDef, $params) {
-    $required = CRM_Utils_Array::value('required', $fieldDef);
-    $FKClassName = CRM_Utils_Array::value('FKClassName', $fieldDef);
+    $required = $fieldDef['required'] ?? NULL;
+    $FKClassName = $fieldDef['FKClassName'] ?? NULL;
     $dbName = $fieldDef['name'];
     $daoName = str_replace('_BAO_', '_DAO_', get_class($this));
 
@@ -343,7 +343,7 @@ class CRM_Core_DAO extends DB_DataObject {
           }
           else {
             $this->$dbName = $dbName . '_' . $counter;
-            $maxlength = CRM_Utils_Array::value('maxlength', $fieldDef);
+            $maxlength = $fieldDef['maxlength'] ?? NULL;
             if ($maxlength > 0 && strlen($this->$dbName) > $maxlength) {
               $this->$dbName = substr($this->$dbName, 0, $fieldDef['maxlength']);
             }
@@ -672,7 +672,7 @@ class CRM_Core_DAO extends DB_DataObject {
           $allNull = FALSE;
         }
         else {
-          $maxLength = CRM_Utils_Array::value('maxlength', $field);
+          $maxLength = $field['maxlength'] ?? NULL;
           if (!is_array($value) && $maxLength && mb_strlen($value) > $maxLength && empty($field['pseudoconstant'])) {
             Civi::log()->warning(ts('A string for field $dbName has been truncated. The original string was %1', [CRM_Utils_Type::escape($value, 'String')]));
             // The string is too long - what to do what to do? Well losing data is generally bad so lets' truncate
@@ -721,8 +721,8 @@ class CRM_Core_DAO extends DB_DataObject {
   public static function makeAttribute($field) {
     if ($field) {
       if (CRM_Utils_Array::value('type', $field) == CRM_Utils_Type::T_STRING) {
-        $maxLength = CRM_Utils_Array::value('maxlength', $field);
-        $size = CRM_Utils_Array::value('size', $field);
+        $maxLength = $field['maxlength'] ?? NULL;
+        $size = $field['size'] ?? NULL;
         if ($maxLength || $size) {
           $attributes = [];
           if ($maxLength) {
@@ -735,11 +735,11 @@ class CRM_Core_DAO extends DB_DataObject {
         }
       }
       elseif (CRM_Utils_Array::value('type', $field) == CRM_Utils_Type::T_TEXT) {
-        $rows = CRM_Utils_Array::value('rows', $field);
+        $rows = $field['rows'] ?? NULL;
         if (!isset($rows)) {
           $rows = 2;
         }
-        $cols = CRM_Utils_Array::value('cols', $field);
+        $cols = $field['cols'] ?? NULL;
         if (!isset($cols)) {
           $cols = 80;
         }
@@ -775,7 +775,7 @@ class CRM_Core_DAO extends DB_DataObject {
     $object = new $class();
     $fields = $object->fields();
     if ($fieldName != NULL) {
-      $field = CRM_Utils_Array::value($fieldName, $fields);
+      $field = $fields[$fieldName] ?? NULL;
       return self::makeAttribute($field);
     }
     else {
@@ -792,6 +792,62 @@ class CRM_Core_DAO extends DB_DataObject {
       }
     }
     return NULL;
+  }
+
+  /**
+   * Create or update a record from supplied params.
+   *
+   * If 'id' is supplied, an existing record will be updated
+   * Otherwise a new record will be created.
+   *
+   * @param array $record
+   * @return CRM_Core_DAO
+   * @throws CRM_Core_Exception
+   */
+  public static function writeRecord(array $record) {
+    $hook = empty($record['id']) ? 'create' : 'edit';
+    $className = CRM_Core_DAO_AllCoreTables::getCanonicalClassName(static::class);
+    if ($className === 'CRM_Core_DAO') {
+      throw new CRM_Core_Exception('Function writeRecord must be called on a subclass of CRM_Core_DAO');
+    }
+    $entityName = CRM_Core_DAO_AllCoreTables::getBriefName($className);
+
+    \CRM_Utils_Hook::pre($hook, $entityName, $record['id'] ?? NULL, $record);
+    $instance = new $className();
+    $instance->copyValues($record);
+    $instance->save();
+    \CRM_Utils_Hook::post($hook, $entityName, $instance->id, $instance);
+
+    return $instance;
+  }
+
+  /**
+   * Delete a record from supplied params.
+   *
+   * @param array $record
+   *   'id' is required.
+   * @return CRM_Core_DAO
+   * @throws CRM_Core_Exception
+   */
+  public static function deleteRecord(array $record) {
+    $className = CRM_Core_DAO_AllCoreTables::getCanonicalClassName(static::class);
+    if ($className === 'CRM_Core_DAO') {
+      throw new CRM_Core_Exception('Function deleteRecord must be called on a subclass of CRM_Core_DAO');
+    }
+    $entityName = CRM_Core_DAO_AllCoreTables::getBriefName($className);
+    if (empty($record['id'])) {
+      throw new CRM_Core_Exception("Cannot delete {$entityName} with no id.");
+    }
+
+    CRM_Utils_Hook::pre('delete', $entityName, $record['id'], $record);
+    $instance = new $className();
+    $instance->id = $record['id'];
+    if (!$instance->delete()) {
+      throw new CRM_Core_Exception("Could not delete {$entityName} id {$record['id']}");
+    }
+    CRM_Utils_Hook::post('delete', $entityName, $record['id'], $instance);
+
+    return $instance;
   }
 
   /**
@@ -821,7 +877,7 @@ class CRM_Core_DAO extends DB_DataObject {
     }
 
     if ($object->find(TRUE)) {
-      return ($daoID && $object->id == $daoID) ? TRUE : FALSE;
+      return $daoID && $object->id == $daoID;
     }
     else {
       return TRUE;
@@ -920,7 +976,7 @@ class CRM_Core_DAO extends DB_DataObject {
       $show[$tableName] = $dao->Create_Table;
     }
 
-    return preg_match("/\b$constraint\b/i", $show[$tableName]) ? TRUE : FALSE;
+    return (bool) preg_match("/\b$constraint\b/i", $show[$tableName]);
   }
 
   /**
@@ -947,7 +1003,7 @@ class CRM_Core_DAO extends DB_DataObject {
         $show[$tableName] = $dao->Create_Table;
       }
 
-      $result = preg_match("/\bCONSTRAINT\b\s/i", $show[$tableName]) ? TRUE : FALSE;
+      $result = (bool) preg_match("/\bCONSTRAINT\b\s/i", $show[$tableName]);
       if ($result == TRUE) {
         continue;
       }
@@ -985,7 +1041,7 @@ class CRM_Core_DAO extends DB_DataObject {
     }
     $constraint = "`FK_{$tableName}_{$columnName}`";
     $pattern = "/\bCONSTRAINT\b\s+%s\s+\bFOREIGN\s+KEY\b\s/i";
-    return preg_match(sprintf($pattern, $constraint), $show[$tableName]) ? TRUE : FALSE;
+    return (bool) preg_match(sprintf($pattern, $constraint), $show[$tableName]);
   }
 
   /**
@@ -1037,8 +1093,7 @@ LIKE %1
     $params = [1 => [$tableName, 'String']];
 
     $dao = CRM_Core_DAO::executeQuery($query, $params);
-    $result = $dao->fetch() ? TRUE : FALSE;
-    return $result;
+    return (bool) $dao->fetch();
   }
 
   /**
@@ -1064,7 +1119,7 @@ SELECT version
 FROM   civicrm_domain
 ";
     $dbVersion = CRM_Core_DAO::singleValueQuery($query);
-    return trim($version) == trim($dbVersion) ? TRUE : FALSE;
+    return trim($version) == trim($dbVersion);
   }
 
   /**
@@ -1171,7 +1226,7 @@ FROM   civicrm_domain
    * @param bool $force
    *   Skip use of the cache.
    *
-   * @return string|null
+   * @return string|int|null
    *   Value of $returnColumn in the retrieved record
    *
    * @throws \CRM_Core_Exception
@@ -1993,8 +2048,8 @@ SELECT contact_id
       $fields = $object->fields();
       foreach ($fields as $fieldName => $fieldDef) {
         $dbName = $fieldDef['name'];
-        $FKClassName = CRM_Utils_Array::value('FKClassName', $fieldDef);
-        $required = CRM_Utils_Array::value('required', $fieldDef);
+        $FKClassName = $fieldDef['FKClassName'] ?? NULL;
+        $required = $fieldDef['required'] ?? NULL;
 
         if (CRM_Utils_Array::value($dbName, $params) !== NULL && !is_array($params[$dbName])) {
           $object->$dbName = $params[$dbName];
@@ -2046,7 +2101,7 @@ SELECT contact_id
     $config->backtrace = TRUE;
 
     $object = new $daoName();
-    $object->id = CRM_Utils_Array::value('id', $params);
+    $object->id = $params['id'] ?? NULL;
 
     // array(array(0 => $daoName, 1 => $daoParams))
     $deletions = [];
@@ -2057,8 +2112,8 @@ SELECT contact_id
 
         $dbName = $value['name'];
 
-        $FKClassName = CRM_Utils_Array::value('FKClassName', $value);
-        $required = CRM_Utils_Array::value('required', $value);
+        $FKClassName = $value['FKClassName'] ?? NULL;
+        $required = $value['required'] ?? NULL;
         if ($FKClassName != NULL
           && $object->$dbName
           && !in_array($FKClassName, CRM_Core_DAO::$_testEntitiesToSkip)
@@ -2526,7 +2581,7 @@ SELECT contact_id
       throw new Exception('Cannot call getOptionLabels on CRM_Core_DAO');
     }
     foreach ($fields as $field) {
-      $name = CRM_Utils_Array::value('name', $field);
+      $name = $field['name'] ?? NULL;
       if ($name && isset($this->$name)) {
         $label = CRM_Core_PseudoConstant::getLabel(get_class($this), $name, $this->$name);
         if ($label !== FALSE) {
@@ -2573,7 +2628,7 @@ SELECT contact_id
     // Support "unique names" as well as sql names
     $fieldKey = $fieldName;
     if (empty($fields[$fieldKey])) {
-      $fieldKey = CRM_Utils_Array::value($fieldName, $fieldKeys);
+      $fieldKey = $fieldKeys[$fieldName] ?? NULL;
     }
     // If neither worked then this field doesn't exist. Return false.
     if (empty($fields[$fieldKey])) {

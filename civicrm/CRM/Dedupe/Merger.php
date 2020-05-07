@@ -637,8 +637,8 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
       if (strpos($key, '_')) {
         continue;
       }
-      $key1 = CRM_Utils_Array::value($key, $mainEvs);
-      $key2 = CRM_Utils_Array::value($key, $otherEvs);
+      $key1 = $mainEvs[$key] ?? NULL;
+      $key2 = $otherEvs[$key] ?? NULL;
       // We wish to retain '0' as it has a different meaning than NULL on a checkbox.
       // However I can't think of a case where an empty string is more meaningful than null
       // or where it would be FALSE or something else nullish.
@@ -687,7 +687,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    * @throws \CiviCRM_API3_Exception
    */
   public static function batchMerge($rgid, $gid = NULL, $mode = 'safe', $batchLimit = 1, $isSelected = 2, $criteria = [], $checkPermissions = TRUE, $reloadCacheIfEmpty = NULL, $searchLimit = 0) {
-    $redirectForPerformance = ($batchLimit > 1) ? TRUE : FALSE;
+    $redirectForPerformance = $batchLimit > 1;
     if ($mode === 'aggressive' && $checkPermissions && !CRM_Core_Permission::check('force merge duplicate contacts')) {
       throw new CRM_Core_Exception(ts('Insufficient permissions for aggressive mode batch merge'));
     }
@@ -772,12 +772,12 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
 
     // store the updated stats
     $data = [
-      'merged' => $merged,
-      'skipped' => $skipped,
+      'merged' => (int) $merged,
+      'skipped' => (int) $skipped,
     ];
-    $data = CRM_Core_DAO::escapeString(serialize($data));
 
-    CRM_Core_BAO_PrevNextCache::setItem('civicrm_contact', 0, 0, $cacheKeyString . '_stats', $data);
+    CRM_Core_DAO::executeQuery("INSERT INTO civicrm_prevnext_cache (entity_table, entity_id1, entity_id2, cacheKey, data) VALUES
+        ('civicrm_contact', 0, 0, %1, %2)", [1 => [$cacheKeyString . '_stats', 'String'], 2 => [serialize($data), 'String']]);
   }
 
   /**
@@ -859,7 +859,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
   public static function merge($dupePairs = [], $cacheParams = [], $mode = 'safe',
                                $redirectForPerformance = FALSE, $checkPermissions = TRUE
   ) {
-    $cacheKeyString = CRM_Utils_Array::value('cache_key_string', $cacheParams);
+    $cacheKeyString = $cacheParams['cache_key_string'] ?? NULL;
     $resultStats = ['merged' => [], 'skipped' => []];
 
     // we don't want dupe caching to get reset after every-merge, and therefore set the
@@ -1716,7 +1716,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
       // @todo Tidy this up
       $operation = 0;
       if ($fieldName != 'website') {
-        $operation = CRM_Utils_Array::value('operation', $migrationInfo['location_blocks'][$fieldName][$fieldCount]);
+        $operation = $migrationInfo['location_blocks'][$fieldName][$fieldCount]['operation'] ?? NULL;
       }
       // default operation is overwrite.
       if (!$operation) {
@@ -1744,7 +1744,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
         $billingDAOId = (array_key_exists($name, $billingBlockIds)) ? array_pop($billingBlockIds[$name]) : NULL;
 
         foreach ($block as $blkCount => $values) {
-          $otherBlockId = CRM_Utils_Array::value('id', $migrationInfo['other_details']['location_blocks'][$name][$blkCount]);
+          $otherBlockId = $migrationInfo['other_details']['location_blocks'][$name][$blkCount]['id'] ?? NULL;
           $mainBlockId = CRM_Utils_Array::value('mainContactBlockId', $migrationInfo['location_blocks'][$name][$blkCount], 0);
           if (!$otherBlockId) {
             continue;
@@ -1759,18 +1759,18 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
 
           // Add/update location and type information from the form, if applicable
           if ($locationBlocks[$name]['hasLocation']) {
-            $locTypeId = CRM_Utils_Array::value('locTypeId', $migrationInfo['location_blocks'][$name][$blkCount]);
+            $locTypeId = $migrationInfo['location_blocks'][$name][$blkCount]['locTypeId'] ?? NULL;
             $otherBlockDAO->location_type_id = $locTypeId;
           }
           if ($locationBlocks[$name]['hasType']) {
-            $typeTypeId = CRM_Utils_Array::value('typeTypeId', $migrationInfo['location_blocks'][$name][$blkCount]);
+            $typeTypeId = $migrationInfo['location_blocks'][$name][$blkCount]['typeTypeId'] ?? NULL;
             $otherBlockDAO->{$locationBlocks[$name]['hasType']} = $typeTypeId;
           }
 
           // If we're deliberately setting this as primary then add the flag
           // and remove it from the current primary location (if there is one).
           // But only once for each entity.
-          $set_primary = CRM_Utils_Array::value('set_other_primary', $migrationInfo['location_blocks'][$name][$blkCount]);
+          $set_primary = $migrationInfo['location_blocks'][$name][$blkCount]['set_other_primary'] ?? NULL;
           if (!$changePrimary && $set_primary == "1") {
             $otherBlockDAO->is_primary = 1;
             if ($primaryDAOId) {
@@ -2125,7 +2125,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
 
           // Load the address we're inspecting from the 'other' contact
           $addressRecord = $migrationInfo['other_details']['location_blocks'][$fieldName][$fieldCount];
-          $addressRecordLocTypeId = CRM_Utils_Array::value('location_type_id', $addressRecord);
+          $addressRecordLocTypeId = $addressRecord['location_type_id'] ?? NULL;
 
           // If it exists on the 'main' contact already, skip it. Otherwise
           // if the location type exists already, log a conflict.
@@ -2217,7 +2217,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
           if (in_array($fieldName, self::ignoredFields())) {
             continue;
           }
-          $toRemoveValue = CRM_Utils_Array::value($fieldName, $toRemoveContactLocationBlocks[$entity][$blockIndex]);
+          $toRemoveValue = $toRemoveContactLocationBlocks[$entity][$blockIndex][$fieldName] ?? NULL;
           if ($fieldValue !== $toRemoveValue) {
             $entityConflicts[$fieldName] = [
               $toKeepID => $fieldValue,
@@ -2296,7 +2296,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    */
   private static function getFieldValueAndLabel($field, $contact): array {
     $fields = self::getMergeFieldsMetadata();
-    $value = $label = CRM_Utils_Array::value($field, $contact);
+    $value = $label = $contact[$field] ?? NULL;
     $fieldSpec = $fields[$field];
     if (!empty($fieldSpec['serialize']) && is_array($value)) {
       // In practice this only applies to preferred_communication_method as the sub types are skipped above
@@ -2475,7 +2475,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
 
         $lookupType = FALSE;
         if ($blockInfo['hasType']) {
-          $lookupType = CRM_Utils_Array::value($blockInfo['hasType'], $value);
+          $lookupType = $value[$blockInfo['hasType']] ?? NULL;
         }
 
         // Hold ID of main contact's matching block
@@ -2571,7 +2571,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
           // Load the type options for this entity
           $typeOptions = civicrm_api3($blockName, 'getoptions', ['field' => $blockInfo['hasType']]);
 
-          $thisTypeId = CRM_Utils_Array::value($blockInfo['hasType'], $value);
+          $thisTypeId = $value[$blockInfo['hasType']] ?? NULL;
 
           // Put this field's location type at the top of the list
           $tmpIdList = $typeOptions['values'];

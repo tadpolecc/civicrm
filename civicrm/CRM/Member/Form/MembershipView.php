@@ -114,7 +114,7 @@ class CRM_Member_Form_MembershipView extends CRM_Core_Form {
           'end_date' => CRM_Utils_Date::processDate($owner['end_date'], NULL, TRUE, 'Ymd'),
           'source' => ts('Manual Assignment of Related Membership'),
           'is_test' => $owner['is_test'],
-          'campaign_id' => CRM_Utils_Array::value('campaign_id', $owner),
+          'campaign_id' => $owner['campaign_id'] ?? NULL,
           'status_id' => $owner['status_id'],
           'skipStatusCal' => TRUE,
           'createActivity' => TRUE,
@@ -379,7 +379,7 @@ SELECT r.id, c.id as cid, c.display_name as name, c.job_title as comment,
 
       $isRecur = CRM_Core_DAO::getFieldValue('CRM_Member_DAO_Membership', $this->membershipID, 'contribution_recur_id');
 
-      $autoRenew = $isRecur ? TRUE : FALSE;
+      $autoRenew = (bool) $isRecur;
     }
 
     if (!empty($values['is_test'])) {

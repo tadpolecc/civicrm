@@ -29,7 +29,7 @@ class CRM_Utils_Check_Component_Env extends CRM_Utils_Check_Component {
         ts('This system uses PHP version %1 which meets or exceeds the recommendation of %2.',
           [
             1 => $phpVersion,
-            2 => CRM_Upgrade_Incremental_General::RECOMMENDED_PHP_VER,
+            2 => preg_replace(';^(\d+\.\d+(?:\.[1-9]\d*)?).*$;', '\1', CRM_Upgrade_Incremental_General::RECOMMENDED_PHP_VER),
           ]),
           ts('PHP Up-to-Date'),
           \Psr\Log\LogLevel::INFO,
@@ -56,7 +56,7 @@ class CRM_Utils_Check_Component_Env extends CRM_Utils_Check_Component {
           [
             1 => $phpVersion,
             2 => CRM_Upgrade_Incremental_General::MIN_RECOMMENDED_PHP_VER,
-            3 => CRM_Upgrade_Incremental_General::RECOMMENDED_PHP_VER,
+            3 => preg_replace(';^(\d+\.\d+(?:\.[1-9]\d*)?).*$;', '\1', CRM_Upgrade_Incremental_General::RECOMMENDED_PHP_VER),
           ]),
           ts('PHP Out-of-Date'),
           \Psr\Log\LogLevel::WARNING,
@@ -66,11 +66,11 @@ class CRM_Utils_Check_Component_Env extends CRM_Utils_Check_Component {
     else {
       $messages[] = new CRM_Utils_Check_Message(
         __FUNCTION__,
-        ts('This system uses PHP version %1. To ensure the continued operation of CiviCRM, upgrade your server now. At least PHP version %2 is recommended; the preferrred version is %3.',
+        ts('This system uses PHP version %1. To ensure the continued operation of CiviCRM, upgrade your server now. At least PHP version %2 is recommended; the preferred version is %3.',
           [
             1 => $phpVersion,
             2 => CRM_Upgrade_Incremental_General::MIN_RECOMMENDED_PHP_VER,
-            3 => CRM_Upgrade_Incremental_General::RECOMMENDED_PHP_VER,
+            3 => preg_replace(';^(\d+\.\d+(?:\.[1-9]\d*)?).*$;', '\1', CRM_Upgrade_Incremental_General::RECOMMENDED_PHP_VER),
           ]),
           ts('PHP Out-of-Date'),
           \Psr\Log\LogLevel::ERROR,
@@ -595,13 +595,13 @@ class CRM_Utils_Check_Component_Env extends CRM_Utils_Check_Component {
       $row = CRM_Admin_Page_Extensions::createExtendedInfo($obj);
       switch ($row['status']) {
         case CRM_Extension_Manager::STATUS_INSTALLED_MISSING:
-          $errors[] = ts('%1 extension (%2) is installed but missing files.', [1 => CRM_Utils_Array::value('label', $row), 2 => $key]);
+          $errors[] = ts('%1 extension (%2) is installed but missing files.', [1 => $row['label'] ?? NULL, 2 => $key]);
           break;
 
         case CRM_Extension_Manager::STATUS_INSTALLED:
           if (!empty($remotes[$key]) && version_compare($row['version'], $remotes[$key]->version, '<')) {
             $updates[] = ts('%1 (%2) version %3 is installed. <a %4>Upgrade to version %5</a>.', [
-              1 => CRM_Utils_Array::value('label', $row),
+              1 => $row['label'] ?? NULL,
               2 => $key,
               3 => $row['version'],
               4 => 'href="' . CRM_Utils_System::url('civicrm/admin/extensions', "action=update&id=$key&key=$key") . '"',

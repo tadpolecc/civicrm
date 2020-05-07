@@ -69,7 +69,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
         $cType = $type;
       }
       elseif (array_key_exists($type, $validSubTypes)) {
-        $cType = CRM_Utils_Array::value('parent', $validSubTypes[$type]);
+        $cType = $validSubTypes[$type]['parent'] ?? NULL;
       }
       if ($cType) {
         break;
@@ -464,7 +464,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
     if (isset($field->phone_type_id)) {
       $name .= "-{$field->phone_type_id}";
     }
-    $fieldMetaData = CRM_Utils_Array::value($name, $importableFields, (isset($importableFields[$field->field_name]) ? $importableFields[$field->field_name] : []));
+    $fieldMetaData = CRM_Utils_Array::value($name, $importableFields, ($importableFields[$field->field_name] ?? []));
 
     // No lie: this is bizarre; why do we need to mix so many UFGroup properties into UFFields?
     // I guess to make field self sufficient with all the required data and avoid additional calls
@@ -485,12 +485,12 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
       'visibility' => $field->visibility,
       'in_selector' => $field->in_selector,
       'rule' => CRM_Utils_Array::value('rule', CRM_Utils_Array::value($field->field_name, $importableFields)),
-      'location_type_id' => isset($field->location_type_id) ? $field->location_type_id : NULL,
-      'website_type_id' => isset($field->website_type_id) ? $field->website_type_id : NULL,
-      'phone_type_id' => isset($field->phone_type_id) ? $field->phone_type_id : NULL,
+      'location_type_id' => $field->location_type_id ?? NULL,
+      'website_type_id' => $field->website_type_id ?? NULL,
+      'phone_type_id' => $field->phone_type_id ?? NULL,
       'group_id' => $group->id,
-      'add_to_group_id' => isset($group->add_to_group_id) ? $group->add_to_group_id : NULL,
-      'add_captcha' => isset($group->add_captcha) ? $group->add_captcha : NULL,
+      'add_to_group_id' => $group->add_to_group_id ?? NULL,
+      'add_captcha' => $group->add_captcha ?? NULL,
       'field_type' => $field->field_type,
       'field_id' => $field->id,
       'pseudoconstant' => CRM_Utils_Array::value(
@@ -504,7 +504,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
       ),
       'skipDisplay' => 0,
       'data_type' => CRM_Utils_Type::getDataTypeFromFieldMetadata($fieldMetaData),
-      'bao' => CRM_Utils_Array::value('bao', $fieldMetaData),
+      'bao' => $fieldMetaData['bao'] ?? NULL,
     ];
 
     $formattedField = CRM_Utils_Date::addDateMetadataToField($fieldMetaData, $formattedField);
@@ -846,7 +846,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
       $controller->setEmbedded(TRUE);
 
       //CRM-5839 - though we want to process form, get the control back.
-      $controller->setSkipRedirection(($doNotProcess) ? FALSE : TRUE);
+      $controller->setSkipRedirection(!$doNotProcess);
 
       $controller->run();
 
@@ -907,7 +907,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
         $controller->setEmbedded(TRUE);
 
         //CRM-5846 - give the control back to drupal.
-        $controller->setSkipRedirection(($doNotProcess) ? FALSE : TRUE);
+        $controller->setSkipRedirection(!$doNotProcess);
         $controller->run();
 
         $template = CRM_Core_Smarty::singleton();
@@ -932,7 +932,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
         if (!empty($_POST)) {
           // get the new email
           $config = CRM_Core_Config::singleton();
-          $email = CRM_Utils_Array::value('mail', $_POST);
+          $email = $_POST['mail'] ?? NULL;
 
           if (CRM_Utils_Rule::email($email) && ($email != $userEmail[1])) {
             CRM_Core_BAO_UFMatch::updateContactEmail($userID, $email);
@@ -1115,7 +1115,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
               // field_type is only set when we are retrieving profile values
               // when sending email, we call the same function to get custom field
               // values etc, i.e. emulating a profile
-              $fieldType = CRM_Utils_Array::value('field_type', $field);
+              $fieldType = $field['field_type'] ?? NULL;
 
               if ($htmlType == 'File') {
                 $entityId = $cid;
@@ -1218,7 +1218,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
             $locationTypeName = 1;
           }
           else {
-            $locationTypeName = CRM_Utils_Array::value($id, $locationTypes);
+            $locationTypeName = $locationTypes[$id] ?? NULL;
           }
 
           if (!$locationTypeName) {
@@ -1448,8 +1448,8 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
       $params[$field] = CRM_Utils_Array::value($field, $params, FALSE);
     }
 
-    $params['limit_listings_group_id'] = CRM_Utils_Array::value('group', $params);
-    $params['add_to_group_id'] = CRM_Utils_Array::value('add_contact_to_group', $params);
+    $params['limit_listings_group_id'] = $params['group'] ?? NULL;
+    $params['add_to_group_id'] = $params['add_contact_to_group'] ?? NULL;
 
     //CRM-15427
     if (!empty($params['group_type']) && is_array($params['group_type'])) {
@@ -1804,7 +1804,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
     $rule = $field['rule'];
     $view = $field['is_view'];
     $required = ($mode == CRM_Profile_Form::MODE_SEARCH) ? FALSE : $field['is_required'];
-    $search = ($mode == CRM_Profile_Form::MODE_SEARCH) ? TRUE : FALSE;
+    $search = $mode == CRM_Profile_Form::MODE_SEARCH;
     $isShared = CRM_Utils_Array::value('is_shared', $field, 0);
 
     // do not display view fields in drupal registration form
@@ -2288,7 +2288,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
     if (!$componentId) {
       //get the contact details
       $contactDetails = CRM_Contact_BAO_Contact::getHierContactDetails($contactId, $fields);
-      $details = CRM_Utils_Array::value($contactId, $contactDetails);
+      $details = $contactDetails[$contactId] ?? NULL;
       $multipleFields = ['website' => 'url'];
 
       //start of code to set the default values
@@ -2397,7 +2397,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
                           }
                         }
                         else {
-                          $phoneDefault = CRM_Utils_Array::value('phone', $value);
+                          $phoneDefault = $value['phone'] ?? NULL;
                           // CRM-9216
                           if (!is_array($phoneDefault)) {
                             $defaults[$fldName] = $phoneDefault;
@@ -2440,7 +2440,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
                 && !empty($details['website'])
                 && !empty($details['website'][$locTypeId])
               ) {
-                $defaults[$fldName] = CRM_Utils_Array::value('url', $details['website'][$locTypeId]);
+                $defaults[$fldName] = $details['website'][$locTypeId]['url'] ?? NULL;
               }
             }
           }
@@ -2573,7 +2573,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
         }
       }
 
-      $validProfile = (empty($required)) ? TRUE : FALSE;
+      $validProfile = (empty($required));
     }
 
     return $validProfile;

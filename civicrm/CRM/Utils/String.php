@@ -836,9 +836,9 @@ class CRM_Utils_String {
    */
   public static function simpleParseUrl($url) {
     $parts = parse_url($url);
-    $host = isset($parts['host']) ? $parts['host'] : '';
+    $host = $parts['host'] ?? '';
     $port = isset($parts['port']) ? ':' . $parts['port'] : '';
-    $path = isset($parts['path']) ? $parts['path'] : '';
+    $path = $parts['path'] ?? '';
     $query = isset($parts['query']) ? '?' . $parts['query'] : '';
     return [
       'host+port' => "$host$port",
@@ -969,6 +969,20 @@ class CRM_Utils_String {
       default:
         return $str . 's';
     }
+  }
+
+  /**
+   * Generic check as to whether any tokens are in the given string.
+   *
+   * It might be a smarty token OR a CiviCRM token. In both cases the
+   * absence of a '{' indicates no token is present.
+   *
+   * @param string $string
+   *
+   * @return bool
+   */
+  public static function stringContainsTokens(string $string) {
+    return strpos($string, '{') !== FALSE;
   }
 
 }

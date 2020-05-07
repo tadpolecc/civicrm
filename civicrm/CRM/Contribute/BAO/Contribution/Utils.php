@@ -85,7 +85,7 @@ class CRM_Contribute_BAO_Contribution_Utils {
 
     if ($isPaymentTransaction) {
       $contributionParams = [
-        'id' => CRM_Utils_Array::value('contribution_id', $paymentParams),
+        'id' => $paymentParams['contribution_id'] ?? NULL,
         'contact_id' => $contactID,
         'is_test' => $isTest,
         'source' => CRM_Utils_Array::value('source', $paymentParams, CRM_Utils_Array::value('description', $paymentParams)),
@@ -146,7 +146,7 @@ class CRM_Contribute_BAO_Contribution_Utils {
         $paymentParams['source'] = $paymentParams['contribution_source'];
       }
 
-      if (CRM_Utils_Array::value('is_recur', $form->_params) && $contribution->contribution_recur_id) {
+      if (!empty($form->_params['is_recur']) && $contribution->contribution_recur_id) {
         $paymentParams['contributionRecurID'] = $contribution->contribution_recur_id;
       }
       if (isset($paymentParams['contribution_source'])) {
@@ -237,7 +237,7 @@ class CRM_Contribute_BAO_Contribution_Utils {
    * @return bool
    */
   protected static function isPaymentTransaction($form) {
-    return ($form->_amount >= 0.0) ? TRUE : FALSE;
+    return $form->_amount >= 0.0;
   }
 
   /**
@@ -574,7 +574,7 @@ LIMIT 1
     }
     else {
       $contributionStatus = CRM_Core_DAO::getFieldValue('CRM_Contribute_DAO_Contribution', $id, 'contribution_status_id');
-      $name = CRM_Utils_Array::value($contributionStatus, $statusNames);
+      $name = $statusNames[$contributionStatus] ?? NULL;
       switch ($name) {
         case 'Completed':
           // [CRM-17498] Removing unsupported status change options.

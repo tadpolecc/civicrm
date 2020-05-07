@@ -143,15 +143,15 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
           'membership_type_id' => CRM_Utils_Array::value($index, CRM_Utils_Array::value('membership_type_id', $params), NULL),
           'weight' => $params['option_weight'][$index],
           'is_active' => 1,
-          'is_default' => CRM_Utils_Array::value($params['option_weight'][$index], $defaultArray) ? $defaultArray[$params['option_weight'][$index]] : 0,
+          'is_default' => !empty($defaultArray[$params['option_weight'][$index]]) ? $defaultArray[$params['option_weight'][$index]] : 0,
           'membership_num_terms' => NULL,
-          'non_deductible_amount' => CRM_Utils_Array::value('non_deductible_amount', $params),
+          'non_deductible_amount' => $params['non_deductible_amount'] ?? NULL,
           'visibility_id' => CRM_Utils_Array::value($index, CRM_Utils_Array::value('option_visibility_id', $params), self::getVisibilityOptionID('public')),
         ];
 
         if ($options['membership_type_id']) {
           $options['membership_num_terms'] = CRM_Utils_Array::value($index, CRM_Utils_Array::value('membership_num_terms', $params), 1);
-          $options['is_default'] = CRM_Utils_Array::value($params['membership_type_id'][$index], $defaultArray) ? $defaultArray[$params['membership_type_id'][$index]] : 0;
+          $options['is_default'] = !empty($defaultArray[$params['membership_type_id'][$index]]) ? $defaultArray[$params['membership_type_id'][$index]] : 0;
         }
 
         if (CRM_Utils_Array::value($index, CRM_Utils_Array::value('option_financial_type_id', $params))) {
@@ -294,7 +294,7 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
       $is_pay_later = 1;
     }
     elseif (isset($qf->_values)) {
-      $is_pay_later = CRM_Utils_Array::value('is_pay_later', $qf->_values);
+      $is_pay_later = $qf->_values['is_pay_later'] ?? NULL;
     }
 
     $otherAmount = $qf->get('values');
@@ -325,15 +325,15 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
     $valueFieldName = 'amount';
     $seperator = '|';
     $invoiceSettings = Civi::settings()->get('contribution_invoice_settings');
-    $taxTerm = CRM_Utils_Array::value('tax_term', $invoiceSettings);
-    $displayOpt = CRM_Utils_Array::value('tax_display_settings', $invoiceSettings);
-    $invoicing = CRM_Utils_Array::value('invoicing', $invoiceSettings);
+    $taxTerm = $invoiceSettings['tax_term'] ?? NULL;
+    $displayOpt = $invoiceSettings['tax_display_settings'] ?? NULL;
+    $invoicing = $invoiceSettings['invoicing'] ?? NULL;
     switch ($field->html_type) {
       case 'Text':
         $optionKey = key($customOption);
         $count = CRM_Utils_Array::value('count', $customOption[$optionKey], '');
         $max_value = CRM_Utils_Array::value('max_value', $customOption[$optionKey], '');
-        $taxAmount = CRM_Utils_Array::value('tax_amount', $customOption[$optionKey]);
+        $taxAmount = $customOption[$optionKey]['tax_amount'] ?? NULL;
         if (isset($taxAmount) && $displayOpt && $invoicing) {
           $qf->assign('displayOpt', $displayOpt);
           $qf->assign('taxTerm', $taxTerm);
@@ -400,7 +400,7 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
         }
 
         foreach ($customOption as $opId => $opt) {
-          $taxAmount = CRM_Utils_Array::value('tax_amount', $opt);
+          $taxAmount = $opt['tax_amount'] ?? NULL;
           if ($field->is_display_amounts) {
             $opt['label'] = !empty($opt['label']) ? $opt['label'] . '<span class="crm-price-amount-label-separator">&nbsp;-&nbsp;</span>' : '';
             $preHelpText = $postHelpText = '';
@@ -512,7 +512,7 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
         $selectOption = $allowedOptions = $priceVal = [];
 
         foreach ($customOption as $opt) {
-          $taxAmount = CRM_Utils_Array::value('tax_amount', $opt);
+          $taxAmount = $opt['tax_amount'] ?? NULL;
           $count = CRM_Utils_Array::value('count', $opt, '');
           $max_value = CRM_Utils_Array::value('max_value', $opt, '');
 
@@ -568,7 +568,7 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
 
         $check = [];
         foreach ($customOption as $opId => $opt) {
-          $taxAmount = CRM_Utils_Array::value('tax_amount', $opt);
+          $taxAmount = $opt['tax_amount'] ?? NULL;
           $count = CRM_Utils_Array::value('count', $opt, '');
           $max_value = CRM_Utils_Array::value('max_value', $opt, '');
 

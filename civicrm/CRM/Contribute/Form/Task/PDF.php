@@ -154,9 +154,9 @@ AND    {$this->_componentClause}";
       $ids['contribution'] = $contribID;
       $ids['contributionRecur'] = NULL;
       $ids['contributionPage'] = NULL;
-      $ids['membership'] = CRM_Utils_Array::value('membership', $detail);
-      $ids['participant'] = CRM_Utils_Array::value('participant', $detail);
-      $ids['event'] = CRM_Utils_Array::value('event', $detail);
+      $ids['membership'] = $detail['membership'] ?? NULL;
+      $ids['participant'] = $detail['participant'] ?? NULL;
+      $ids['event'] = $detail['event'] ?? NULL;
 
       if (!$elements['baseIPN']->validateData($input, $ids, $objects, FALSE)) {
         throw new CRM_Core_Exception('invalid data');
@@ -170,7 +170,7 @@ AND    {$this->_componentClause}";
       $input['fee_amount'] = $contribution->fee_amount;
       $input['net_amount'] = $contribution->net_amount;
       $input['trxn_id'] = $contribution->trxn_id;
-      $input['trxn_date'] = isset($contribution->trxn_date) ? $contribution->trxn_date : NULL;
+      $input['trxn_date'] = $contribution->trxn_date ?? NULL;
       $input['receipt_update'] = $params['receipt_update'];
       $input['contribution_status_id'] = $contribution->contribution_status_id;
       $input['paymentProcessor'] = empty($contribution->trxn_id) ? NULL :

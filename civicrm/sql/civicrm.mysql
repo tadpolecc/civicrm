@@ -2491,7 +2491,7 @@ CREATE TABLE `civicrm_print_label` (
 
 
      `id` int unsigned NOT NULL AUTO_INCREMENT  ,
-     `title` varchar(255)    COMMENT 'User title for for this label layout',
+     `title` varchar(255)    COMMENT 'User title for this label layout',
      `name` varchar(255)    COMMENT 'variable name/programmatic handle for this field.',
      `description` text    COMMENT 'Description of this label layout',
      `label_format_name` varchar(255)    COMMENT 'This refers to name column of civicrm_option_value row in name_badge option group',
@@ -3214,7 +3214,7 @@ CREATE TABLE `civicrm_report_instance` (
      `description` varchar(255)    COMMENT 'Report Instance description.',
      `permission` varchar(255)    COMMENT 'permission required to be able to run this instance',
      `grouprole` varchar(1024)    COMMENT 'role required to be able to run this instance',
-     `form_values` text    COMMENT 'Submitted form values for this report',
+     `form_values` longtext    COMMENT 'Submitted form values for this report',
      `is_active` tinyint    COMMENT 'Is this entry active?',
      `created_id` int unsigned    COMMENT 'FK to contact table.',
      `owner_id` int unsigned    COMMENT 'FK to contact table.',
@@ -3636,7 +3636,7 @@ CREATE TABLE `civicrm_dashboard_contact` (
      `id` int unsigned NOT NULL AUTO_INCREMENT  ,
      `dashboard_id` int unsigned NOT NULL   COMMENT 'Dashboard ID',
      `contact_id` int unsigned NOT NULL   COMMENT 'Contact ID',
-     `column_no` tinyint   DEFAULT 0 COMMENT 'column no for this widget',
+     `column_no` int   DEFAULT 0 COMMENT 'column no for this widget',
      `is_active` tinyint   DEFAULT 0 COMMENT 'Is this widget active?',
      `weight` int   DEFAULT 0 COMMENT 'Ordering of the widgets.' 
 ,
@@ -3712,7 +3712,7 @@ CREATE TABLE `civicrm_mailing` (
      `open_tracking` tinyint    COMMENT 'Should we track when recipients open/read this mailing?',
      `is_completed` tinyint    COMMENT 'Has at least one job associated with this mailing finished?',
      `msg_template_id` int unsigned    COMMENT 'FK to the message template.',
-     `override_verp` tinyint   DEFAULT 0 COMMENT 'Should we overrite VERP address in Reply-To',
+     `override_verp` tinyint   DEFAULT 0 COMMENT 'Overwrite the VERP address in Reply-To',
      `created_id` int unsigned    COMMENT 'FK to Contact ID who first created this mailing',
      `created_date` timestamp NULL  DEFAULT NULL COMMENT 'Date and time this mailing was created.',
      `modified_date` timestamp NULL  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'When the mailing (or closely related entity) was created or modified or deleted.',
@@ -3847,7 +3847,7 @@ CREATE TABLE `civicrm_mailing_spool` (
 
      `id` int unsigned NOT NULL AUTO_INCREMENT  ,
      `job_id` int unsigned NOT NULL   COMMENT 'The ID of the Job .',
-     `recipient_email` text    COMMENT 'The email of the receipients this mail is to be sent.',
+     `recipient_email` text    COMMENT 'The email of the recipients this mail is to be sent.',
      `headers` text    COMMENT 'The header information of this mailing .',
      `body` text    COMMENT 'The body of this mailing.',
      `added_at` timestamp NULL  DEFAULT NULL COMMENT 'date on which this job was added.',

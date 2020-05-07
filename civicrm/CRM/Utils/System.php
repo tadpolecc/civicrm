@@ -83,7 +83,7 @@ class CRM_Utils_System {
   public static function makeURL($urlVar, $includeReset = FALSE, $includeForce = TRUE, $path = NULL, $absolute = FALSE) {
     if (empty($path)) {
       $config = CRM_Core_Config::singleton();
-      $path = CRM_Utils_Array::value($config->userFrameworkURLVar, $_GET);
+      $path = $_GET[$config->userFrameworkURLVar] ?? NULL;
       if (empty($path)) {
         return '';
       }
@@ -376,7 +376,7 @@ class CRM_Utils_System {
    *   url
    */
   public static function crmURL($params) {
-    $p = CRM_Utils_Array::value('p', $params);
+    $p = $params['p'] ?? NULL;
     if (!isset($p)) {
       $p = self::currentPath();
     }
@@ -420,7 +420,7 @@ class CRM_Utils_System {
     $url = $default;
 
     $session = CRM_Core_Session::singleton();
-    $referer = CRM_Utils_Array::value('HTTP_REFERER', $_SERVER);
+    $referer = $_SERVER['HTTP_REFERER'] ?? NULL;
 
     if ($referer && !empty($names)) {
       foreach ($names as $name) {
@@ -465,7 +465,7 @@ class CRM_Utils_System {
     // this is kinda hackish but not sure how to do it right
     $url = str_replace('&amp;', '&', $url);
 
-    $context['output'] = CRM_Utils_Array::value('snippet', $_GET);
+    $context['output'] = $_GET['snippet'] ?? NULL;
 
     $parsedUrl = CRM_Utils_Url::parseUrl($url);
     CRM_Utils_Hook::alterRedirect($parsedUrl, $context);
@@ -1192,9 +1192,7 @@ class CRM_Utils_System {
    * this function, please go and change the code in the install script as well.
    */
   public static function isSSL() {
-    return (isset($_SERVER['HTTPS']) &&
-        !empty($_SERVER['HTTPS']) &&
-        strtolower($_SERVER['HTTPS']) != 'off') ? TRUE : FALSE;
+    return !empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) != 'off';
   }
 
   /**
@@ -1245,7 +1243,7 @@ class CRM_Utils_System {
    *   IP address of logged in user.
    */
   public static function ipAddress($strictIPV4 = TRUE) {
-    $address = CRM_Utils_Array::value('REMOTE_ADDR', $_SERVER);
+    $address = $_SERVER['REMOTE_ADDR'] ?? NULL;
 
     $config = CRM_Core_Config::singleton();
     if ($config->userSystem->is_drupal && function_exists('ip_address')) {
@@ -1278,7 +1276,7 @@ class CRM_Utils_System {
    *   The previous page URL
    */
   public static function refererPath() {
-    return CRM_Utils_Array::value('HTTP_REFERER', $_SERVER);
+    return $_SERVER['HTTP_REFERER'] ?? NULL;
   }
 
   /**

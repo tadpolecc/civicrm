@@ -20,62 +20,13 @@
  */
 class CRM_Contact_Form_Task_Email extends CRM_Contact_Form_Task {
 
-  /**
-   * Are we operating in "single mode".
-   *
-   * Single mode means sending email to one specific contact.
-   *
-   * @var bool
-   */
-  public $_single = FALSE;
-
-  /**
-   * Are we operating in "single mode", i.e. sending email to one
-   * specific contact?
-   *
-   * @var bool
-   */
-  public $_noEmails = FALSE;
-
-  /**
-   * All the existing templates in the system.
-   *
-   * @var array
-   */
-  public $_templates = NULL;
-
-  /**
-   * Store "to" contact details.
-   * @var array
-   */
-  public $_toContactDetails = [];
-
-  /**
-   * Store all selected contact id's, that includes to, cc and bcc contacts
-   * @var array
-   */
-  public $_allContactIds = [];
-
-  /**
-   * Store only "to" contact ids.
-   * @var array
-   */
-  public $_toContactIds = [];
-
-  /**
-   * Store only "cc" contact ids.
-   * @var array
-   */
-  public $_ccContactIds = [];
-
-  /**
-   * Store only "bcc" contact ids.
-   * @var array
-   */
-  public $_bccContactIds = [];
+  use CRM_Contact_Form_Task_EmailTrait;
 
   /**
    * Build all the data structures needed to build the form.
+   *
+   * @throws \CiviCRM_API3_Exception
+   * @throws \CRM_Core_Exception
    */
   public function preProcess() {
     // store case id if present
@@ -110,9 +61,12 @@ class CRM_Contact_Form_Task_Email extends CRM_Contact_Form_Task {
     else {
       CRM_Utils_System::setTitle(ts('New Email'));
     }
+    if ($this->_context === 'search') {
+      $this->_single = TRUE;
+    }
     CRM_Contact_Form_Task_EmailCommon::preProcessFromAddress($this);
 
-    if (!$cid && $this->_context != 'standalone') {
+    if (!$cid && $this->_context !== 'standalone') {
       parent::preProcess();
     }
 
@@ -120,24 +74,6 @@ class CRM_Contact_Form_Task_Email extends CRM_Contact_Form_Task {
     if (CRM_Core_Permission::check('administer CiviCRM')) {
       $this->assign('isAdmin', 1);
     }
-  }
-
-  /**
-   * Build the form object.
-   */
-  public function buildQuickForm() {
-    //enable form element
-    $this->assign('suppressForm', FALSE);
-    $this->assign('emailTask', TRUE);
-
-    CRM_Contact_Form_Task_EmailCommon::buildQuickForm($this);
-  }
-
-  /**
-   * Process the form after the input has been submitted and validated.
-   */
-  public function postProcess() {
-    CRM_Contact_Form_Task_EmailCommon::postProcess($this);
   }
 
   /**

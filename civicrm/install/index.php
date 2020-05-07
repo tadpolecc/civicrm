@@ -129,7 +129,7 @@ $installTypeToUF = array(
   'backdrop' => 'Backdrop',
 );
 
-$uf = (isset($installTypeToUF[$installType]) ? $installTypeToUF[$installType] : 'Drupal');
+$uf = ($installTypeToUF[$installType] ?? 'Drupal');
 define('CIVICRM_UF', $uf);
 
 // Set the Locale (required by CRM_Core_Config)
@@ -151,7 +151,7 @@ if (isset($_REQUEST['seedLanguage']) and isset($langs[$_REQUEST['seedLanguage']]
   $tsLocale = $_REQUEST['seedLanguage'];
 }
 
-$config = CRM_Core_Config::singleton(FALSE);
+CRM_Core_Config::singleton(FALSE);
 $GLOBALS['civicrm_default_error_scope'] = NULL;
 
 // The translation files are in the parent directory (l10n)
@@ -522,7 +522,7 @@ class InstallRequirements {
           )
         );
       }
-      $onlyRequire = ($dbName == 'Drupal' || $dbName == 'Backdrop') ? TRUE : FALSE;
+      $onlyRequire = $dbName == 'Drupal' || $dbName == 'Backdrop';
       $this->requireDatabaseOrCreatePermissions(
         $databaseConfig['server'],
         $databaseConfig['username'],
@@ -909,7 +909,7 @@ class InstallRequirements {
         $testDetails[2] = ts('This webserver is running an outdated version of PHP (%1). It is strongly recommended to upgrade to PHP %2 or later, as older versions can present a security risk. The preferred version is %3.', array(
           1 => $phpVersion,
           2 => CRM_Upgrade_Incremental_General::MIN_RECOMMENDED_PHP_VER,
-          3 => CRM_Upgrade_Incremental_General::RECOMMENDED_PHP_VER,
+          3 => preg_replace(';^(\d+\.\d+(?:\.[1-9]\d*)?).*$;', '\1', CRM_Upgrade_Incremental_General::RECOMMENDED_PHP_VER),
         ));
         $this->warning($testDetails);
       }
@@ -1921,7 +1921,7 @@ function getSiteDir($cmsPath, $str) {
     preg_quote($modules, CIVICRM_DIRECTORY_SEPARATOR) . "/",
     $_SERVER['SCRIPT_FILENAME'], $matches
   );
-  $siteDir = isset($matches[1]) ? $matches[1] : 'default';
+  $siteDir = $matches[1] ?? 'default';
 
   if (strtolower($siteDir) == 'all') {
     // For this case - use drupal's way of finding out multi-site directory

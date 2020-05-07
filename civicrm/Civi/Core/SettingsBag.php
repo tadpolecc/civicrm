@@ -182,7 +182,7 @@ class SettingsBag {
    */
   public function get($key) {
     $all = $this->all();
-    return isset($all[$key]) ? $all[$key] : NULL;
+    return $all[$key] ?? NULL;
   }
 
   /**
@@ -193,7 +193,7 @@ class SettingsBag {
    * @return mixed|NULL
    */
   public function getDefault($key) {
-    return isset($this->defaults[$key]) ? $this->defaults[$key] : NULL;
+    return $this->defaults[$key] ?? NULL;
   }
 
   /**
@@ -205,7 +205,7 @@ class SettingsBag {
    * @return mixed|NULL
    */
   public function getExplicit($key) {
-    return (isset($this->values[$key]) ? $this->values[$key] : NULL);
+    return ($this->values[$key] ?? NULL);
   }
 
   /**
@@ -216,7 +216,7 @@ class SettingsBag {
    * @return mixed|NULL
    */
   public function getMandatory($key) {
-    return isset($this->mandatory[$key]) ? $this->mandatory[$key] : NULL;
+    return $this->mandatory[$key] ?? NULL;
   }
 
   /**

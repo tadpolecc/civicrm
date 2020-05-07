@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.24.6
+Version: 5.25.0
 Author: CiviCRM LLC
 Author URI: https://civicrm.org/
 Plugin URI: https://docs.civicrm.org/sysadmin/en/latest/install/wordpress/
@@ -54,7 +54,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // Set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '5.24.6' );
+define( 'CIVICRM_PLUGIN_VERSION', '5.25.0' );
 
 // Store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -75,15 +75,16 @@ if ( !defined( 'CIVICRM_WP_PHP_MINIMUM' ) ) {
   /**
    * Minimum required PHP
    *
-   * Note: This duplicates CRM_Upgrade_Form::MINIMUM_PHP_VERSION. The
-   * duplication helps avoid dependency issues. (Reading `Form::MINIMUM_PHP_VERSION`
-   * requires loading `civicrm.settings.php`, but that triggers a parse-error
+   * Note: This duplicates CRM_Upgrade_Incremental_General::MIN_INSTALL_PHP_VER.
+   * The duplication helps avoid dependency issues. (Reading
+   * `CRM_Upgrade_Incremental_General::MIN_INSTALL_PHP_VER` requires loading
+   * `civicrm.settings.php`, but that triggers a parse-error
    * on PHP 5.x.)
    *
-   * @see CRM_Upgrade_Form::MINIMUM_PHP_VERSION
+   * @see CRM_Upgrade_Incremental_General::MIN_INSTALL_PHP_VER
    * @see CiviWP\PhpVersionTest::testConstantMatch()
    */
-  define( 'CIVICRM_WP_PHP_MINIMUM', '7.0.0' );
+  define( 'CIVICRM_WP_PHP_MINIMUM', '7.1.0' );
 }
 
 /*
@@ -202,15 +203,6 @@ class CiviCRM_For_WordPress {
    * @var object CiviCRM_For_WordPress_Users The user management object.
    */
   public $users;
-
-  /**
-   * Compatibility object.
-   *
-   * @since 5.24
-   * @access public
-   * @var object CiviCRM_For_WordPress_Compat The plugin compatibility object.
-   */
-  public $compat;
 
 
   // ---------------------------------------------------------------------------
@@ -376,6 +368,9 @@ class CiviCRM_For_WordPress {
     if (empty($civicrm_paths['cms.root']['path'])) {
       $civicrm_paths['cms.root']['path'] = untrailingslashit(ABSPATH);
     }
+    if (empty($civicrm_paths['cms.root']['url'])) {
+      $civicrm_paths['cms.root']['url'] = home_url();
+    }
 
     // Get classes and instantiate
     $this->include_files();
@@ -531,10 +526,6 @@ class CiviCRM_For_WordPress {
     // Include basepage class
     include_once CIVICRM_PLUGIN_DIR . 'includes/civicrm.basepage.php';
     $this->basepage = new CiviCRM_For_WordPress_Basepage;
-
-    // Include compatibility class
-    include_once CIVICRM_PLUGIN_DIR . 'includes/civicrm.compat.php';
-    $this->compat = new CiviCRM_For_WordPress_Compat;
 
     if ( ! class_exists( 'CiviCRM_WP_REST\Autoloader' ) ) {
       // Include REST API autoloader class
@@ -822,12 +813,10 @@ class CiviCRM_For_WordPress {
      * Broadcast the rewrite rules event.
      *
      * @since 5.7
-     * @since 5.24 Added $basepage parameter.
      *
      * @param bool $flush_rewrite_rules True if rules flushed, false otherwise.
-     * @param WP_Post $basepage The Basepage post object.
      */
-    do_action( 'civicrm_after_rewrite_rules', $flush_rewrite_rules, $basepage );
+    do_action( 'civicrm_after_rewrite_rules', $flush_rewrite_rules );
 
   }
 
