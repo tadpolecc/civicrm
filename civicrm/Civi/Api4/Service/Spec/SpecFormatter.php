@@ -14,8 +14,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC https://civicrm.org/licensing
- * $Id$
- *
  */
 
 
@@ -37,7 +35,7 @@ class SpecFormatter {
 
     foreach ($fields as $field) {
       if ($includeFieldOptions) {
-        $field->getOptions($values);
+        $field->getOptions($values, $includeFieldOptions);
       }
       $fieldArray[$field->getName()] = $field->toArray();
     }

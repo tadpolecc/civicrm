@@ -25,8 +25,8 @@ class TokenCompatSubscriber implements EventSubscriberInterface {
    */
   public static function getSubscribedEvents() {
     return [
-      Events::TOKEN_EVALUATE => 'onEvaluate',
-      Events::TOKEN_RENDER => 'onRender',
+      'civi.token.eval' => 'onEvaluate',
+      'civi.token.render' => 'onRender',
     ];
   }
 
@@ -89,12 +89,9 @@ class TokenCompatSubscriber implements EventSubscriberInterface {
         $contact = array_merge($contact, $row->context['tmpTokenParams']);
       }
 
-      $contactArray = !is_array($contactId) ? [$contactId => $contact] : $contact;
-
-      // Note: This is a small contract change from the past; data should be missing
-      // less randomly.
+      $contactArray = [$contactId => $contact];
       \CRM_Utils_Hook::tokenValues($contactArray,
-        (array) $contactId,
+        [$contactId],
         empty($row->context['mailingJobId']) ? NULL : $row->context['mailingJobId'],
         $messageTokens,
         $row->context['controller']

@@ -1677,7 +1677,7 @@ WHERE      activity.id IN ($activityIds)";
    * Add activity for Membership/Event/Contribution.
    *
    * @param object $activity
-   *   (reference) particular component object.
+   *   particular component object.
    * @param string $activityType
    *   For Membership Signup or Renewal.
    * @param int $targetContactID
@@ -1687,7 +1687,7 @@ WHERE      activity.id IN ($activityIds)";
    * @return bool|NULL
    */
   public static function addActivity(
-    &$activity,
+    $activity,
     $activityType = 'Membership Signup',
     $targetContactID = NULL,
     $params = []
@@ -1706,7 +1706,11 @@ WHERE      activity.id IN ($activityIds)";
       // create activity record only for Completed Contributions
       $contributionCompletedStatusId = CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_Contribution', 'contribution_status_id', 'Completed');
       if ($activity->contribution_status_id != $contributionCompletedStatusId) {
-        return NULL;
+        //For onbehalf payments, create a scheduled activity.
+        if (empty($params['on_behalf'])) {
+          return NULL;
+        }
+        $params['status_id'] = CRM_Core_PseudoConstant::getKey('CRM_Activity_BAO_Activity', 'activity_status_id', 'Scheduled');
       }
       $activityType = $component = 'Contribution';
 

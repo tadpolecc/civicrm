@@ -419,7 +419,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
       unset($extra['option_context']);
     }
 
-    $element = $this->addElement($type, $name, $label, $attributes, $extra);
+    $element = $this->addElement($type, $name, CRM_Utils_String::purifyHTML($label), $attributes, $extra);
     if (HTML_QuickForm::isError($element)) {
       CRM_Core_Error::fatal(HTML_QuickForm::errorMessage($element));
     }
@@ -2569,6 +2569,21 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
       CRM_Core_Action::ADVANCED,
       CRM_Core_Action::PREVIEW,
     ]);
+  }
+
+  /**
+   * Set the active tab
+   *
+   * @param string $default
+   *
+   * @throws \CRM_Core_Exception
+   */
+  public function setSelectedChild($default = NULL) {
+    $selectedChild = CRM_Utils_Request::retrieve('selectedChild', 'Alphanumeric', $this, FALSE, $default);
+    if (!empty($selectedChild)) {
+      $this->set('selectedChild', $selectedChild);
+      $this->assign('selectedChild', $selectedChild);
+    }
   }
 
 }

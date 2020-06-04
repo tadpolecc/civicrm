@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.25.0
+Version: 5.26.0
 Author: CiviCRM LLC
 Author URI: https://civicrm.org/
 Plugin URI: https://docs.civicrm.org/sysadmin/en/latest/install/wordpress/
@@ -54,7 +54,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // Set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '5.25.0' );
+define( 'CIVICRM_PLUGIN_VERSION', '5.26.0' );
 
 // Store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -419,8 +419,8 @@ class CiviCRM_For_WordPress {
    */
   public function civicrm_in_wordpress_set() {
 
-    // Get identifying query var
-    $page = get_query_var( 'page' );
+    // Get identifying query var.
+    $page = get_query_var( 'civiwp' );
 
     // Store
     self::$in_wordpress = ( $page == 'CiviCRM' ) ? TRUE : FALSE;
@@ -578,6 +578,12 @@ class CiviCRM_For_WordPress {
     // Go no further if CiviCRM not installed yet
     if ( ! CIVICRM_INSTALLED ) return;
 
+    // Attempt to replace 'page' query arg with 'civiwp'.
+    add_filter( 'request', array( $this, 'maybe_replace_page_query_var' ) );
+
+    // Add our query vars.
+    add_filter( 'query_vars', array( $this, 'query_vars' ) );
+
     // Delay everything else until query has been parsed
     add_action( 'parse_query', array( $this, 'register_hooks_front_end' ) );
 
@@ -609,6 +615,14 @@ class CiviCRM_For_WordPress {
       return;
     }
     $alreadyRegistered = TRUE;
+
+    // Redirect if old query var is present.
+    if ( 'CiviCRM' == get_query_var( 'page' ) && 'CiviCRM' != get_query_var( 'civiwp' ) ) {
+      $redirect_url = remove_query_arg( 'page', false );
+      $redirect_url = add_query_arg( 'civiwp', 'CiviCRM', $redirect_url );
+      wp_redirect( $redirect_url, 301 );
+      exit();
+    }
 
     // Store context
     $this->civicrm_in_wordpress_set();
@@ -720,9 +734,6 @@ class CiviCRM_For_WordPress {
 
     }
 
-    // Add our query vars.
-    add_filter( 'query_vars', array( $this, 'query_vars' ) );
-
   }
 
 
@@ -813,7 +824,7 @@ class CiviCRM_For_WordPress {
     // Let's add rewrite rule when viewing the basepage
     add_rewrite_rule(
       '^' . $config->wpBasePage . '/([^?]*)?',
-      'index.php?page_id=' . $basepage->ID . '&page=CiviCRM&q=civicrm%2F$matches[1]',
+      'index.php?page_id=' . $basepage->ID . '&civiwp=CiviCRM&q=civicrm%2F$matches[1]',
       'top'
     );
 
@@ -853,7 +864,7 @@ class CiviCRM_For_WordPress {
 
     // Build our query vars
     $civicrm_query_vars = array(
-      'page', 'q', 'reset', 'id', 'html', 'snippet', // URL query vars
+      'civiwp', 'q', 'reset', 'id', 'html', 'snippet', // URL query vars
       'action', 'mode', 'cid', 'gid', 'sid', 'cs', 'force', // Shortcode query vars
     );
 
@@ -875,6 +886,36 @@ class CiviCRM_For_WordPress {
     foreach( $civicrm_query_vars as $civicrm_query_var ) {
       $query_vars[] = $civicrm_query_var;
     }
+
+    return $query_vars;
+
+  }
+
+
+  /**
+   * Filters the request right after WP's
+   * parsed it and replaces the 'page' query
+   * variable with 'civiwp' if applicable.
+   *
+   * Prevents old URLs like example.org/civicrm/?page=CiviCRM&q=what/ever/path&reset=1
+   * being redirected to example.org/civicrm/?civiwp=CiviCRM&q=what/ever/path&reset=1
+   *
+   * @see https://lab.civicrm.org/dev/wordpress/-/issues/49
+   *
+   * @since 5.26
+   *
+   * @param array $query_vars The existing query vars.
+   * @return array $query_vars The modified query vars.
+   */
+  public function maybe_replace_page_query_var( $query_vars ) {
+
+    $civi_query_arg = array_search( 'CiviCRM', $query_vars );
+
+    // Bail if the query var is not 'page'.
+    if ( false === $civi_query_arg || $civi_query_arg !== 'page' ) return $query_vars;
+
+    unset( $query_vars['page'] );
+    $query_vars['civiwp'] = 'CiviCRM';
 
     return $query_vars;
 
@@ -1537,7 +1578,7 @@ class CiviCRM_For_WordPress {
     $q = get_query_var( 'q' );
     if (!empty($q)) {
 
-      $page = get_query_var( 'page' );
+      $page = get_query_var( 'civiwp' );
       $reset = get_query_var( 'reset' );
       $id = get_query_var( 'id' );
       $html = get_query_var( 'html' );
@@ -1552,7 +1593,7 @@ class CiviCRM_For_WordPress {
       $force = get_query_var( 'force' );
 
       $_REQUEST['q'] = $_GET['q'] = $q;
-      $_REQUEST['page'] = $_GET['page'] = 'CiviCRM';
+      $_REQUEST['civiwp'] = $_GET['civiwp'] = 'CiviCRM';
       if (!empty($reset)) { $_REQUEST['reset'] = $_GET['reset'] = $reset; }
       if (!empty($id)) { $_REQUEST['id'] = $_GET['id'] = $id; }
       if (!empty($html)) { $_REQUEST['html'] = $_GET['html'] = $html; }

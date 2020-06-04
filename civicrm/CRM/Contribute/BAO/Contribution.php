@@ -127,7 +127,7 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
     $contributionStatus = CRM_Core_PseudoConstant::getName('CRM_Contribute_BAO_Contribution', 'contribution_status_id', (int) $params['contribution_status_id']);
 
     if (!$contributionID
-      && CRM_Utils_Array::value('membership_id', $params)
+      && !empty($params['membership_id'])
       && Civi::settings()->get('deferred_revenue_enabled')
     ) {
       $memberStartDate = CRM_Core_DAO::getFieldValue('CRM_Member_DAO_Membership', $params['membership_id'], 'start_date');
@@ -506,27 +506,6 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
         $noteParams['contact_id'] = $params['contact_id'];
       }
       CRM_Core_BAO_Note::add($noteParams);
-    }
-
-    // make entry in batch entity batch table
-    if (!empty($params['batch_id'])) {
-      // in some update cases we need to get extra fields - ie an update that doesn't pass in all these params
-      $titleFields = [
-        'contact_id',
-        'total_amount',
-        'currency',
-        'financial_type_id',
-      ];
-      $retrieveRequired = 0;
-      foreach ($titleFields as $titleField) {
-        if (!isset($contribution->$titleField)) {
-          $retrieveRequired = 1;
-          break;
-        }
-      }
-      if ($retrieveRequired == 1) {
-        $contribution->find(TRUE);
-      }
     }
 
     CRM_Contribute_BAO_ContributionSoft::processSoftContribution($params, $contribution);
@@ -2885,6 +2864,11 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       }
     }
 
+    $relatedContact = CRM_Contribute_BAO_Contribution::getOnbehalfIds($this->id);
+    if (!empty($relatedContact['individual_id'])) {
+      $ids['related_contact'] = $relatedContact['individual_id'];
+    }
+
     if ($paymentProcessorID) {
       $paymentProcessor = CRM_Financial_BAO_PaymentProcessor::getPayment($paymentProcessorID,
         $this->is_test ? 'test' : 'live'
@@ -3496,6 +3480,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    */
   public static function recordFinancialAccounts(&$params, $financialTrxnValues = NULL) {
     $skipRecords = $update = $return = $isRelatedId = FALSE;
+    $isUpdate = !empty($params['prevContribution']);
 
     $additionalParticipantId = [];
     $contributionStatuses = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
@@ -3528,9 +3513,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     // prevContribution appears to mean - original contribution object- ie copy of contribution from before the update started that is being updated
     if (empty($params['prevContribution'])) {
       $entityID = NULL;
-    }
-    else {
-      $update = TRUE;
     }
 
     $statusId = $params['contribution']->contribution_status_id;
@@ -3663,7 +3645,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
 
       $params['trxnParams'] = $trxnParams;
 
-      if (!empty($params['prevContribution'])) {
+      if ($isUpdate) {
         $updated = FALSE;
         $params['trxnParams']['total_amount'] = $trxnParams['total_amount'] = $params['total_amount'] = $params['prevContribution']->total_amount;
         $params['trxnParams']['fee_amount'] = $params['prevContribution']->fee_amount;
@@ -3796,7 +3778,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
         }
       }
 
-      if (!$update) {
+      else {
         // records finanical trxn and entity financial trxn
         // also make it available as return value
         self::recordAlwaysAccountsReceivable($trxnParams, $params);
@@ -3811,7 +3793,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     }
     // record line items and financial items
     if (empty($params['skipLineItem'])) {
-      CRM_Price_BAO_LineItem::processPriceSet($entityId, CRM_Utils_Array::value('line_item', $params), $params['contribution'], $entityTable, $update);
+      CRM_Price_BAO_LineItem::processPriceSet($entityId, CRM_Utils_Array::value('line_item', $params), $params['contribution'], $entityTable, $isUpdate);
     }
 
     // create batch entry if batch_id is passed and
@@ -4164,11 +4146,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
   public static function checkTaxAmount($params, $isLineItem = FALSE) {
     $taxRates = CRM_Core_PseudoConstant::getTaxRates();
 
-    // This function should be only called after standardisation (removal of
-    // thousand separator & using a decimal point for cents separator.
-    // However, we don't know if that is always true :-(
-    // There is a deprecation notice tho :-)
-    $unknownIfMoneyIsClean = empty($params['skipCleanMoney']) && !$isLineItem;
     // Update contribution.
     if (!empty($params['id'])) {
       // CRM-19126 and CRM-19152 If neither total or financial_type_id are set on an update
@@ -4215,7 +4192,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       empty($params['skipLineItem']) && !$isLineItem
     ) {
       $taxRateParams = $taxRates[$params['financial_type_id']];
-      $taxAmount = CRM_Contribute_BAO_Contribution_Utils::calculateTaxAmount(CRM_Utils_Array::value('total_amount', $params), $taxRateParams, $unknownIfMoneyIsClean);
+      $taxAmount = CRM_Contribute_BAO_Contribution_Utils::calculateTaxAmount(CRM_Utils_Array::value('total_amount', $params), $taxRateParams);
       $params['tax_amount'] = round($taxAmount['tax_amount'], 2);
 
       // Get Line Item on update of contribution
@@ -4249,7 +4226,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       // update line item of contrbution
       if (isset($params['financial_type_id']) && array_key_exists($params['financial_type_id'], $taxRates) && $isLineItem) {
         $taxRate = $taxRates[$params['financial_type_id']];
-        $taxAmount = CRM_Contribute_BAO_Contribution_Utils::calculateTaxAmount($params['line_total'], $taxRate, $unknownIfMoneyIsClean);
+        $taxAmount = CRM_Contribute_BAO_Contribution_Utils::calculateTaxAmount($params['line_total'], $taxRate);
         $params['tax_amount'] = round($taxAmount['tax_amount'], 2);
       }
     }
@@ -4403,7 +4380,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    * @param array $ids
    * @param array $objects
    * @param CRM_Core_Transaction $transaction
-   * @param CRM_Contribute_BAO_Contribution $contribution
+   *   It is not recommended to pass this in. The calling function handle it's own roll back if it wants it.
    * @param bool $isPostPaymentCreate
    *   Is this being called from the payment.create api. If so the api has taken care of financial entities.
    *   Note that our goal is that this would only ever be called from payment.create and never handle financials (only
@@ -4413,7 +4390,11 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    * @throws \CRM_Core_Exception
    * @throws \CiviCRM_API3_Exception
    */
-  public static function completeOrder($input, &$ids, $objects, $transaction, $contribution, $isPostPaymentCreate = FALSE) {
+  public static function completeOrder($input, &$ids, $objects, $transaction = NULL, $isPostPaymentCreate = FALSE) {
+    if (!$transaction) {
+      $transaction = new CRM_Core_Transaction();
+    }
+    $contribution = $objects['contribution'];
     $primaryContributionID = $contribution->id ?? $objects['first_contribution']->id;
     // The previous details are used when calculating line items so keep it before any code that 'does something'
     if (!empty($contribution->id)) {
@@ -4552,10 +4533,10 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     if (empty($contribution->_relatedObjects['participant']) && !empty($contribution->_relatedObjects['membership'])) {
       // @fixme Can we remove this if altogether? - we removed the participant if / else and left relatedObjects['participant'] to ensure behaviour didn't change but it is probably not required.
       // @todo - use getRelatedMemberships instead
-      $contribution->contribution_status_id = $contributionParams['contribution_status_id'];
       $contribution->trxn_id = $input['trxn_id'] ?? NULL;
       $contribution->receive_date = CRM_Utils_Date::isoToMysql($contribution->receive_date);
     }
+    $contribution->contribution_status_id = $contributionParams['contribution_status_id'];
 
     CRM_Core_Error::debug_log_message("Contribution record updated successfully");
     $transaction->commit();

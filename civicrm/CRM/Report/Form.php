@@ -140,11 +140,6 @@ class CRM_Report_Form extends CRM_Core_Form {
   protected $_groupFilter = FALSE;
 
   /**
-   * Required for civiexportexcel.
-   */
-  public $supportsExportExcel = TRUE;
-
-  /**
    * Has the report been optimised for group filtering.
    *
    * The functionality for group filtering has been improved but not
@@ -200,6 +195,13 @@ class CRM_Report_Form extends CRM_Core_Form {
   protected $groupConcatTested = FALSE;
 
   /**
+   * Are we in print mode. Can be set by another outputMode, ex: sendmail.
+   *
+   * @var bool
+   */
+  public $printOnly = FALSE;
+
+  /**
    * An attribute for checkbox/radio form field layout
    *
    * @var array
@@ -222,9 +224,6 @@ class CRM_Report_Form extends CRM_Core_Form {
 
   protected $_instanceButtonName = NULL;
   protected $_createNewButtonName = NULL;
-  protected $_printButtonName = NULL;
-  protected $_pdfButtonName = NULL;
-  protected $_csvButtonName = NULL;
   protected $_groupButtonName = NULL;
   protected $_chartButtonName = NULL;
   protected $_csvSupported = TRUE;
@@ -285,7 +284,13 @@ class CRM_Report_Form extends CRM_Core_Form {
    */
   protected $_sections = NULL;
   protected $_autoIncludeIndexedFieldsAsOrderBys = 0;
-  protected $_absoluteUrl = FALSE;
+
+  /**
+   * Whether to generate absolute URLs (ex: in report emails).
+   *
+   * @var bool
+   */
+  public $_absoluteUrl = FALSE;
 
   /**
    * Flag to indicate if result-set is to be stored in a class variable which could be retrieved using getResultSet() method.
@@ -1100,6 +1105,15 @@ class CRM_Report_Form extends CRM_Core_Form {
   }
 
   /**
+   * Getter for $_id.
+   *
+   * @return int
+   */
+  public function getID() {
+    return $this->_id;
+  }
+
+  /**
    * Setter for $_force.
    *
    * @param bool $isForce
@@ -1421,7 +1435,7 @@ class CRM_Report_Form extends CRM_Core_Form {
     if (!CRM_Core_Permission::check('view report sql')) {
       return;
     }
-    $ignored_output_modes = ['pdf', 'csv', 'print', 'excel2007'];
+    $ignored_output_modes = ['pdf', 'csv', 'print'];
     if (in_array($this->_outputMode, $ignored_output_modes)) {
       return;
     }
@@ -1432,6 +1446,7 @@ class CRM_Report_Form extends CRM_Core_Form {
     ];
 
     $this->assignTabs();
+    $this->sqlFormattedArray = [];
     $this->sqlArray[] = $sql;
     foreach ($this->sqlArray as $sql) {
       foreach (['LEFT JOIN'] as $term) {
@@ -2820,51 +2835,36 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
         CRM_Core_DAO::$_nullObject
       );
 
-    $this->_absoluteUrl = FALSE;
-    $printOnly = FALSE;
-    $this->assign('printOnly', FALSE);
+    $this->assign('printOnly', $this->printOnly);
 
     if ($this->_outputMode == 'print' ||
       ($this->_sendmail && !$this->_outputMode)
     ) {
-      $this->assign('printOnly', TRUE);
-      $printOnly = TRUE;
+      $this->printOnly = TRUE;
       $this->addPaging = FALSE;
-      $this->assign('outputMode', 'print');
       $this->_outputMode = 'print';
       if ($this->_sendmail) {
         $this->_absoluteUrl = TRUE;
       }
     }
     elseif ($this->_outputMode == 'pdf') {
-      $printOnly = TRUE;
+      $this->printOnly = TRUE;
       $this->addPaging = FALSE;
       $this->_absoluteUrl = TRUE;
     }
     elseif ($this->_outputMode == 'csv') {
-      $printOnly = TRUE;
+      $this->printOnly = TRUE;
       $this->_absoluteUrl = TRUE;
       $this->addPaging = FALSE;
-    }
-    elseif ($this->_outputMode == 'excel2007') {
-      $printOnly = TRUE;
-      $this->_absoluteUrl = TRUE;
-      $this->addPaging = FALSE;
-    }
-    elseif ($this->_outputMode == 'group') {
-      $this->assign('outputMode', 'group');
-    }
-    elseif ($this->_outputMode == 'create_report' && $this->_criteriaForm) {
-      $this->assign('outputMode', 'create_report');
     }
     elseif ($this->_outputMode == 'copy' && $this->_criteriaForm) {
       $this->_createNew = TRUE;
     }
 
     $this->assign('outputMode', $this->_outputMode);
-    $this->assign('printOnly', $printOnly);
+    $this->assign('printOnly', $this->printOnly);
     // Get today's date to include in printed reports
-    if ($printOnly) {
+    if ($this->printOnly) {
       $reportDate = CRM_Utils_Date::customFormat(date('Y-m-d H:i'));
       $this->assign('reportDate', $reportDate);
     }
@@ -3490,9 +3490,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
     }
     elseif ($this->_outputMode == 'csv') {
       CRM_Report_Utils_Report::export2csv($this, $rows);
-    }
-    elseif ($this->_outputMode == 'excel2007') {
-      CRM_CiviExportExcel_Utils_Report::export2excel2007($this, $rows);
     }
     elseif ($this->_outputMode == 'group') {
       $group = $this->_params['groups'];
@@ -5838,7 +5835,7 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
    */
   protected function storeGroupByArray() {
 
-    if (!CRM_Utils_Array::value('group_bys', $this->_params)
+    if (empty($this->_params['group_bys'])
       || !is_array($this->_params['group_bys'])) {
       $this->_params['group_bys'] = [];
     }

@@ -81,7 +81,7 @@ abstract class AbstractGetAction extends AbstractQueryAction {
    */
   protected function expandSelectClauseWildcards() {
     $wildFields = array_filter($this->select, function($item) {
-      return strpos($item, '*') !== FALSE && strpos($item, '.') === FALSE;
+      return strpos($item, '*') !== FALSE && strpos($item, '.') === FALSE && strpos($item, '(') === FALSE && strpos($item, ' ') === FALSE;
     });
     foreach ($wildFields as $item) {
       $pos = array_search($item, array_values($this->select));
@@ -120,7 +120,7 @@ abstract class AbstractGetAction extends AbstractQueryAction {
    * Checks the SELECT, WHERE and ORDER BY params to see what fields are needed.
    *
    * Note that if no SELECT clause has been set then all fields should be selected
-   * and this function will always return TRUE.
+   * and this function will return TRUE for field expressions that don't contain a :pseudoconstant suffix.
    *
    * @param string ...$fieldNames
    *   One or more field names to check (uses OR if multiple)
@@ -128,7 +128,7 @@ abstract class AbstractGetAction extends AbstractQueryAction {
    *   Returns true if any given fields are in use.
    */
   protected function _isFieldSelected(string ...$fieldNames) {
-    if (!$this->select || array_intersect($fieldNames, array_merge($this->select, array_keys($this->orderBy)))) {
+    if ((!$this->select && strpos($fieldNames[0], ':') === FALSE) || array_intersect($fieldNames, array_merge($this->select, array_keys($this->orderBy)))) {
       return TRUE;
     }
     return $this->_whereContains($fieldNames);

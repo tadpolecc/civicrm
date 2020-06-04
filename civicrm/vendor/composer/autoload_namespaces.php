@@ -20,7 +20,7 @@ return array(
     'Dflydev\\ApacheMimeTypes' => array($vendorDir . '/dflydev/apache-mime-types/src'),
     'Crypt' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
     'Console' => array($vendorDir . '/pear/console_getopt'),
-    'Civi\\' => array($baseDir . '/', $baseDir . '/tests/phpunit'),
+    'Civi\\' => array($baseDir . '/tests/phpunit'),
     'Civi' => array($baseDir . '/'),
     'CA_Config' => array($vendorDir . '/totten/ca-config/src'),
     'Auth' => array($vendorDir . '/pear/auth_sasl'),

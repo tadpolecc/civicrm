@@ -1,5 +1,4 @@
 <?php
-
 /*
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC. All rights reserved.                        |
@@ -10,32 +9,18 @@
  +--------------------------------------------------------------------+
  */
 
-/**
- *
- * @package CRM
- * @copyright CiviCRM LLC https://civicrm.org/licensing
- * $Id$
- *
- */
-
-namespace Civi\Api4\Action\Contact;
-
-use Civi\Api4\Generic\DAOGetFieldsAction;
+namespace Civi\Api4\Query;
 
 /**
- * @inheritDoc
+ * NULL sql expression
  */
-class GetFields extends DAOGetFieldsAction {
+class SqlNull extends SqlExpression {
 
-  protected function getRecords() {
-    $fields = parent::getRecords();
+  protected function initialize() {
+  }
 
-    $apiKeyPerms = ['edit api keys', 'administer CiviCRM'];
-    if ($this->checkPermissions && !\CRM_Core_Permission::check([$apiKeyPerms])) {
-      unset($fields['api_key']);
-    }
-
-    return $fields;
+  public function render(array $fieldList): string {
+    return 'NULL';
   }
 
 }

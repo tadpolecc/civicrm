@@ -543,20 +543,30 @@ class CRM_Core_DAO extends DB_DataObject {
    */
   public function save($hook = TRUE) {
     if (!empty($this->id)) {
-      $this->update();
+      if ($hook) {
+        $preEvent = new \Civi\Core\DAO\Event\PreUpdate($this);
+        \Civi::dispatcher()->dispatch("civi.dao.preUpdate", $preEvent);
+      }
+
+      $result = $this->update();
 
       if ($hook) {
-        $event = new \Civi\Core\DAO\Event\PostUpdate($this);
-        \Civi::service('dispatcher')->dispatch("civi.dao.postUpdate", $event);
+        $event = new \Civi\Core\DAO\Event\PostUpdate($this, $result);
+        \Civi::dispatcher()->dispatch("civi.dao.postUpdate", $event);
       }
       $this->clearDbColumnValueCache();
     }
     else {
-      $this->insert();
+      if ($hook) {
+        $preEvent = new \Civi\Core\DAO\Event\PreUpdate($this);
+        \Civi::dispatcher()->dispatch("civi.dao.preInsert", $preEvent);
+      }
+
+      $result = $this->insert();
 
       if ($hook) {
-        $event = new \Civi\Core\DAO\Event\PostUpdate($this);
-        \Civi::service('dispatcher')->dispatch("civi.dao.postInsert", $event);
+        $event = new \Civi\Core\DAO\Event\PostUpdate($this, $result);
+        \Civi::dispatcher()->dispatch("civi.dao.postInsert", $event);
       }
     }
     $this->free();
@@ -595,12 +605,12 @@ class CRM_Core_DAO extends DB_DataObject {
    */
   public function delete($useWhere = FALSE) {
     $preEvent = new \Civi\Core\DAO\Event\PreDelete($this);
-    \Civi::service('dispatcher')->dispatch("civi.dao.preDelete", $preEvent);
+    \Civi::dispatcher()->dispatch("civi.dao.preDelete", $preEvent);
 
     $result = parent::delete($useWhere);
 
     $event = new \Civi\Core\DAO\Event\PostDelete($this, $result);
-    \Civi::service('dispatcher')->dispatch("civi.dao.postDelete", $event);
+    \Civi::dispatcher()->dispatch("civi.dao.postDelete", $event);
     $this->free();
 
     $this->clearDbColumnValueCache();
@@ -2049,9 +2059,8 @@ SELECT contact_id
       foreach ($fields as $fieldName => $fieldDef) {
         $dbName = $fieldDef['name'];
         $FKClassName = $fieldDef['FKClassName'] ?? NULL;
-        $required = $fieldDef['required'] ?? NULL;
 
-        if (CRM_Utils_Array::value($dbName, $params) !== NULL && !is_array($params[$dbName])) {
+        if (isset($params[$dbName]) && !is_array($params[$dbName])) {
           $object->$dbName = $params[$dbName];
         }
 
@@ -2418,6 +2427,8 @@ SELECT contact_id
    *
    * Refer to CRM-17454 for information on the danger of querying the information
    * schema to derive this.
+   *
+   * @throws \CiviCRM_API3_Exception
    */
   public static function getReferencesToContactTable() {
     if (isset(\Civi::$statics[__CLASS__]) && isset(\Civi::$statics[__CLASS__]['contact_references'])) {
@@ -2432,11 +2443,28 @@ SELECT contact_id
     }
     self::appendCustomTablesExtendingContacts($contactReferences);
     self::appendCustomContactReferenceFields($contactReferences);
-
-    // FixME for time being adding below line statically as no Foreign key constraint defined for table 'civicrm_entity_tag'
-    $contactReferences['civicrm_entity_tag'][] = 'entity_id';
     \Civi::$statics[__CLASS__]['contact_references'] = $contactReferences;
     return \Civi::$statics[__CLASS__]['contact_references'];
+  }
+
+  /**
+   * Get all dynamic references to the given table.
+   *
+   * @param string $tableName
+   *
+   * @return array
+   */
+  public static function getDynamicReferencesToTable($tableName) {
+    if (!isset(\Civi::$statics[__CLASS__]['contact_references_dynamic'][$tableName])) {
+      \Civi::$statics[__CLASS__]['contact_references_dynamic'][$tableName] = [];
+      $coreReferences = CRM_Core_DAO::getReferencesToTable($tableName);
+      foreach ($coreReferences as $coreReference) {
+        if ($coreReference instanceof \CRM_Core_Reference_Dynamic) {
+          \Civi::$statics[__CLASS__]['contact_references_dynamic'][$tableName][$coreReference->getReferenceTable()][] = $coreReference->getReferenceKey();
+        }
+      }
+    }
+    return \Civi::$statics[__CLASS__]['contact_references_dynamic'][$tableName];
   }
 
   /**
@@ -2472,6 +2500,7 @@ SELECT contact_id
     $fields = civicrm_api3('CustomField', 'get', [
       'return'    => ['column_name', 'custom_group_id.table_name'],
       'data_type' => 'ContactReference',
+      'options' => ['limit' => 0],
     ])['values'];
     foreach ($fields as $field) {
       $cidRefs[$field['custom_group_id.table_name']][] = $field['column_name'];
@@ -2560,14 +2589,16 @@ SELECT contact_id
    * @param string $context
    * @see CRM_Core_DAO::buildOptionsContext
    * @param array $props
-   *   whatever is known about this bao object.
+   *   Raw field values; whatever is known about this bao object.
+   *
+   * Note: $props can contain unsanitized input and should not be passed directly to CRM_Core_PseudoConstant::get
    *
    * @return array|bool
    */
   public static function buildOptions($fieldName, $context = NULL, $props = []) {
     // If a given bao does not override this function
     $baoName = get_called_class();
-    return CRM_Core_PseudoConstant::get($baoName, $fieldName, $props, $context);
+    return CRM_Core_PseudoConstant::get($baoName, $fieldName, [], $context);
   }
 
   /**

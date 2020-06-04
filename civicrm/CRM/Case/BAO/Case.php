@@ -510,7 +510,7 @@ HERESQL;
     }
 
     $type = CRM_Utils_Array::value('type', $params, 'upcoming');
-    $userID = CRM_Core_Session::singleton()->get('userID');
+    $userID = CRM_Core_Session::getLoggedInContactID();
 
     // validate access for all cases.
     if ($allCases && !CRM_Core_Permission::check('access all cases and activities')) {
@@ -670,7 +670,7 @@ HERESQL;
       return $caseSummary;
     }
 
-    $userID = CRM_Core_Session::singleton()->get('userID');
+    $userID = CRM_Core_Session::getLoggedInContactID();
 
     //validate access for all cases.
     if ($allCases && !CRM_Core_Permission::check('access all cases and activities')) {
@@ -1141,6 +1141,7 @@ SELECT civicrm_case.id, case_status.label AS case_status, status_id, civicrm_cas
     }
 
     $values = [];
+    $caseClientCondition = !empty($caseInfo['client_id']) ? "AND cc.id NOT IN (%2)" : '';
     $query = <<<HERESQL
     SELECT cc.display_name as name, cc.sort_name as sort_name, cc.id, cr.relationship_type_id, crt.label_b_a as role, crt.name_b_a as role_name, crt.name_a_b as role_name_reverse, ce.email, cp.phone
     FROM civicrm_relationship cr
@@ -1157,7 +1158,7 @@ SELECT civicrm_case.id, case_status.label AS case_status, status_id, civicrm_cas
      AND cp.is_primary= 1
     WHERE cr.case_id =  %1
      AND cr.is_active
-     AND cc.id NOT IN (%2)
+     {$caseClientCondition}
     UNION
     SELECT cc.display_name as name, cc.sort_name as sort_name, cc.id, cr.relationship_type_id, crt.label_a_b as role, crt.name_a_b as role_name, crt.name_b_a as role_name_reverse, ce.email, cp.phone
     FROM civicrm_relationship cr
@@ -1174,12 +1175,16 @@ SELECT civicrm_case.id, case_status.label AS case_status, status_id, civicrm_cas
      AND cp.is_primary= 1
     WHERE cr.case_id =  %1
      AND cr.is_active
-     AND cc.id NOT IN (%2)
+     {$caseClientCondition}
 HERESQL;
+
     $params = [
       1 => [$caseID, 'Integer'],
-      2 => [implode(',', $caseInfo['client_id']), 'String'],
     ];
+
+    if ($caseClientCondition) {
+      $params[2] = [implode(',', $caseInfo['client_id']), 'CommaSeparatedIntegers'];
+    }
     $dao = CRM_Core_DAO::executeQuery($query, $params);
 
     while ($dao->fetch()) {
@@ -1264,9 +1269,9 @@ HERESQL;
         break;
       }
     }
-    $session = CRM_Core_Session::singleton();
+
     // CRM-8926 If user is not logged in, use the activity creator as userID
-    if (!($userID = $session->get('userID'))) {
+    if (!($userID = CRM_Core_Session::getLoggedInContactID())) {
       $userID = CRM_Activity_BAO_Activity::getSourceContactID($activityId);
     }
 
@@ -1398,8 +1403,7 @@ HERESQL;
    *
    */
   public static function getNextScheduledActivity($cases, $type = 'upcoming') {
-    $session = CRM_Core_Session::singleton();
-    $userID = $session->get('userID');
+    $userID = CRM_Core_Session::getLoggedInContactID();
 
     $caseID = implode(',', $cases['case_id']);
     $contactID = implode(',', $cases['contact_id']);

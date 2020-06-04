@@ -655,7 +655,7 @@ abstract class CRM_Utils_System_DrupalBase extends CRM_Utils_System_Base {
    * @return bool
    */
   public function isFrontEndPage() {
-    $path = CRM_Utils_System::getUrlPath();
+    $path = CRM_Utils_System::currentPath();
 
     // Get the menu for above URL.
     $item = CRM_Core_Menu::get($path);
@@ -685,6 +685,18 @@ abstract class CRM_Utils_System_DrupalBase extends CRM_Utils_System_Base {
    */
   public function getRoleNames() {
     return array_combine(user_roles(), user_roles());
+  }
+
+  /**
+   * Determine if the Views module exists.
+   *
+   * @return bool
+   */
+  public function viewsExists() {
+    if (function_exists('module_exists') && module_exists('views')) {
+      return TRUE;
+    }
+    return FALSE;
   }
 
 }

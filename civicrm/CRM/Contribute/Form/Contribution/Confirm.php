@@ -101,7 +101,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
       }
       $pledgeParams['create_date'] = $pledgeParams['start_date'] = $pledgeParams['scheduled_date'] = date("Ymd");
       if (!empty($params['start_date'])) {
-        $pledgeParams['frequency_day'] = intval(date("d", strtotime(CRM_Utils_Array::value('start_date', $params))));
+        $pledgeParams['frequency_day'] = intval(date("d", strtotime($params['start_date'])));
         $pledgeParams['start_date'] = $pledgeParams['scheduled_date'] = date('Ymd', strtotime(CRM_Utils_Array::value('start_date', $params)));
       }
       $pledgeParams['status_id'] = $contribution->contribution_status_id;
@@ -615,11 +615,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
       // Recursively set defaults for nested fields
       if (isset($contact[$name]) && is_array($contact[$name]) && ($name == 'onbehalf' || $name == 'honor')) {
         foreach ($contact[$name] as $fieldName => $fieldValue) {
-          if (is_array($fieldValue) && !in_array($this->_fields[$name][$fieldName]['html_type'], [
-            'Multi-Select',
-            'AdvMulti-Select',
-          ])
-          ) {
+          if (is_array($fieldValue) && $this->_fields[$name][$fieldName]['html_type'] == 'CheckBox') {
             foreach ($fieldValue as $key => $value) {
               $defaults["{$name}[{$fieldName}][{$key}]"] = $value;
             }
@@ -951,10 +947,10 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
           foreach ($lineItemValue as $key => $value) {
             if (isset($value['tax_amount']) && isset($value['tax_rate'])) {
               if (isset($dataArray[$value['tax_rate']])) {
-                $dataArray[$value['tax_rate']] = $dataArray[$value['tax_rate']] + CRM_Utils_Array::value('tax_amount', $value);
+                $dataArray[$value['tax_rate']] = $dataArray[$value['tax_rate']] + $value['tax_amount'];
               }
               else {
-                $dataArray[$value['tax_rate']] = $value['tax_amount'] ?? NULL;
+                $dataArray[$value['tax_rate']] = $value['tax_amount'];
               }
             }
           }
@@ -1015,15 +1011,19 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
 
     //create contribution activity w/ individual and target
     //activity w/ organisation contact id when onbelf, CRM-4027
+    $actParams = [];
     $targetContactID = NULL;
-    if (!empty($params['hidden_onbehalf_profile'])) {
+    if (!empty($params['onbehalf_contact_id'])) {
+      $actParams = [
+        'source_contact_id' => $params['onbehalf_contact_id'],
+        'on_behalf' => TRUE,
+      ];
       $targetContactID = $contribution->contact_id;
-      $contribution->contact_id = $contactID;
     }
 
     // create an activity record
     if ($contribution) {
-      CRM_Activity_BAO_Activity::addActivity($contribution, NULL, $targetContactID);
+      CRM_Activity_BAO_Activity::addActivity($contribution, NULL, $targetContactID, $actParams);
     }
 
     $transaction->commit();
@@ -1875,7 +1875,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
       // the quick config seems like a red-herring - if this is about a separate membership payment then there
       // are 2 types of line items - membership ones & non-membership ones - regardless of whether quick config is set
       elseif (
-        CRM_Utils_Array::value('is_separate_payment', $this->_membershipBlock)
+        !empty($this->_membershipBlock['is_separate_payment'])
         && !empty($this->_values['fee'][$priceField->id])
         && ($this->_values['fee'][$priceField->id]['name'] == "other_amount")
         && CRM_Utils_Array::value("price_{$paramWeDoNotUnderstand}", $this->_params) < 1
@@ -2056,8 +2056,8 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     // CRM-18854
     if (!empty($this->_params['is_pledge']) && empty($this->_values['pledge_id']) && !empty($this->_values['adjust_recur_start_date'])) {
       $pledgeBlock = CRM_Pledge_BAO_PledgeBlock::getPledgeBlock($this->_id);
-      if (CRM_Utils_Array::value('start_date', $this->_params) || !CRM_Utils_Array::value('is_pledge_start_date_visible', $pledgeBlock)
-          || !CRM_Utils_Array::value('is_pledge_start_date_editable', $pledgeBlock)) {
+      if (!empty($this->_params['start_date']) || empty($pledgeBlock['is_pledge_start_date_visible'])
+          || empty($pledgeBlock['is_pledge_start_date_editable'])) {
         $pledgeStartDate = $this->_params['start_date'] ?? NULL;
         $this->_params['receive_date'] = CRM_Pledge_BAO_Pledge::getPledgeStartDate($pledgeStartDate, $pledgeBlock);
         $recurParams = CRM_Pledge_BAO_Pledge::buildRecurParams($this->_params);
