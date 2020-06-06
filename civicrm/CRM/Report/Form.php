@@ -140,6 +140,11 @@ class CRM_Report_Form extends CRM_Core_Form {
   protected $_groupFilter = FALSE;
 
   /**
+   * Required for civiexportexcel.
+   */
+  public $supportsExportExcel = TRUE;
+
+  /**
    * Has the report been optimised for group filtering.
    *
    * The functionality for group filtering has been improved but not
@@ -1435,7 +1440,7 @@ class CRM_Report_Form extends CRM_Core_Form {
     if (!CRM_Core_Permission::check('view report sql')) {
       return;
     }
-    $ignored_output_modes = ['pdf', 'csv', 'print'];
+    $ignored_output_modes = ['pdf', 'csv', 'print', 'excel2007'];
     if (in_array($this->_outputMode, $ignored_output_modes)) {
       return;
     }
@@ -2857,6 +2862,11 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
       $this->_absoluteUrl = TRUE;
       $this->addPaging = FALSE;
     }
+    elseif ($this->_outputMode == 'excel2007') {
+      $printOnly = TRUE;
+      $this->_absoluteUrl = TRUE;
+      $this->addPaging = FALSE;
+    }
     elseif ($this->_outputMode == 'copy' && $this->_criteriaForm) {
       $this->_createNew = TRUE;
     }
@@ -3490,6 +3500,9 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
     }
     elseif ($this->_outputMode == 'csv') {
       CRM_Report_Utils_Report::export2csv($this, $rows);
+    }
+    elseif ($this->_outputMode == 'excel2007') {
+      CRM_CiviExportExcel_Utils_Report::export2excel2007($this, $rows);
     }
     elseif ($this->_outputMode == 'group') {
       $group = $this->_params['groups'];
