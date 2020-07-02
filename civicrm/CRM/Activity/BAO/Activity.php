@@ -182,6 +182,8 @@ class CRM_Activity_BAO_Activity extends CRM_Activity_DAO_Activity {
         // CRM-13994 delete activity entity_tag
         $query = "DELETE FROM civicrm_entity_tag WHERE entity_table = 'civicrm_activity' AND entity_id = %1";
         $dao = CRM_Core_DAO::executeQuery($query, [1 => [$activity->id, 'Positive']]);
+
+        CRM_Core_BAO_File::deleteEntityFile('civicrm_activity', $activity->id);
       }
     }
     else {
@@ -989,11 +991,13 @@ class CRM_Activity_BAO_Activity extends CRM_Activity_DAO_Activity {
   }
 
   /**
-   * @param int $userID
+   * @param int $sourceContactID
+   *   The contact ID of the email "from".
    * @param string $subject
    * @param string $html
    * @param string $text
    * @param string $additionalDetails
+   *   The additional information of CC and BCC appended to the activity details.
    * @param int $campaignID
    * @param array $attachments
    * @param int $caseID
@@ -1002,12 +1006,12 @@ class CRM_Activity_BAO_Activity extends CRM_Activity_DAO_Activity {
    *   The created activity ID
    * @throws \CRM_Core_Exception
    */
-  public static function createEmailActivity($userID, $subject, $html, $text, $additionalDetails, $campaignID, $attachments, $caseID) {
+  public static function createEmailActivity($sourceContactID, $subject, $html, $text, $additionalDetails, $campaignID, $attachments, $caseID) {
     $activityTypeID = CRM_Core_PseudoConstant::getKey('CRM_Activity_BAO_Activity', 'activity_type_id', 'Email');
 
     // CRM-6265: save both text and HTML parts in details (if present)
     if ($html and $text) {
-      $details = "-ALTERNATIVE ITEM 0-\n$html$additionalDetails\n-ALTERNATIVE ITEM 1-\n$text$additionalDetails\n-ALTERNATIVE END-\n";
+      $details = "-ALTERNATIVE ITEM 0-\n{$html}{$additionalDetails}\n-ALTERNATIVE ITEM 1-\n{$text}{$additionalDetails}\n-ALTERNATIVE END-\n";
     }
     else {
       $details = $html ? $html : $text;
@@ -1015,12 +1019,11 @@ class CRM_Activity_BAO_Activity extends CRM_Activity_DAO_Activity {
     }
 
     $activityParams = [
-      'source_contact_id' => $userID,
+      'source_contact_id' => $sourceContactID,
       'activity_type_id' => $activityTypeID,
       'activity_date_time' => date('YmdHis'),
       'subject' => $subject,
       'details' => $details,
-      // FIXME: check for name Completed and get ID from that lookup
       'status_id' => CRM_Core_PseudoConstant::getKey('CRM_Activity_BAO_Activity', 'status_id', 'Completed'),
       'campaign_id' => $campaignID,
     ];
@@ -1038,6 +1041,7 @@ class CRM_Activity_BAO_Activity extends CRM_Activity_DAO_Activity {
     }
 
     $activity = civicrm_api3('Activity', 'create', $activityParams);
+
     return $activity['id'];
   }
 
@@ -1077,10 +1081,10 @@ class CRM_Activity_BAO_Activity extends CRM_Activity_DAO_Activity {
    * @throws \CiviCRM_API3_Exception
    */
   public static function sendEmail(
-    &$contactDetails,
-    &$subject,
-    &$text,
-    &$html,
+    $contactDetails,
+    $subject,
+    $text,
+    $html,
     $emailAddress,
     $userID = NULL,
     $from = NULL,
@@ -2587,7 +2591,7 @@ INNER JOIN  civicrm_option_group grp ON (grp.id = option_group_id AND grp.name =
         $activity['DT_RowAttr']['data-entity'] = 'activity';
         $activity['DT_RowAttr']['data-id'] = $activityId;
 
-        $activity['activity_type'] = (!empty($activityIcons[$values['activity_type_id']]) ? '<span class="crm-i ' . $activityIcons[$values['activity_type_id']] . '"></span> ' : '') . $values['activity_type'];
+        $activity['activity_type'] = (!empty($activityIcons[$values['activity_type_id']]) ? '<span class="crm-i ' . $activityIcons[$values['activity_type_id']] . '" aria-hidden="true"></span> ' : '') . $values['activity_type'];
         $activity['subject'] = $values['subject'];
 
         if ($params['contact_id'] == $values['source_contact_id']) {

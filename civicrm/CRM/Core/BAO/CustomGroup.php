@@ -399,6 +399,7 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup {
         'time_format',
         'option_group_id',
         'in_selector',
+        'serialize',
       ],
       'custom_group' => [
         'id',
@@ -1533,7 +1534,6 @@ ORDER BY civicrm_custom_group.weight,
     $form->assign_by_ref("{$prefix}groupTree", $groupTree);
 
     foreach ($groupTree as $id => $group) {
-      CRM_Core_ShowHideBlocks::links($form, $group['title'], '', '');
       foreach ($group['fields'] as $field) {
         $required = $field['is_required'] ?? NULL;
         //fix for CRM-1620

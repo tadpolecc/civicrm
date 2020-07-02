@@ -194,7 +194,7 @@ class CRM_Core_PseudoConstant {
       'fresh' => FALSE,
       'context' => $context,
     ];
-    $entity = CRM_Core_DAO_AllCoreTables::getBriefName(CRM_Core_DAO_AllCoreTables::getCanonicalClassName($daoName));
+    $entity = CRM_Core_DAO_AllCoreTables::getBriefName($daoName);
 
     // Custom fields are not in the schema
     if (strpos($fieldName, 'custom_') === 0 && is_numeric($fieldName[7])) {
@@ -1527,7 +1527,7 @@ WHERE  id = %1
     }
     // Filter domain specific options
     if (in_array('domain_id', $availableFields)) {
-      $wheres[] = 'domain_id = ' . CRM_Core_Config::domainID();
+      $wheres[] = 'domain_id = ' . CRM_Core_Config::domainID() . ' OR  domain_id is NULL';
     }
     $queryParams = [
       1 => [$params['keyColumn'], 'String', CRM_Core_DAO::QUERY_FORMAT_NO_QUOTES],

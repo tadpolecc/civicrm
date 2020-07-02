@@ -421,7 +421,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
 
     $element = $this->addElement($type, $name, CRM_Utils_String::purifyHTML($label), $attributes, $extra);
     if (HTML_QuickForm::isError($element)) {
-      CRM_Core_Error::fatal(HTML_QuickForm::errorMessage($element));
+      CRM_Core_Error::statusBounce(HTML_QuickForm::errorMessage($element));
     }
 
     if ($inputType == 'color') {
@@ -436,7 +436,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
         $error = $this->addRule($name, ts('%1 is a required field.', [1 => $label]), 'required');
       }
       if (HTML_QuickForm::isError($error)) {
-        CRM_Core_Error::fatal(HTML_QuickForm::errorMessage($element));
+        CRM_Core_Error::statusBounce(HTML_QuickForm::errorMessage($element));
       }
     }
 
@@ -2015,7 +2015,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
   public function addEntityRef($name, $label = '', $props = [], $required = FALSE) {
     // Default properties
     $props['api'] = CRM_Utils_Array::value('api', $props, []);
-    $props['entity'] = CRM_Utils_String::convertStringToCamel(CRM_Utils_Array::value('entity', $props, 'Contact'));
+    $props['entity'] = CRM_Core_DAO_AllCoreTables::convertEntityNameToCamel(CRM_Utils_Array::value('entity', $props, 'Contact'));
     $props['class'] = ltrim(CRM_Utils_Array::value('class', $props, '') . ' crm-form-entityref');
 
     if (array_key_exists('create', $props) && empty($props['create'])) {

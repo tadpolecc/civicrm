@@ -1481,12 +1481,6 @@ FROM   civicrm_domain
       return $result;
     }
 
-    if ($freeDAO ||
-      preg_match('/^(insert|update|delete|create|drop|replace)/i', $queryStr)
-    ) {
-      // we typically do this for insert/update/delete statements OR if explicitly asked to
-      // free the dao
-    }
     return $dao;
   }
 
@@ -1736,7 +1730,7 @@ FROM   civicrm_domain
       if (!$blockCopyofCustomValues) {
         $newObject->copyCustomFields($object->id, $newObject->id);
       }
-      CRM_Utils_Hook::post('create', CRM_Core_DAO_AllCoreTables::getBriefName(str_replace('_BAO_', '_DAO_', $daoName)), $newObject->id, $newObject);
+      CRM_Utils_Hook::post('create', CRM_Core_DAO_AllCoreTables::getBriefName($daoName), $newObject->id, $newObject);
     }
 
     return $newObject;
@@ -2459,7 +2453,7 @@ SELECT contact_id
       $coreReferences = CRM_Core_DAO::getReferencesToTable($tableName);
       foreach ($coreReferences as $coreReference) {
         if ($coreReference instanceof \CRM_Core_Reference_Dynamic) {
-          \Civi::$statics[__CLASS__]['contact_references_dynamic'][$tableName][$coreReference->getReferenceTable()][] = $coreReference->getReferenceKey();
+          \Civi::$statics[__CLASS__]['contact_references_dynamic'][$tableName][$coreReference->getReferenceTable()][] = [$coreReference->getReferenceKey(), $coreReference->getTypeColumn()];
         }
       }
     }
@@ -2857,11 +2851,11 @@ SELECT contact_id
    * Generates acl clauses suitable for adding to WHERE or ON when doing an api.get for this entity
    *
    * Return format is in the form of fieldname => clauses starting with an operator. e.g.:
-   * @code
+   * ```
    *   array(
    *     'location_type_id' => array('IS NOT NULL', 'IN (1,2,3)')
    *   )
-   * @endcode
+   * ```
    *
    * Note that all array keys must be actual field names in this entity. Use subqueries to filter on other tables e.g. custom values.
    *

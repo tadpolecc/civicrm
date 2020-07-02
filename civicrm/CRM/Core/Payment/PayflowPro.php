@@ -18,14 +18,6 @@ class CRM_Core_Payment_PayflowPro extends CRM_Core_Payment {
     CHARSET = 'UFT-8';
 
   /**
-   * We only need one instance of this object. So we use the singleton
-   * pattern and cache the instance in this variable
-   *
-   * @var object
-   */
-  static private $_singleton = NULL;
-
-  /**
    * Constructor
    *
    * @param string $mode
@@ -36,7 +28,6 @@ class CRM_Core_Payment_PayflowPro extends CRM_Core_Payment {
     // live or test
     $this->_mode = $mode;
     $this->_paymentProcessor = $paymentProcessor;
-    $this->_processorName = ts('Payflow Pro');
   }
 
   /*
@@ -58,7 +49,7 @@ class CRM_Core_Payment_PayflowPro extends CRM_Core_Payment {
    */
   public function doDirectPayment(&$params) {
     if (!defined('CURLOPT_SSLCERT')) {
-      CRM_Core_Error::fatal(ts('Payflow Pro requires curl with SSL support'));
+      throw new CRM_Core_Exception(ts('Payflow Pro requires curl with SSL support'));
     }
 
     /*
@@ -373,7 +364,7 @@ class CRM_Core_Payment_PayflowPro extends CRM_Core_Payment {
    * @throws Exception
    */
   public function doTransferCheckout(&$params, $component) {
-    CRM_Core_Error::fatal(ts('This function is not implemented'));
+    throw new CRM_Core_Exception(ts('This function is not implemented'));
   }
 
   /**

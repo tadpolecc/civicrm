@@ -184,6 +184,19 @@ class CRM_Core_Error extends PEAR_ErrorStack {
       }
     }
 
+    // Use the custom fatalErrorHandler if defined
+    if ($config->fatalErrorHandler && function_exists($config->fatalErrorHandler)) {
+      $name = $config->fatalErrorHandler;
+      $vars = [
+        'pearError' => $pearError,
+      ];
+      $ret = $name($vars);
+      if ($ret) {
+        // the call has been successfully handled so we just exit
+        self::abend(CRM_Core_Error::FATAL_ERROR);
+      }
+    }
+
     $template->assign_by_ref('error', $error);
     $errorDetails = CRM_Core_Error::debug('', $error, FALSE);
     $template->assign_by_ref('errorDetails', $errorDetails);
@@ -204,7 +217,7 @@ class CRM_Core_Error extends PEAR_ErrorStack {
       exit;
     }
     $runOnce = TRUE;
-    self::abend(1);
+    self::abend(CRM_Core_Error::FATAL_ERROR);
   }
 
   /**
@@ -559,6 +572,18 @@ class CRM_Core_Error extends PEAR_ErrorStack {
     }
     $file_log->close();
 
+    // Use the custom fatalErrorHandler if defined
+    if (in_array($priority, [PEAR_LOG_EMERG, PEAR_LOG_ALERT, PEAR_LOG_CRIT, PEAR_LOG_ERR])) {
+      if ($config->fatalErrorHandler && function_exists($config->fatalErrorHandler)) {
+        $name = $config->fatalErrorHandler;
+        $vars = [
+          'debugLogMessage' => $message,
+          'priority' => $priority,
+        ];
+        $name($vars);
+      }
+    }
+
     if (!isset(\Civi::$statics[__CLASS__]['userFrameworkLogging'])) {
       // Set it to FALSE first & then try to set it. This is to prevent a loop as calling
       // $config->userFrameworkLogging can trigger DB queries & under log mode this
@@ -651,22 +676,30 @@ class CRM_Core_Error extends PEAR_ErrorStack {
 
       $prefixString = $prefix ? ($prefix . '.') : '';
 
-      $hash = self::generateLogFileHash($config);
-      $fileName = $config->configAndLogDir . 'CiviCRM.' . $prefixString . $hash . '.log';
+      if (CRM_Utils_Constant::value('CIVICRM_LOG_HASH', TRUE)) {
+        $hash = self::generateLogFileHash($config) . '.';
+      }
+      else {
+        $hash = '';
+      }
+      $fileName = $config->configAndLogDir . 'CiviCRM.' . $prefixString . $hash . 'log';
 
-      // Roll log file monthly or if greater than 256M.
+      // Roll log file monthly or if greater than our threshold.
       // Size-based rotation introduced in response to filesize limits on
       // certain OS/PHP combos.
-      if (file_exists($fileName)) {
-        $fileTime = date("Ym", filemtime($fileName));
-        $fileSize = filesize($fileName);
-        if (($fileTime < date('Ym')) ||
-          ($fileSize > 256 * 1024 * 1024) ||
-          ($fileSize < 0)
-        ) {
-          rename($fileName,
-            $fileName . '.' . date('YmdHi')
-          );
+      $maxBytes = CRM_Utils_Constant::value('CIVICRM_LOG_ROTATESIZE', 256 * 1024 * 1024);
+      if ($maxBytes) {
+        if (file_exists($fileName)) {
+          $fileTime = date("Ym", filemtime($fileName));
+          $fileSize = filesize($fileName);
+          if (($fileTime < date('Ym')) ||
+            ($fileSize > $maxBytes) ||
+            ($fileSize < 0)
+          ) {
+            rename($fileName,
+              $fileName . '.' . date('YmdHi')
+            );
+          }
         }
       }
       \Civi::$statics[__CLASS__]['logger_file' . $prefix] = $fileName;

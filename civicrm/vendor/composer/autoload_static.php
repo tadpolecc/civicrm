@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInitb2582f114b1248d5a20a7411671eea43
+class ComposerStaticInitabd80a2472ebcf6a6e6e8989d45a577c
 {
     public static $files = array (
         '320cde22f66dd4f5d3fd621d3e88b98f' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
@@ -56,6 +56,7 @@ class ComposerStaticInitb2582f114b1248d5a20a7411671eea43
             'Psr\\SimpleCache\\' => 16,
             'Psr\\Log\\' => 8,
             'Psr\\Http\\Message\\' => 17,
+            'Psr\\Container\\' => 14,
             'Psr\\Cache\\' => 10,
             'PhpOffice\\PhpWord\\' => 18,
             'PhpOffice\\Common\\' => 17,
@@ -163,6 +164,10 @@ class ComposerStaticInitb2582f114b1248d5a20a7411671eea43
         array (
             0 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
+        'Psr\\Container\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/psr/container/src',
+        ),
         'Psr\\Cache\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/cache/src',
@@ -266,10 +271,6 @@ class ComposerStaticInitb2582f114b1248d5a20a7411671eea43
             array (
                 0 => __DIR__ . '/../..' . '/packages',
             ),
-            'PEAR' => 
-            array (
-                0 => __DIR__ . '/..' . '/pear/pear_exception',
-            ),
         ),
         'N' => 
         array (
@@ -366,6 +367,7 @@ class ComposerStaticInitb2582f114b1248d5a20a7411671eea43
         'HTML5_TreeBuilder' => __DIR__ . '/..' . '/dompdf/dompdf/lib/html5lib/TreeBuilder.php',
         'ICallbackNamed' => __DIR__ . '/..' . '/electrolinux/phpquery/phpQuery/phpQuery/Callback.php',
         'PDF417' => __DIR__ . '/..' . '/tecnickcom/tcpdf/include/barcodes/pdf417.php',
+        'PEAR_Exception' => __DIR__ . '/..' . '/pear/pear_exception/PEAR/Exception.php',
         'PclZip' => __DIR__ . '/..' . '/pclzip/pclzip/pclzip.lib.php',
         'QRcode' => __DIR__ . '/..' . '/tecnickcom/tcpdf/include/barcodes/qrcode.php',
         'TCPDF' => __DIR__ . '/..' . '/tecnickcom/tcpdf/tcpdf.php',
@@ -495,11 +497,11 @@ class ComposerStaticInitb2582f114b1248d5a20a7411671eea43
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInitb2582f114b1248d5a20a7411671eea43::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInitb2582f114b1248d5a20a7411671eea43::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInitb2582f114b1248d5a20a7411671eea43::$prefixesPsr0;
-            $loader->fallbackDirsPsr0 = ComposerStaticInitb2582f114b1248d5a20a7411671eea43::$fallbackDirsPsr0;
-            $loader->classMap = ComposerStaticInitb2582f114b1248d5a20a7411671eea43::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitabd80a2472ebcf6a6e6e8989d45a577c::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitabd80a2472ebcf6a6e6e8989d45a577c::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInitabd80a2472ebcf6a6e6e8989d45a577c::$prefixesPsr0;
+            $loader->fallbackDirsPsr0 = ComposerStaticInitabd80a2472ebcf6a6e6e8989d45a577c::$fallbackDirsPsr0;
+            $loader->classMap = ComposerStaticInitabd80a2472ebcf6a6e6e8989d45a577c::$classMap;
 
         }, null, ClassLoader::class);
     }

@@ -28,6 +28,7 @@
     $scope.havingOptions = [];
     $scope.fieldsAndJoins = [];
     $scope.fieldsAndJoinsAndFunctions = [];
+    $scope.fieldsAndJoinsAndFunctionsWithSuffixes = [];
     $scope.fieldsAndJoinsAndFunctionsAndWildcards = [];
     $scope.availableParams = {};
     $scope.params = {};
@@ -52,6 +53,7 @@
     $scope.loading = false;
     $scope.controls = {};
     $scope.langs = ['php', 'js', 'ang', 'cli'];
+    $scope.joinTypes = [{k: false, v: ts('Optional')}, {k: true, v: ts('Required')}];
     $scope.code = {
       php: [
         {name: 'oop', label: ts('OOP Style'), code: ''},
@@ -136,7 +138,7 @@
           }
           fields.push({
             text: link.alias,
-            description: 'Join to ' + link.entity,
+            description: 'Implicit join to ' + link.entity,
             children: wildCard.concat(formatForSelect2(linkFields, [], 'name', ['description'], link.alias + '.'))
           });
         }
@@ -253,7 +255,7 @@
       if (_.isEmpty($scope.availableParams)) {
         return;
       }
-      var specialParams = ['select', 'fields', 'action', 'where', 'values', 'defaults', 'orderBy', 'chain', 'groupBy', 'having'];
+      var specialParams = ['select', 'fields', 'action', 'where', 'values', 'defaults', 'orderBy', 'chain', 'groupBy', 'having', 'join'];
       if ($scope.availableParams.limit && $scope.availableParams.offset) {
         specialParams.push('limit', 'offset');
       }
@@ -356,6 +358,7 @@
       $scope.action = $routeParams.api4action;
       $scope.fieldsAndJoins.length = 0;
       $scope.fieldsAndJoinsAndFunctions.length = 0;
+      $scope.fieldsAndJoinsAndFunctionsWithSuffixes.length = 0;
       $scope.fieldsAndJoinsAndFunctionsAndWildcards.length = 0;
       if (!actions.length) {
         formatForSelect2(getEntity().actions, actions, 'name', ['description', 'params']);
@@ -381,10 +384,12 @@
             });
           }
           $scope.fieldsAndJoinsAndFunctions = addJoins($scope.fields.concat(functions), true);
+          $scope.fieldsAndJoinsAndFunctionsWithSuffixes = addJoins(getFieldList($scope.action, ['name', 'label']).concat(functions), false, ['name', 'label']);
           $scope.fieldsAndJoinsAndFunctionsAndWildcards = addJoins(getFieldList($scope.action, ['name', 'label']).concat(functions), true, ['name', 'label']);
         } else {
           $scope.fieldsAndJoins = getFieldList($scope.action, ['name']);
           $scope.fieldsAndJoinsAndFunctions = $scope.fields;
+          $scope.fieldsAndJoinsAndFunctionsWithSuffixes = getFieldList($scope.action, ['name', 'label']);
           $scope.fieldsAndJoinsAndFunctionsAndWildcards = getFieldList($scope.action, ['name', 'label']);
         }
         $scope.fieldsAndJoinsAndFunctionsAndWildcards.unshift({id: '*', text: '*', 'description': 'All core ' + $scope.entity + ' fields'});
@@ -454,12 +459,15 @@
               });
             });
           }
-          if (typeof objectParams[name] !== 'undefined' || name === 'groupBy' || name === 'select') {
+          if (typeof objectParams[name] !== 'undefined' || name === 'groupBy' || name === 'select' || name === 'join') {
             $scope.$watch('controls.' + name, function(value) {
               var field = value;
               $timeout(function() {
                 if (field) {
-                  if (typeof objectParams[name] === 'undefined') {
+                  if (name === 'join') {
+                    $scope.params[name].push([field + ' AS ' + _.snakeCase(field), false, '[]']);
+                  }
+                  else if (typeof objectParams[name] === 'undefined') {
                     $scope.params[name].push(field);
                   } else {
                     var defaultOp = _.cloneDeep(objectParams[name]);

@@ -1237,7 +1237,7 @@ function formatCheckBoxField(&$checkboxFieldValue, $customFieldLabel, $entity) {
  * @return array
  */
 function _civicrm_api3_basic_get($bao_name, $params, $returnAsSuccess = TRUE, $entity = "", $sql = NULL, $uniqueFields = FALSE) {
-  $entity = $entity ?: CRM_Core_DAO_AllCoreTables::getBriefName(str_replace('_BAO_', '_DAO_', $bao_name));
+  $entity = $entity ?: CRM_Core_DAO_AllCoreTables::getBriefName($bao_name);
   $options = _civicrm_api3_get_options_from_params($params);
 
   $query = new \Civi\API\Api3SelectQuery($entity, CRM_Utils_Array::value('check_permissions', $params, FALSE));
@@ -2377,7 +2377,7 @@ function _civicrm_api3_api_resolve_alias($entity, $fieldName, $action = 'create'
   if (strpos($fieldName, 'custom_') === 0 && is_numeric($fieldName[7])) {
     return $fieldName;
   }
-  if ($fieldName == _civicrm_api_get_entity_name_from_camel($entity) . '_id') {
+  if ($fieldName === (CRM_Core_DAO_AllCoreTables::convertEntityNameToLower($entity) . '_id')) {
     return 'id';
   }
   $result = civicrm_api($entity, 'getfields', [

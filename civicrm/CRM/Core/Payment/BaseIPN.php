@@ -85,7 +85,7 @@ class CRM_Core_Payment_BaseIPN {
    *
    * @return bool
    */
-  public function validateData(&$input, &$ids, &$objects, $required = TRUE, $paymentProcessorID = NULL) {
+  public function validateData($input, &$ids, &$objects, $required = TRUE, $paymentProcessorID = NULL) {
 
     // Check if the contribution exists
     // make sure contribution exists and is valid
@@ -158,7 +158,7 @@ class CRM_Core_Payment_BaseIPN {
    *
    * @return bool|array
    */
-  public function loadObjects(&$input, &$ids, &$objects, $required, $paymentProcessorID, $error_handling = NULL) {
+  public function loadObjects($input, &$ids, &$objects, $required, $paymentProcessorID, $error_handling = NULL) {
     if (empty($error_handling)) {
       // default options are that we log an error & echo it out
       // note that we should refactor this error handling into error code @ some point
@@ -274,15 +274,18 @@ class CRM_Core_Payment_BaseIPN {
   /**
    * Handled pending contribution status.
    *
+   * @deprecated
+   *
    * @param array $objects
    * @param object $transaction
    *
    * @return bool
    */
   public function pending(&$objects, &$transaction) {
+    CRM_Core_Error::deprecatedFunctionWarning('This function will be removed at some point');
     $transaction->commit();
-    Civi::log()->debug("Returning since contribution status is Pending");
-    echo "Success: Returning since contribution status is pending<p>";
+    Civi::log()->debug('Returning since contribution status is Pending');
+    echo 'Success: Returning since contribution status is pending<p>';
     return TRUE;
   }
 

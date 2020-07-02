@@ -103,14 +103,6 @@ class CRM_Core_Payment_eWAY extends CRM_Core_Payment {
   const CHARSET = 'UTF-8';
 
   /**
-   * We only need one instance of this object. So we use the singleton
-   * pattern and cache the instance in this variable
-   *
-   * @var object
-   */
-  static private $_singleton = NULL;
-
-  /**
    * *******************************************************
    * Constructor
    *
@@ -126,7 +118,6 @@ class CRM_Core_Payment_eWAY extends CRM_Core_Payment {
     // live or test
     $this->_mode = $mode;
     $this->_paymentProcessor = $paymentProcessor;
-    $this->_processorName = ts('eWay');
   }
 
   /**
@@ -139,11 +130,11 @@ class CRM_Core_Payment_eWAY extends CRM_Core_Payment {
    */
   public function doDirectPayment(&$params) {
     if (CRM_Utils_Array::value('is_recur', $params) == TRUE) {
-      CRM_Core_Error::fatal(ts('eWAY - recurring payments not implemented'));
+      throw new CRM_Core_Exception(ts('eWAY - recurring payments not implemented'));
     }
 
     if (!defined('CURLOPT_SSLCERT')) {
-      CRM_Core_Error::fatal(ts('eWAY - Gateway requires curl with SSL support'));
+      throw new CRM_Core_Exception(ts('eWAY - Gateway requires curl with SSL support'));
     }
 
     // eWAY Client ID
