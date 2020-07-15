@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.27.1
+Version: 5.27.2
 Requires at least: 4.9
 Requires PHP:      7.1
 Author: CiviCRM LLC
@@ -56,7 +56,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // Set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '5.27.1' );
+define( 'CIVICRM_PLUGIN_VERSION', '5.27.2' );
 
 // Store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -367,7 +367,7 @@ class CiviCRM_For_WordPress {
      * There is no session handling in WP - hence we start it for CiviCRM pages
      * except when running via WP-CLI which does not require sessions.
      */
-    if ( empty( $session_id ) && ! ( defined( 'WP_CLI' ) && WP_CLI ) && ( PHP_SAPI !== 'cli' ) ) {
+    if ( empty( $session_id ) && ! ( defined( 'WP_CLI' ) && WP_CLI ) ) {
       session_start();
     }
 
