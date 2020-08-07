@@ -799,25 +799,12 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
           $qf->add('text', $elementName . '_to', ts('To'), $field->attributes);
         }
         else {
-          $choice = [];
           parse_str($field->attributes, $radioAttributes);
           $radioAttributes = array_merge($radioAttributes, $customFieldAttributes);
-
-          foreach ($options as $v => $l) {
-            $choice[] = $qf->createElement('radio', NULL, '', $l, (string) $v, $radioAttributes);
+          if ($search || empty($useRequired)) {
+            $radioAttributes['allowClear'] = TRUE;
           }
-          $element = $qf->addGroup($choice, $elementName, $label);
-          $optionEditKey = 'data-option-edit-path';
-          if (isset($selectAttributes[$optionEditKey])) {
-            $element->setAttribute($optionEditKey, $selectAttributes[$optionEditKey]);
-          }
-
-          if ($useRequired && !$search) {
-            $qf->addRule($elementName, ts('%1 is a required field.', [1 => $label]), 'required');
-          }
-          else {
-            $element->setAttribute('allowClear', TRUE);
-          }
+          $qf->addRadio($elementName, $label, $options, $radioAttributes, NULL, $useRequired);
         }
         break;
 
@@ -1089,6 +1076,20 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
         }
         else {
           $display = CRM_Utils_Array::value($value, $field['options'], '');
+          // For float type (see Number and Money) $value would be decimal like
+          // 1.00 (because it is stored in db as decimal), while options array
+          // key would be integer like 1. In this case expression on line above
+          // would return empty string (default value), despite the fact that
+          // matching option exists in the array.
+          // In such cases we could just get intval($value) and fetch matching
+          // option again, but this would not work if key is float like 5.6.
+          // So we need to truncate trailing zeros to make it work as expected.
+          if ($display === '' && strpos($value, '.') !== FALSE) {
+            // Use round() to truncate trailing zeros, e.g:
+            // 10.00 -> 10, 10.60 -> 10.6, 10.69 -> 10.69.
+            $value = (string) round($value, 5);
+            $display = $field['options'][$value] ?? '';
+          }
         }
         break;
 

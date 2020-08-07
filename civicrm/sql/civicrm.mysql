@@ -815,13 +815,13 @@ CREATE TABLE `civicrm_contact_type` (
 
 
      `id` int unsigned NOT NULL AUTO_INCREMENT  COMMENT 'Contact Type ID',
-     `name` varchar(64)    COMMENT 'Internal name of Contact Type (or Subtype).',
+     `name` varchar(64) NOT NULL   COMMENT 'Internal name of Contact Type (or Subtype).',
      `label` varchar(64)    COMMENT 'localized Name of Contact Type.',
      `description` text    COMMENT 'localized Optional verbose description of the type.',
      `image_URL` varchar(255)    COMMENT 'URL of image if any.',
      `parent_id` int unsigned    COMMENT 'Optional FK to parent contact type.',
-     `is_active` tinyint    COMMENT 'Is this entry active?',
-     `is_reserved` tinyint    COMMENT 'Is this contact type a predefined system type' 
+     `is_active` tinyint   DEFAULT 1 COMMENT 'Is this entry active?',
+     `is_reserved` tinyint   DEFAULT 0 COMMENT 'Is this contact type a predefined system type' 
 ,
         PRIMARY KEY (`id`)
  
@@ -1761,7 +1761,8 @@ CREATE TABLE `civicrm_custom_group` (
      `created_id` int unsigned    COMMENT 'FK to civicrm_contact, who created this custom group',
      `created_date` datetime    COMMENT 'Date and time this custom group was created.',
      `is_reserved` tinyint   DEFAULT 0 COMMENT 'Is this a reserved Custom Group?',
-     `is_public` tinyint   DEFAULT 1 COMMENT 'Is this property public?' 
+     `is_public` tinyint   DEFAULT 1 COMMENT 'Is this property public?',
+     `icon` varchar(255)   DEFAULT NULL COMMENT 'crm-i icon class' 
 ,
         PRIMARY KEY (`id`)
  
@@ -2168,7 +2169,7 @@ CREATE TABLE `civicrm_navigation` (
      `permission_operator` varchar(3)    COMMENT 'Permission Operator',
      `parent_id` int unsigned    COMMENT 'Parent navigation item, used for grouping',
      `is_active` tinyint    COMMENT 'Is this navigation item active?',
-     `has_separator` tinyint    COMMENT 'If separator needs to be added after this menu item',
+     `has_separator` tinyint   DEFAULT 0 COMMENT 'Place a separator either before or after this menu item.',
      `weight` int    COMMENT 'Ordering of the navigation items in various blocks.' 
 ,
         PRIMARY KEY (`id`)
@@ -4206,7 +4207,7 @@ CREATE TABLE `civicrm_activity` (
      `source_record_id` int unsigned    COMMENT 'Artificial FK to original transaction (e.g. contribution) IF it is not an Activity. Table can be figured out through activity_type_id, and further through component registry.',
      `activity_type_id` int unsigned NOT NULL  DEFAULT 1 COMMENT 'FK to civicrm_option_value.id, that has to be valid, registered activity type.',
      `subject` varchar(255)    COMMENT 'The subject/purpose/short description of the activity.',
-     `activity_date_time` datetime    COMMENT 'Date and time this activity is scheduled to occur. Formerly named scheduled_date_time.',
+     `activity_date_time` datetime NULL  DEFAULT CURRENT_TIMESTAMP COMMENT 'Date and time this activity is scheduled to occur. Formerly named scheduled_date_time.',
      `duration` int unsigned    COMMENT 'Planned or actual duration of activity expressed in minutes. Conglomerate of former duration_hours and duration_minutes.',
      `location` varchar(255)    COMMENT 'Location of the activity (optional, open text).',
      `phone_id` int unsigned    COMMENT 'Phone ID of the number called (optional - used if an existing phone number is selected).',
@@ -4227,7 +4228,7 @@ CREATE TABLE `civicrm_activity` (
      `engagement_level` int unsigned    COMMENT 'Assign a specific level of engagement to this activity. Used for tracking constituents in ladder of engagement.',
      `weight` int    ,
      `is_star` tinyint   DEFAULT 0 COMMENT 'Activity marked as favorite.',
-     `created_date` timestamp NULL  DEFAULT NULL COMMENT 'When was the activity was created.',
+     `created_date` timestamp NULL  DEFAULT CURRENT_TIMESTAMP COMMENT 'When was the activity was created.',
      `modified_date` timestamp NULL  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'When was the activity (or closely related entity) was created or modified or deleted.' 
 ,
         PRIMARY KEY (`id`)
@@ -4243,9 +4244,6 @@ CREATE TABLE `civicrm_activity` (
   )
   ,     INDEX `index_status_id`(
         status_id
-  )
-  ,     INDEX `index_medium_id`(
-        medium_id
   )
   ,     INDEX `index_is_current_revision`(
         is_current_revision
@@ -4717,7 +4715,7 @@ CREATE TABLE `civicrm_event` (
      `summary` text    COMMENT 'Brief summary of event. Text and html allowed. Displayed on Event Registration form and can be used on other CMS pages which need an event summary.',
      `description` text    COMMENT 'Full description of event. Text and html allowed. Displayed on built-in Event Information screens.',
      `event_type_id` int unsigned   DEFAULT 0 COMMENT 'Event Type ID.Implicit FK to civicrm_option_value where option_group = event_type.',
-     `participant_listing_id` int unsigned   DEFAULT 0 COMMENT 'Should we expose the participant list? Implicit FK to civicrm_option_value where option_group = participant_listing.',
+     `participant_listing_id` int unsigned   DEFAULT NULL COMMENT 'Should we expose the participant list? Implicit FK to civicrm_option_value where option_group = participant_listing.',
      `is_public` tinyint   DEFAULT 1 COMMENT 'Public events will be included in the iCal feeds. Access to private event information may be limited using ACLs.',
      `start_date` datetime    COMMENT 'Date and time that event starts.',
      `end_date` datetime    COMMENT 'Date and time that event ends. May be NULL if no defined end date/time',

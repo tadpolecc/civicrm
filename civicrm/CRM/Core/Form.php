@@ -359,6 +359,8 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
    *
    * @return HTML_QuickForm_Element
    *   Could be an error object
+   *
+   * @throws \CRM_Core_Exception
    */
   public function &add(
     $type, $name, $label = '',
@@ -385,16 +387,34 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
       unset($attributes['multiple']);
       $extra = NULL;
     }
-    // @see http://wiki.civicrm.org/confluence/display/CRMDOC/crmDatepicker
-    if ($type == 'datepicker') {
-      $attributes = ($attributes ? $attributes : []);
+
+    // @see https://docs.civicrm.org/dev/en/latest/framework/ui/#date-picker
+    if ($type === 'datepicker') {
+      $attributes = $attributes ?: [];
+      if (!empty($attributes['formatType'])) {
+        $dateAttributes = CRM_Core_SelectValues::date($attributes['formatType'], NULL, NULL, NULL, 'Input');
+        if (empty($extra['minDate']) && !empty($dateAttributes['minYear'])) {
+          $extra['minDate'] = $dateAttributes['minYear'] . '-01-01';
+        }
+        if (empty($extra['maxDate']) && !empty($dateAttributes['minYear'])) {
+          $extra['maxDate'] = $dateAttributes['maxYear'] . '-12-31';
+        }
+      }
+      // Support minDate/maxDate properties
+      if (isset($extra['minDate'])) {
+        $extra['minDate'] = date('Y-m-d', strtotime($extra['minDate']));
+      }
+      if (isset($extra['maxDate'])) {
+        $extra['maxDate'] = date('Y-m-d', strtotime($extra['maxDate']));
+      }
+
       $attributes['data-crm-datepicker'] = json_encode((array) $extra);
       if (!empty($attributes['aria-label']) || $label) {
         $attributes['aria-label'] = CRM_Utils_Array::value('aria-label', $attributes, $label);
       }
       $type = "text";
     }
-    if ($type == 'select' && is_array($extra)) {
+    if ($type === 'select' && is_array($extra)) {
       // Normalize this property
       if (!empty($extra['multiple'])) {
         $extra['multiple'] = 'multiple';
@@ -802,7 +822,18 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     else {
       throw new CRM_Core_Exception(ts('A payment processor configured for this page might be disabled (contact the site administrator for assistance).'));
     }
+  }
 
+  /**
+   * Assign an array of variables to the form/tpl
+   *
+   * @param array $values Array of [key => value] to assign to the form
+   * @param array $keys Array of keys to assign from the values array
+   */
+  public function assignVariables($values, $keys) {
+    foreach ($keys as $key) {
+      $this->assign($key, $values[$key] ?? NULL);
+    }
   }
 
   /**
@@ -858,10 +889,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     }
 
     // For legacy reasons we set these creditcard expiry fields if present
-    if (isset($params['credit_card_exp_date'])) {
-      $params['year'] = CRM_Core_Payment_Form::getCreditCardExpirationYear($params);
-      $params['month'] = CRM_Core_Payment_Form::getCreditCardExpirationMonth($params);
-    }
+    CRM_Contribute_Form_AbstractEditPayment::formatCreditCardDetails($params);
 
     // Assign IP address parameter
     $params['ip_address'] = CRM_Utils_System::ipAddress();
@@ -1366,7 +1394,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
       $required,
       ['class' => 'crm-select2']
     );
-    $attributes = ['format' => 'searchDate'];
+    $attributes = ['formatType' => 'searchDate'];
     $extra = ['time' => $isDateTime];
     $this->add('datepicker', $fieldName . $from, ts($fromLabel), $attributes, $required, $extra);
     $this->add('datepicker', $fieldName . $to, ts($toLabel), $attributes, $required, $extra);
@@ -1453,7 +1481,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
       $options = $info['values'];
     }
     if (!array_key_exists('placeholder', $props)) {
-      $props['placeholder'] = $required ? ts('- select -') : CRM_Utils_Array::value('context', $props) == 'search' ? ts('- any -') : ts('- none -');
+      $props['placeholder'] = $required ? ts('- select -') : (CRM_Utils_Array::value('context', $props) == 'search' ? ts('- any -') : ts('- none -'));
     }
     // Handle custom field
     if (strpos($name, 'custom_') === 0 && is_numeric($name[7])) {
@@ -2560,15 +2588,38 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
    * @return bool
    */
   protected function isFormInViewOrEditMode() {
+    return $this->isFormInViewMode() || $this->isFormInEditMode();
+  }
+
+  /**
+   * Is the form in edit mode.
+   *
+   * Helper function, notably for extensions implementing the buildForm hook,
+   * so that they can return early.
+   *
+   * @return bool
+   */
+  public function isFormInEditMode() {
     return in_array($this->_action, [
       CRM_Core_Action::UPDATE,
       CRM_Core_Action::ADD,
-      CRM_Core_Action::VIEW,
       CRM_Core_Action::BROWSE,
       CRM_Core_Action::BASIC,
       CRM_Core_Action::ADVANCED,
       CRM_Core_Action::PREVIEW,
     ]);
+  }
+
+  /**
+   * Is the form in view mode.
+   *
+   * Helper function, notably for extensions implementing the buildForm hook,
+   * so that they can return early.
+   *
+   * @return bool
+   */
+  public function isFormInViewMode() {
+    return $this->_action == CRM_Core_Action::VIEW;
   }
 
   /**

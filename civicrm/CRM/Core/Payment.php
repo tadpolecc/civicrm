@@ -565,7 +565,12 @@ abstract class CRM_Core_Payment {
    *   Currently supported:
    *   - contributionPageRecurringHelp (params: is_recur_installments, is_email_receipt)
    *   - contributionPageContinueText (params: amount, is_payment_to_existing)
-   *   - cancelRecurDetailText (params: mode, amount, currency, frequency_interval, frequency_unit, installments, {membershipType|only if mode=auto_renew})
+   *   - cancelRecurDetailText:
+   *     params:
+   *       mode, amount, currency, frequency_interval, frequency_unit,
+   *       installments, {membershipType|only if mode=auto_renew},
+   *       selfService (bool) - TRUE if user doesn't have "edit contributions" permission.
+   *         ie. they are accessing via a "self-service" link from an email receipt or similar.
    *   - cancelRecurNotSupportedText
    *
    * @param array $params
@@ -1375,6 +1380,7 @@ abstract class CRM_Core_Payment {
       }
     }
     if (is_a($result, 'CRM_Core_Error')) {
+      CRM_Core_Error::deprecatedFunctionWarning('payment processors should throw exceptions rather than return errors');
       throw new PaymentProcessorException(CRM_Core_Error::getMessages($result));
     }
     return $result;
@@ -1498,7 +1504,8 @@ abstract class CRM_Core_Payment {
     catch (CRM_Core_Exception $e) {
       Civi::log()->error('ipn_payment_callback_exception', [
         'context' => [
-          'backtrace' => CRM_Core_Error::formatBacktrace(debug_backtrace()),
+          'backtrace' => $e->getTraceAsString(),
+          'message' => $e->getMessage(),
         ],
       ]);
     }

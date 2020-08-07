@@ -905,13 +905,15 @@ class CRM_Activity_BAO_Activity extends CRM_Activity_DAO_Activity {
    */
   public function addSelectWhereClause() {
     $clauses = [];
-    // @todo - check if $permissedActivityTYpes === all activity types and do not add critieria if so.
     $permittedActivityTypeIDs = self::getPermittedActivityTypes();
+    $allActivityTypes = self::buildOptions('activity_type_id');
     if (empty($permittedActivityTypeIDs)) {
       // This just prevents a mysql fail if they have no access - should be extremely edge case.
       $permittedActivityTypeIDs = [0];
     }
-    $clauses['activity_type_id'] = ('IN (' . implode(', ', $permittedActivityTypeIDs) . ')');
+    if (array_keys($allActivityTypes) !== array_keys($permittedActivityTypeIDs)) {
+      $clauses['activity_type_id'] = ('IN (' . implode(', ', $permittedActivityTypeIDs) . ')');
+    }
 
     $contactClause = CRM_Utils_SQL::mergeSubquery('Contact');
     if ($contactClause) {
@@ -1770,8 +1772,7 @@ WHERE      activity.id IN ($activityIds)";
     // @todo - use api - remove lots of wrangling above. Remove deprecated fatal & let form layer
     // deal with any exceptions.
     if (is_a(self::create($activityParams), 'CRM_Core_Error')) {
-      CRM_Core_Error::fatal("Failed creating Activity for $component of id {$activity->id}");
-      return FALSE;
+      throw new CRM_Core_Exception("Failed creating Activity for $component of id {$activity->id}");
     }
   }
 
@@ -2132,7 +2133,7 @@ AND cl.modified_id  = c.id
 
     // TODO: ideally we should retrieve all fields from xml, in this case since activity processing is done
     // my case hence we have defined fields as case_*
-    if ($name == 'Activity') {
+    if ($name === 'Activity') {
       $exportableFields = CRM_Activity_DAO_Activity::export();
       $exportableFields['source_contact_id'] = [
         'title' => ts('Source Contact ID'),

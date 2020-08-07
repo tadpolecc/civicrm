@@ -538,9 +538,6 @@ WHERE      a.id = %1
             ) {
               $value = $this->redact($value);
             }
-            elseif (CRM_Utils_Array::value('type', $typeValue) == 'Link') {
-              $value = CRM_Utils_System::formatWikiURL($value);
-            }
           }
           //$typeValue
           $customGroup[] = array(
@@ -771,7 +768,7 @@ LIMIT  1
       $activityTypes = $form->getActivityTypes($xml, $activitySetName);
     }
     else {
-      $activityTypes = CRM_Case_XMLProcessor::allActivityTypes(FALSE, TRUE);
+      $activityTypes = CRM_Case_PseudoConstant::caseActivityType(FALSE, TRUE);
     }
 
     if (!$activityTypes) {

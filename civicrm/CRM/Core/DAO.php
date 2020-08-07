@@ -44,6 +44,14 @@ class CRM_Core_DAO extends DB_DataObject {
    * @deprecated
    */
   public static $_nullObject = NULL;
+
+  /**
+   * Icon associated with this entity.
+   *
+   * @var string
+   */
+  public static $_icon = NULL;
+
   /**
    * @var array
    * @deprecated
@@ -111,6 +119,16 @@ class CRM_Core_DAO extends DB_DataObject {
     $this->__table = $this->getTableName();
   }
 
+  /**
+   * Returns localized title of this entity.
+   * @return string
+   */
+  public static function getEntityTitle() {
+    $className = static::class;
+    Civi::log()->warning("$className needs to be regeneraged. Missing getEntityTitle method.", ['civi.tag' => 'deprecated']);
+    return CRM_Core_DAO_AllCoreTables::getBriefName($className);
+  }
+
   public function __clone() {
     if (!empty($this->_DB_resultid)) {
       $this->resultCopies++;
@@ -160,7 +178,7 @@ class CRM_Core_DAO extends DB_DataObject {
       }
       CRM_Core_DAO::executeQuery("SET SESSION sql_mode = %1", [1 => [implode(',', $currentModes), 'String']]);
     }
-    CRM_Core_DAO::executeQuery('SET NAMES utf8');
+    CRM_Core_DAO::executeQuery('SET NAMES utf8mb4');
     CRM_Core_DAO::executeQuery('SET @uniqueID = %1', [1 => [CRM_Utils_Request::id(), 'String']]);
   }
 
@@ -2659,7 +2677,7 @@ SELECT contact_id
    *
    * @param string $context
    *
-   * @throws Exception
+   * @throws CRM_Core_Exception
    * @return array
    */
   public static function buildOptionsContext($context = NULL) {
@@ -2673,7 +2691,7 @@ SELECT contact_id
     ];
     // Validation: enforce uniformity of this param
     if ($context !== NULL && !isset($contexts[$context])) {
-      throw new Exception("'$context' is not a valid context for buildOptions.");
+      throw new CRM_Core_Exception("'$context' is not a valid context for buildOptions.");
     }
     return $contexts;
   }

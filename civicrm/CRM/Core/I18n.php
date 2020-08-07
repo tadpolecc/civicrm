@@ -584,15 +584,14 @@ class CRM_Core_I18n {
   }
 
   /**
-   * Is the CiviCRM in multilingual mode.
+   * Is the current CiviCRM domain in multilingual mode.
    *
    * @return Bool
    *   True if CiviCRM is in multilingual mode.
    */
   public static function isMultilingual() {
-    $domain = new CRM_Core_DAO_Domain();
-    $domain->find(TRUE);
-    return (bool) $domain->locales;
+    $domainId = CRM_Core_Config::domainID();
+    return (bool) CRM_Core_DAO::getFieldValue('CRM_Core_DAO_Domain', $domainId, 'locales');
   }
 
   /**
@@ -612,6 +611,17 @@ class CRM_Core_I18n {
   }
 
   /**
+   * If you switch back/forth between locales/drivers, it may be necessary
+   * to reset some options.
+   */
+  protected function reactivate() {
+    if ($this->_nativegettext) {
+      $this->setNativeGettextLocale($this->locale);
+    }
+
+  }
+
+  /**
    * Change the processing language without changing the current user language
    *
    * @param $locale
@@ -623,15 +633,6 @@ class CRM_Core_I18n {
     // Change the language of the CMS as well, for URLs.
     CRM_Utils_System::setUFLocale($locale);
 
-    // change the gettext ressources
-    if ($this->_nativegettext) {
-      $this->setNativeGettextLocale($locale);
-    }
-    else {
-      // phpgettext
-      $this->setPhpGettextLocale($locale);
-    }
-
     // For sql queries, if running in DB multi-lingual mode.
     global $dbLocale;
 
@@ -642,6 +643,8 @@ class CRM_Core_I18n {
     // For self::getLocale()
     global $tsLocale;
     $tsLocale = $locale;
+
+    CRM_Core_I18n::singleton()->reactivate();
   }
 
   /**

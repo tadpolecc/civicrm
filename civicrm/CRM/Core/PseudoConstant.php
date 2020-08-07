@@ -1376,19 +1376,21 @@ WHERE  id = %1
    * The static array option values is returned
    *
    *
-   * @param bool $optionGroupName
-   *   Get All Option Group values- default is to get only active ones.
+   * @param string $optionGroupName
+   *   Name of option group
    *
    * @param int $id
-   * @param null $condition
+   * @param string $condition
+   * @param string $column
+   *   Whether to return 'name' or 'label'
    *
    * @return array
-   *   array reference of all Option Group Name
+   *   array reference of all Option Values
    */
-  public static function accountOptionValues($optionGroupName, $id = NULL, $condition = NULL) {
-    $cacheKey = $optionGroupName . '_' . $condition;
+  public static function accountOptionValues($optionGroupName, $id = NULL, $condition = NULL, $column = 'label') {
+    $cacheKey = $optionGroupName . '_' . $condition . '_' . $column;
     if (empty(self::$accountOptionValues[$cacheKey])) {
-      self::$accountOptionValues[$cacheKey] = CRM_Core_OptionGroup::values($optionGroupName, FALSE, FALSE, FALSE, $condition);
+      self::$accountOptionValues[$cacheKey] = CRM_Core_OptionGroup::values($optionGroupName, FALSE, FALSE, FALSE, $condition, $column);
     }
     if ($id) {
       return self::$accountOptionValues[$cacheKey][$id] ?? NULL;
@@ -1551,7 +1553,7 @@ WHERE  id = %1
     $output = [];
     $query = "$select $from";
     if ($wheres) {
-      $query .= " WHERE " . implode($wheres, ' AND ');
+      $query .= " WHERE " . implode(' AND ', $wheres);
     }
     $query .= ' ' . $order;
     $dao = CRM_Core_DAO::executeQuery($query, $queryParams);

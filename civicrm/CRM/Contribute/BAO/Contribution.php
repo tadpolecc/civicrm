@@ -1945,7 +1945,7 @@ LEFT JOIN civicrm_option_value contribution_status ON (civicrm_contribution.cont
     }
 
     if (empty($clauses)) {
-      CRM_Core_Error::fatal();
+      throw new CRM_Core_Exception('No Where clauses defined when deleting address');
     }
 
     $condition = implode(' OR ', $clauses);
@@ -2116,7 +2116,7 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
     $ids['contributionPage'] = NULL;
 
     if (!$baseIPN->validateData($input, $ids, $objects, FALSE)) {
-      CRM_Core_Error::fatal();
+      throw new CRM_Core_Exception('Unable to validate supplied data');
     }
 
     $memberships = &$objects['membership'];

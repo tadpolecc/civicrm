@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.27.4
+Version: 5.28.0
 Requires at least: 4.9
 Requires PHP:      7.1
 Author: CiviCRM LLC
@@ -56,7 +56,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // Set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '5.27.4' );
+define( 'CIVICRM_PLUGIN_VERSION', '5.28.0' );
 
 // Store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -360,16 +360,8 @@ class CiviCRM_For_WordPress {
       wp_die( __( 'Only one instance of CiviCRM_For_WordPress please', 'civicrm' ) );
     }
 
-    // Get existing session ID
-    $session_id = session_id();
-
-    /*
-     * There is no session handling in WP - hence we start it for CiviCRM pages
-     * except when running via WP-CLI which does not require sessions.
-     */
-    if ( empty( $session_id ) && ! ( defined( 'WP_CLI' ) && WP_CLI ) ) {
-      session_start();
-    }
+    // Maybe start session.
+    $this->maybe_start_session();
 
     /*
      * AJAX calls do not set the 'cms.root' item, so make sure it is set here so
@@ -401,6 +393,53 @@ class CiviCRM_For_WordPress {
      * @since 4.4
      */
     do_action( 'civicrm_instance_loaded' );
+
+  }
+
+
+  /**
+   * Maybe start a session for CiviCRM.
+   *
+   * There is no session handling in WordPress so start it for CiviCRM pages.
+   *
+   * Not needed when running:
+   *
+   * - via WP-CLI
+   * - via wp-cron.php
+   * - via PHP on the command line
+   *
+   * none of which require sessions.
+   *
+   *
+   * @since 5.28
+   */
+  public function maybe_start_session() {
+
+    // Get existing session ID
+    $session_id = session_id();
+
+    // Check WordPress pseudo-cron.
+    $wp_cron = FALSE;
+    if (function_exists('wp_doing_cron') && wp_doing_cron()) {
+      $wp_cron = TRUE;
+    }
+
+    // Check WP-CLI.
+    $wp_cli = FALSE;
+    if (defined('WP_CLI') && WP_CLI) {
+      $wp_cli = TRUE;
+    }
+
+    // Check PHP on the command line - e.g. `cv`.
+    $php_cli = TRUE;
+    if (PHP_SAPI !== 'cli') {
+      $php_cli = FALSE;
+    }
+
+    // Maybe start session.
+    if (empty($session_id) && !$wp_cron && !$wp_cli && !$php_cli) {
+      session_start();
+    }
 
   }
 
@@ -772,7 +811,32 @@ class CiviCRM_For_WordPress {
     // Enable shortcode modal
     $this->modal->register_hooks();
 
+		// Prevent auto-updates.
+		add_filter( 'plugin_auto_update_setting_html', [ $this, 'auto_update_prevent' ], 10, 3 );
+
   }
+
+
+	/**
+	 * Prevent auto-updates of this plugin in WordPress 5.5.
+	 *
+	 * @link https://make.wordpress.org/core/2020/07/15/controlling-plugin-and-theme-auto-updates-ui-in-wordpress-5-5/
+	 *
+	 * @since 5.28
+	 */
+	function auto_update_prevent( $html, $plugin_file, $plugin_data ) {
+
+		// Test for this plugin.
+		$this_plugin = plugin_basename( dirname( __FILE__ ) . '/civicrm.php' );
+		if ( $this_plugin === $plugin_file ) {
+			$html = __( 'Auto-updates are not available for this plugin.', 'civicrm' );
+		}
+
+		// --<
+		return $html;
+
+	}
+
 
 
   /**
@@ -1721,6 +1785,8 @@ class CiviCRM_For_WordPress {
 
     if (!empty($q)) {
       $argString = trim($q);
+      // remove / from the beginning and ending of query string.
+      $argString = trim($argString, '/');
       $args = explode('/', $argString);
     }
     $args = array_pad($args, 2, '');

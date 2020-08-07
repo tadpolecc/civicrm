@@ -2049,7 +2049,7 @@ class CRM_Contact_BAO_Query {
             $this->_params[$id][1]
           );
           $this->_qill[0][] = ts("%1 %2 %3", [
-            1 => $field['title'],
+            1 => $field['title'] ?? '',
             2 => $qillop,
             3 => $qillVal,
           ]);
@@ -2323,7 +2323,7 @@ class CRM_Contact_BAO_Query {
             }
             // we don't know when this might happen
             else {
-              CRM_Core_Error::fatal(ts("%1 is not a valid operator", [1 => $operator]));
+              throw new CRM_Core_Exception(ts("%1 is not a valid operator", [1 => $operator]));
             }
           }
         }
@@ -2417,7 +2417,7 @@ class CRM_Contact_BAO_Query {
       $tName = str_replace(' ', '_', $tName);
       return [$tName, $fldName];
     }
-    CRM_Core_Error::fatal();
+    throw new CRM_Core_Exception('Cannot determine location table information');
   }
 
   /**
@@ -2973,7 +2973,7 @@ class CRM_Contact_BAO_Query {
 
     if (is_array($value) && count($value) > 1) {
       if (strpos($op, 'IN') === FALSE && strpos($op, 'NULL') === FALSE) {
-        CRM_Core_Error::fatal(ts("%1 is not a valid operator", [1 => $op]));
+        throw new CRM_Core_Exception(ts("%1 is not a valid operator", [1 => $op]));
       }
       $this->_useDistinct = TRUE;
     }
@@ -3033,10 +3033,7 @@ class CRM_Contact_BAO_Query {
       if ($op === '!=') {
         $groupIds = '';
         if (!empty($regularGroupIDs)) {
-          $groupIds = CRM_Utils_Type::validate(
-            implode(',', (array) $regularGroupIDs),
-            'CommaSeparatedIntegers'
-          );
+          $groupIds = CRM_Utils_Type::validate(implode(',', (array) $regularGroupIDs), 'CommaSeparatedIntegers');
         }
         $clause = "{$gcTable}.contact_id NOT IN (SELECT contact_id FROM civicrm_group_contact cgc WHERE cgc.group_id = $groupIds )";
       }
@@ -3283,10 +3280,7 @@ WHERE  $smartGroupClause
     // implode array, then remove all spaces
     $value = str_replace(' ', '', implode(',', (array) $value));
     if (!empty($value)) {
-      $value = CRM_Utils_Type::validate(
-        $value,
-        'CommaSeparatedIntegers'
-      );
+      $value = CRM_Utils_Type::validate($value, 'CommaSeparatedIntegers');
     }
 
     $useAllTagTypes = $this->getWhereValues('all_tag_types', $grouping);
@@ -3294,7 +3288,7 @@ WHERE  $smartGroupClause
 
     $etTable = "`civicrm_entity_tag-" . uniqid() . "`";
 
-    if ($useAllTagTypes[2]) {
+    if (!empty($useAllTagTypes[2])) {
       $this->_tables[$etTable] = $this->_whereTables[$etTable]
         = " LEFT JOIN civicrm_entity_tag {$etTable} ON ( {$etTable}.entity_id = contact_a.id  AND {$etTable}.entity_table = 'civicrm_contact') ";
 
@@ -3696,7 +3690,7 @@ WHERE  $smartGroupClause
     }
     CRM_Utils_Type::validateAll($contactIds, 'Positive');
     if (!empty($contactIds)) {
-      $this->_where[0][] = " ( contact_a.id IN (" . implode(',', $contactIds) . " ) ) ";
+      $this->_where[0][] = ' ( contact_a.id IN (' . implode(',', $contactIds) . " ) ) ";
     }
   }
 
@@ -4243,7 +4237,7 @@ WHERE  $smartGroupClause
     // Note we do not currently set mySql to handle timezones, so doing this the old-fashioned way
     $today = date('Ymd');
     //check for active, inactive and all relation status
-    if ($relStatus[2] == 0) {
+    if (empty($relStatus[2])) {
       $where[$grouping][] = "(
 civicrm_relationship.is_active = 1 AND
 ( civicrm_relationship.end_date IS NULL OR civicrm_relationship.end_date >= {$today} ) AND
@@ -5055,6 +5049,28 @@ civicrm_relationship.start_date > {$today}
 
       if (!$onlyDeleted && CRM_Core_Permission::check('access deleted contacts')) {
         $this->_permissionWhereClause = str_replace(' ( 1 ) ', '(contact_a.is_deleted = 0)', $this->_permissionWhereClause);
+      }
+
+      if (isset($this->_tables['civicrm_activity'])) {
+        $bao = new CRM_Activity_BAO_Activity();
+        $clauses = $subclauses = [];
+        foreach ((array) $bao->addSelectWhereClause() as $field => $vals) {
+          if ($vals && $field !== 'id') {
+            $clauses[] = $bao->tableName() . ".$field " . $vals;
+          }
+          elseif ($vals) {
+            $subclauses[] = "$field " . implode(" AND $field ", (array) $vals);
+          }
+        }
+        if ($subclauses) {
+          $clauses[] = $bao->tableName() . '.`id` IN (SELECT `id` FROM `' . $bao->tableName() . '` WHERE ' . implode(' AND ', $subclauses) . ')';
+        }
+        if (!empty($clauses) && $this->_permissionWhereClause) {
+          $this->_permissionWhereClause .= ' AND (' . implode(' AND ', $clauses) . ')';
+        }
+        elseif (!empty($clauses)) {
+          $this->_permissionWhereClause .= '(' . implode(' AND ', $clauses) . ')';
+        }
       }
 
       // regenerate fromClause since permission might have added tables
@@ -6419,9 +6435,8 @@ AND   displayRelType.is_active = 1
           if (empty($fieldSpec['bao'])) {
             continue;
           }
-          $sortedOptions = $fieldSpec['bao']::buildOptions($fieldSpec['name'], NULL, [
-            'orderColumn' => CRM_Utils_Array::value('labelColumn', $pseudoConstantMetadata, 'label'),
-          ]);
+          $sortedOptions = $fieldSpec['bao']::buildOptions($fieldSpec['name']);
+          natcasesort($sortedOptions);
           $fieldIDsInOrder = implode(',', array_keys($sortedOptions));
           // Pretty sure this validation ALSO happens in the order clause & this can't be reached but...
           // this might give some early warning.
