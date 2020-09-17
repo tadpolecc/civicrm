@@ -1817,7 +1817,7 @@ CREATE TABLE `civicrm_custom_field` (
      `note_rows` int unsigned    COMMENT 'Number of rows in Note Field',
      `column_name` varchar(255)    COMMENT 'Name of the column that holds the values for this field.',
      `option_group_id` int unsigned    COMMENT 'For elements with options, the option group id that is used',
-     `serialize` int unsigned    COMMENT 'Serialization method - a non-null value indicates a multi-valued field.',
+     `serialize` int unsigned NOT NULL  DEFAULT 0 COMMENT 'Serialization method - a non-zero value indicates a multi-valued field.',
      `filter` varchar(255)    COMMENT 'Stores Contact Get API params contact reference custom fields. May be used for other filters in the future.',
      `in_selector` tinyint   DEFAULT 0 COMMENT 'Should the multi-record custom field values be displayed in tab table listing' 
 ,
