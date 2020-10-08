@@ -1465,7 +1465,7 @@ class CRM_Report_Form extends CRM_Core_Form {
     if (!CRM_Core_Permission::check('view report sql')) {
       return;
     }
-    $ignored_output_modes = ['pdf', 'csv', 'print', 'excel2007'];
+    $ignored_output_modes = ['pdf', 'csv', 'print'];
     if (in_array($this->_outputMode, $ignored_output_modes)) {
       return;
     }
@@ -2900,12 +2900,6 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
         $this->addPaging = $this->outputHandler->isAddPaging();
         $this->_absoluteUrl = $this->outputHandler->isAbsoluteUrl();
       }
-
-    }
-    elseif ($this->_outputMode == 'excel2007') {
-      $printOnly = TRUE;
-      $this->_absoluteUrl = TRUE;
-      $this->addPaging = FALSE;
     }
     elseif ($this->_outputMode == 'copy' && $this->_criteriaForm) {
       $this->_createNew = TRUE;
@@ -5943,7 +5937,9 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
         $relative = $this->_params["{$fieldName}_relative"] ?? NULL;
         $from = $this->_params["{$fieldName}_from"] ?? NULL;
         $to = $this->_params["{$fieldName}_to"] ?? NULL;
-        return $this->dateClause($field['dbAlias'], $relative, $from, $to, $field['type']);
+        $fromTime = $this->_params["{$fieldName}_from_time"] ?? NULL;
+        $toTime = $this->_params["{$fieldName}_to_time"] ?? NULL;
+        return $this->dateClause($field['dbAlias'], $relative, $from, $to, $field['type'], $fromTime, $toTime);
       }
     }
     else {

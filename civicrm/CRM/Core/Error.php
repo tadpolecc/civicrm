@@ -586,6 +586,9 @@ class CRM_Core_Error extends PEAR_ErrorStack {
       if ($config->userSystem->is_drupal and function_exists('watchdog')) {
         watchdog('civicrm', '%message', ['%message' => $message], $priority ?? WATCHDOG_DEBUG);
       }
+      elseif ($config->userSystem->is_drupal and CIVICRM_UF == 'Drupal8') {
+        \Drupal::logger('civicrm')->log($priority ?? \Drupal\Core\Logger\RfcLogLevel::DEBUG, '%message', ['%message' => $message]);
+      }
     }
 
     return $str;
@@ -597,13 +600,15 @@ class CRM_Core_Error extends PEAR_ErrorStack {
    * @param string $string
    */
   public static function debug_query($string) {
-    if (defined('CIVICRM_DEBUG_LOG_QUERY')) {
-      if (CIVICRM_DEBUG_LOG_QUERY === 'backtrace') {
-        CRM_Core_Error::backtrace($string, TRUE);
-      }
-      elseif (CIVICRM_DEBUG_LOG_QUERY) {
-        CRM_Core_Error::debug_var('Query', $string, TRUE, TRUE, 'sql_log', PEAR_LOG_DEBUG);
-      }
+    if (!defined('CIVICRM_DEBUG_LOG_QUERY')) {
+      // TODO: When its updated to support getenv(), call CRM_Utils_Constant::value('CIVICRM_DEBUG_LOG_QUERY', FALSE)
+      define('CIVICRM_DEBUG_LOG_QUERY', getenv('CIVICRM_DEBUG_LOG_QUERY'));
+    }
+    if (CIVICRM_DEBUG_LOG_QUERY === 'backtrace') {
+      CRM_Core_Error::backtrace($string, TRUE);
+    }
+    elseif (CIVICRM_DEBUG_LOG_QUERY) {
+      CRM_Core_Error::debug_var('Query', $string, TRUE, TRUE, 'sql_log', PEAR_LOG_DEBUG);
     }
   }
 

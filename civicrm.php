@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.29.1
+Version: 5.30.0
 Requires at least: 4.9
 Requires PHP:      7.1
 Author: CiviCRM LLC
@@ -56,7 +56,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // Set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '5.29.1' );
+define( 'CIVICRM_PLUGIN_VERSION', '5.30.0' );
 
 // Store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -1304,7 +1304,7 @@ class CiviCRM_For_WordPress {
     );
     foreach ($setupPaths as $setupPath) {
       $loader = implode(DIRECTORY_SEPARATOR, [$civicrmCore, $setupPath, 'civicrm-setup-autoload.php']);
-      if (file_exists($civicrmCore . DIRECTORY_SEPARATOR . '.use-civicrm-setup') && file_exists($loader)) {
+      if (file_exists($loader)) {
         require_once $loader;
         require_once implode(DIRECTORY_SEPARATOR, [$civicrmCore, 'CRM', 'Core', 'ClassLoader.php']);
         CRM_Core_ClassLoader::singleton()->register();
@@ -1326,17 +1326,7 @@ class CiviCRM_For_WordPress {
       }
     }
 
-    // Uses CIVICRM_PLUGIN_DIR instead of WP_PLUGIN_DIR
-    $installFile =
-      CIVICRM_PLUGIN_DIR .
-      'civicrm' . DIRECTORY_SEPARATOR .
-      'install' . DIRECTORY_SEPARATOR .
-      'index.php';
-
-    // Notice: Undefined variable: siteDir in:
-    // CIVICRM_PLUGIN_DIR/civicrm/install/index.php on line 456
-    include ( $installFile );
-
+    wp_die( __( 'Installer unavailable. Failed to locate CiviCRM libraries.', 'civicrm' ) );
   }
 
 

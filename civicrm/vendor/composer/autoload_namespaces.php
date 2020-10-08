@@ -17,6 +17,7 @@ return array(
     'Log' => array($vendorDir . '/pear/log'),
     'File' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
     'Dflydev\\ApacheMimeTypes' => array($vendorDir . '/dflydev/apache-mime-types/src'),
+    'DB' => array($vendorDir . '/pear/db'),
     'Crypt' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
     'Console' => array($vendorDir . '/pear/console_getopt'),
     'Civi\\' => array($baseDir . '/tests/phpunit'),

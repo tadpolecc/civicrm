@@ -4808,7 +4808,7 @@ CREATE TABLE `civicrm_event` (
      `requires_approval` tinyint    COMMENT 'Whether participants require approval before they can finish registering.',
      `expiration_time` int unsigned    COMMENT 'Expire pending but unconfirmed registrations after this many hours.',
      `allow_selfcancelxfer` tinyint   DEFAULT 0 COMMENT 'Allow self service cancellation or transfer for event?',
-     `selfcancelxfer_time` int unsigned   DEFAULT 0 COMMENT 'Number of hours prior to event start date to allow self-service cancellation or transfer.',
+     `selfcancelxfer_time` int   DEFAULT 0 COMMENT 'Number of hours prior to event start date to allow self-service cancellation or transfer.',
      `waitlist_text` text    COMMENT 'Text to display when the event is full, but participants can signup for a waitlist.',
      `approval_req_text` text    COMMENT 'Text to display when the approval is required to complete registration for an event.',
      `is_template` tinyint NOT NULL  DEFAULT 0 COMMENT 'whether the event has template',

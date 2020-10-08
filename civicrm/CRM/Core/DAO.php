@@ -161,9 +161,10 @@ class CRM_Core_DAO extends DB_DataObject {
   public static function init($dsn) {
     Civi::$statics[__CLASS__]['init'] = 1;
     $options = &PEAR::getStaticProperty('DB_DataObject', 'options');
+    $dsn = CRM_Utils_SQL::autoSwitchDSN($dsn);
     $options['database'] = $dsn;
     $options['quote_identifiers'] = TRUE;
-    if (self::isSSLDSN($dsn)) {
+    if (CRM_Utils_SQL::isSSLDSN($dsn)) {
       // There are two different options arrays.
       $other_options = &PEAR::getStaticProperty('DB', 'options');
       $other_options['ssl'] = TRUE;
@@ -552,7 +553,8 @@ class CRM_Core_DAO extends DB_DataObject {
 
     // Exclude fields yet not added by pending upgrades
     $dbVer = \CRM_Core_BAO_Domain::version();
-    if ($fields && version_compare($dbVer, \CRM_Utils_System::version()) < 0) {
+    $daoExt = defined(static::class . '::EXT') ? constant(static::class . '::EXT') : NULL;
+    if ($fields && $daoExt === 'civicrm' && version_compare($dbVer, \CRM_Utils_System::version()) < 0) {
       $fields = array_filter($fields, function($field) use ($dbVer) {
         $add = $field['add'] ?? '1.0.0';
         if (substr_count($add, '.') < 2) {
@@ -1149,6 +1151,23 @@ class CRM_Core_DAO extends DB_DataObject {
   }
 
   /**
+   * Checks if this DAO's table ought to exist.
+   *
+   * If there are pending DB updates, this function compares the CiviCRM version of the table to the current schema version.
+   *
+   * @return bool
+   * @throws CRM_Core_Exception
+   */
+  public static function tableHasBeenAdded() {
+    if (CRM_Utils_System::version() === CRM_Core_BAO_Domain::version()) {
+      return TRUE;
+    }
+    $daoExt = defined(static::class . '::EXT') ? constant(static::class . '::EXT') : NULL;
+    $daoVersion = defined(static::class . '::TABLE_ADDED') ? constant(static::class . '::TABLE_ADDED') : '1.0';
+    return !($daoExt === 'civicrm' && version_compare(CRM_Core_BAO_Domain::version(), $daoVersion, '<'));
+  }
+
+  /**
    * Check if there is a given table in the database.
    *
    * @param string $tableName
@@ -1181,15 +1200,12 @@ LIKE %1
 
   /**
    * @param $version
-   *
+   * @deprecated
    * @return bool
    */
   public function checkVersion($version) {
-    $query = "
-SELECT version
-FROM   civicrm_domain
-";
-    $dbVersion = CRM_Core_DAO::singleValueQuery($query);
+    CRM_Core_Error::deprecatedFunctionWarning('CRM_Core_BAO_Domain::version');
+    $dbVersion = CRM_Core_BAO_Domain::version();
     return trim($version) == trim($dbVersion);
   }
 
@@ -1524,6 +1540,7 @@ FROM   civicrm_domain
     }
 
     if ($trapException) {
+      CRM_Core_Error::deprecatedFunctionWarning('calling functions should handle exceptions');
       $errorScope = CRM_Core_TemporaryErrorScope::ignoreException();
     }
 
@@ -1539,6 +1556,7 @@ FROM   civicrm_domain
     }
 
     if (is_a($result, 'DB_Error')) {
+      CRM_Core_Error::deprecatedFunctionWarning('calling functions should handle exceptions');
       return $result;
     }
 
@@ -2812,7 +2830,7 @@ SELECT contact_id
   /**
    * @see http://issues.civicrm.org/jira/browse/CRM-9150
    * support for other syntaxes is discussed in ticket but being put off for now
-   * @return array
+   * @return string[]
    */
   public static function acceptedSQLOperators() {
     return [
@@ -3109,23 +3127,6 @@ SELECT contact_id
     if (isset($this->name)) {
       unset(self::$_dbColumnValueCache[$daoName]['name'][$this->name]);
     }
-  }
-
-  /**
-   * Does the DSN indicate the connection should use ssl.
-   *
-   * @param string $dsn
-   *
-   * @return bool
-   */
-  public static function isSSLDSN(string $dsn):bool {
-    // Note that ssl= below is not an official PEAR::DB option. It doesn't know
-    // what to do with it. We made it up because it's not required
-    // to have client-side certificates to use ssl, so here you can specify
-    // you want that by putting ssl=1 in the DSN string.
-    //
-    // Cast to bool in case of error which we interpret as no ssl.
-    return (bool) preg_match('/[\?&](key|cert|ca|capath|cipher|ssl)=/', $dsn);
   }
 
 }

@@ -349,7 +349,6 @@ class CRM_Core_Payment_PayPalImpl extends CRM_Core_Payment {
 
     /* Success */
     $params['trxn_id'] = $result['transactionid'];
-    $params['gross_amount'] = $result['amt'];
     $params['fee_amount'] = $result['feeamt'];
     $params['net_amount'] = $result['settleamt'] ?? NULL;
     if ($params['net_amount'] == 0 && $params['fee_amount'] != 0) {
@@ -972,6 +971,9 @@ class CRM_Core_Payment_PayPalImpl extends CRM_Core_Payment {
     $sub = empty($params['is_recur']) ? 'cgi-bin/webscr' : 'subscriptions';
     $paypalURL = "{$url}{$sub}?$uri";
 
+    // Allow each CMS to do a pre-flight check before redirecting to PayPal.
+    CRM_Core_Config::singleton()->userSystem->prePostRedirect();
+
     CRM_Utils_System::redirect($paypalURL);
   }
 
@@ -1130,8 +1132,13 @@ class CRM_Core_Payment_PayPalImpl extends CRM_Core_Payment {
     // The contribution form passes a 'button' but the event form might still set one of these fields.
     // @todo more standardisation & get paypal fully out of the form layer.
     $possibleExpressFields = [
+      // @todo - we think these top 2 are likely not required & it's still here
+      // on a precautionary basis.
+      // see https://github.com/civicrm/civicrm-core/pull/18680
       '_qf_Register_upload_express_x',
       '_qf_Payment_upload_express_x',
+      '_qf_Register_upload_express',
+      '_qf_Payment_upload_express',
       '_qf_Main_upload_express',
     ];
     if (array_intersect_key($params, array_fill_keys($possibleExpressFields, 1))) {

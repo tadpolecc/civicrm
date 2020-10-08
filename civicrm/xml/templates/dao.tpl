@@ -7,11 +7,14 @@
  * {$generated}
  * (GenCodeChecksum:{$genCodeChecksum})
  */
-
+{$useHelper}
 /**
  * Database access object for the {$table.entity} entity.
  */
 class {$table.className} extends CRM_Core_DAO {ldelim}
+
+     const EXT = {$ext};
+     const TABLE_ADDED = '{$table.add}';
 
      /**
       * Static instance to hold the table name.
@@ -60,7 +63,7 @@ class {$table.className} extends CRM_Core_DAO {ldelim}
      * Returns localized title of this entity.
      */
     public static function getEntityTitle() {ldelim}
-        return ts('{$table.title}');
+        return {$tsFunctionName}('{$table.title}');
     {rdelim}
 
 

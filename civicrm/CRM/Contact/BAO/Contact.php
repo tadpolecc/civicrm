@@ -1562,9 +1562,13 @@ WHERE     civicrm_contact.id = " . CRM_Utils_Type::escape($id, 'Integer');
           ],
         ];
 
+        $phoneFields = CRM_Core_DAO_Phone::export();
+        // This adds phone_type to the exportable fields and make it available for export.
+        // with testing the same can be done to the other entities.
+        CRM_Core_DAO::appendPseudoConstantsToFields($phoneFields);
         $locationFields = array_merge($locationType,
           CRM_Core_DAO_Address::export(),
-          CRM_Core_DAO_Phone::export(),
+          $phoneFields,
           CRM_Core_DAO_Email::export(),
           $IMProvider,
           CRM_Core_DAO_IM::export(TRUE),
@@ -1605,7 +1609,6 @@ WHERE     civicrm_contact.id = " . CRM_Utils_Type::escape($id, 'Integer');
             );
           }
         }
-        $fields['current_employer_id']['title'] = ts('Current Employer ID');
         //fix for CRM-791
         if ($export) {
           $fields = array_merge($fields, [
