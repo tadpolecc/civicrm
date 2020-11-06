@@ -4,18 +4,16 @@
   angular.module('search').component('crmSearchActions', {
     bindings: {
       entity: '<',
+      refresh: '&',
       ids: '<'
-    },
-    require: {
-      search: '^crmSearch'
     },
     templateUrl: '~/search/crmSearchActions.html',
     controller: function($scope, crmApi4, dialogService, searchMeta) {
       var ts = $scope.ts = CRM.ts(),
-        entityTitle = searchMeta.getEntity(this.entity).title,
         ctrl = this;
 
-      this.init = function() {
+      this.$onInit = function() {
+        var entityTitle = searchMeta.getEntity(ctrl.entity).title_plural;
         if (!ctrl.actions) {
           var actions = _.transform(_.cloneDeep(CRM.vars.search.actions), function (actions, action) {
             if (_.includes(action.entities, ctrl.entity)) {
@@ -44,7 +42,7 @@
           var path = $scope.$eval(action.crmPopup.path, data),
             query = action.crmPopup.query && $scope.$eval(action.crmPopup.query, data);
           CRM.loadForm(CRM.url(path, query))
-            .on('crmFormSuccess', ctrl.search.refreshPage);
+            .on('crmFormSuccess', ctrl.refresh);
         }
         // If action uses dialogService
         else if (action.uiDialog) {
@@ -53,7 +51,7 @@
             title: action.title
           });
           dialogService.open('crmSearchAction', action.uiDialog.templateUrl, data, options)
-            .then(ctrl.search.refreshPage);
+            .then(ctrl.refresh);
         }
       };
     }

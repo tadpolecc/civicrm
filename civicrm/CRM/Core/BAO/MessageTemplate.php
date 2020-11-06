@@ -238,7 +238,7 @@ class CRM_Core_BAO_MessageTemplate extends CRM_Core_DAO_MessageTemplate {
       }
 
       $params = [['contact_id', '=', $contactId, 0, 0]];
-      list($contact, $_) = CRM_Contact_BAO_Query::apiQuery($params);
+      [$contact] = CRM_Contact_BAO_Query::apiQuery($params);
 
       //CRM-4524
       $contact = reset($contact);
@@ -464,6 +464,11 @@ class CRM_Core_BAO_MessageTemplate extends CRM_Core_DAO_MessageTemplate {
       $mailContent['html'] = preg_replace('/<body(.*)$/im', "<body\\1\n{$testDao->html}", $mailContent['html']);
     }
 
+    // Overwrite subject from form field
+    if (!empty($params['subject'])) {
+      $mailContent['subject'] = $params['subject'];
+    }
+
     // replace tokens in the three elements (in subject as if it was the text body)
     $domain = CRM_Core_BAO_Domain::getDomain();
     $hookTokens = [];
@@ -576,7 +581,7 @@ class CRM_Core_BAO_MessageTemplate extends CRM_Core_DAO_MessageTemplate {
 
     if ($params['toEmail']) {
       $contactParams = [['email', 'LIKE', $params['toEmail'], 0, 1]];
-      list($contact, $_) = CRM_Contact_BAO_Query::apiQuery($contactParams);
+      [$contact] = CRM_Contact_BAO_Query::apiQuery($contactParams);
 
       $prefs = array_pop($contact);
 

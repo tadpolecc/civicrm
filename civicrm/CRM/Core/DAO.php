@@ -121,11 +121,12 @@ class CRM_Core_DAO extends DB_DataObject {
 
   /**
    * Returns localized title of this entity.
+   *
    * @return string
    */
   public static function getEntityTitle() {
     $className = static::class;
-    Civi::log()->warning("$className needs to be regeneraged. Missing getEntityTitle method.", ['civi.tag' => 'deprecated']);
+    Civi::log()->warning("$className needs to be regenerated. Missing getEntityTitle method.", ['civi.tag' => 'deprecated']);
     return CRM_Core_DAO_AllCoreTables::getBriefName($className);
   }
 
@@ -146,10 +147,21 @@ class CRM_Core_DAO extends DB_DataObject {
   }
 
   /**
-   * Empty definition for virtual function.
+   * Returns the name of this table
+   *
+   * @return string
    */
   public static function getTableName() {
-    return NULL;
+    return self::getLocaleTableName(static::$_tableName ?? NULL);
+  }
+
+  /**
+   * Returns if this table needs to be logged
+   *
+   * @return bool
+   */
+  public function getLog() {
+    return static::$_log ?? FALSE;
   }
 
   /**
@@ -2726,11 +2738,11 @@ SELECT contact_id
    */
   public function getFieldSpec($fieldName) {
     $fields = $this->fields();
-    $fieldKeys = $this->fieldKeys();
 
     // Support "unique names" as well as sql names
     $fieldKey = $fieldName;
     if (empty($fields[$fieldKey])) {
+      $fieldKeys = $this->fieldKeys();
       $fieldKey = $fieldKeys[$fieldName] ?? NULL;
     }
     // If neither worked then this field doesn't exist. Return false.
@@ -3127,6 +3139,16 @@ SELECT contact_id
     if (isset($this->name)) {
       unset(self::$_dbColumnValueCache[$daoName]['name'][$this->name]);
     }
+  }
+
+  /**
+   * Return a mapping from field-name to the corresponding key (as used in fields()).
+   *
+   * @return array
+   *   Array(string $name => string $uniqueName).
+   */
+  public static function fieldKeys() {
+    return array_flip(CRM_Utils_Array::collect('name', static::fields()));
   }
 
 }

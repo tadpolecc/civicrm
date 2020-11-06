@@ -93,7 +93,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
       $pledgeParams['frequency_interval'] = $params['pledge_frequency_interval'];
       $pledgeParams['installments'] = $params['pledge_installments'];
       $pledgeParams['frequency_unit'] = $params['pledge_frequency_unit'];
-      if ($pledgeParams['frequency_unit'] == 'month') {
+      if ($pledgeParams['frequency_unit'] === 'month') {
         $pledgeParams['frequency_day'] = intval(date("d"));
       }
       else {
@@ -149,6 +149,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
    * @param int $recurringContributionID
    *
    * @return array
+   * @throws \CRM_Core_Exception
    */
   public static function getContributionParams(
     $params, $financialTypeID,
@@ -235,7 +236,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
         }
         // if there is a product - compare the value to the contribution amount
         if (isset($selectProduct) &&
-          $selectProduct != 'no_thanks'
+          $selectProduct !== 'no_thanks'
         ) {
           $productDAO = new CRM_Contribute_DAO_Product();
           $productDAO->id = $selectProduct;
@@ -332,15 +333,15 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
         }
 
         if (in_array($field, $addressBlocks)) {
-          if ($locType == 'Primary') {
+          if ($locType === 'Primary') {
             $defaultLocationType = CRM_Core_BAO_LocationType::getDefault();
             $locType = $defaultLocationType->id;
           }
 
-          if ($field == 'country') {
+          if ($field === 'country') {
             $value = CRM_Core_PseudoConstant::countryIsoCode($value);
           }
-          elseif ($field == 'state_province') {
+          elseif ($field === 'state_province') {
             $value = CRM_Core_PseudoConstant::stateProvinceAbbreviation($value);
           }
 
@@ -361,7 +362,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
           if (!$typeId || is_numeric($typeId)) {
             $blockName = $fieldName = $field;
             $locationType = 'location_type_id';
-            if ($locType == 'Primary') {
+            if ($locType === 'Primary') {
               $defaultLocationType = CRM_Core_BAO_LocationType::getDefault();
               $locationValue = $defaultLocationType->id;
             }
@@ -423,7 +424,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
           $this->_params['onbehalf_location']["{$loc}"] = $value;
         }
         else {
-          if ($loc == 'contact_sub_type') {
+          if ($loc === 'contact_sub_type') {
             $this->_params['onbehalf_location'][$loc] = $value;
           }
           else {
@@ -510,7 +511,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
       $this->_params['is_quick_config'] = 1;
     }
 
-    if (!empty($params['selectProduct']) && $params['selectProduct'] != 'no_thanks') {
+    if (!empty($params['selectProduct']) && $params['selectProduct'] !== 'no_thanks') {
       $option = $params['options_' . $params['selectProduct']] ?? NULL;
       $productID = $params['selectProduct'];
       CRM_Contribute_BAO_Premium::buildPremiumBlock($this, $this->_id, FALSE,
@@ -522,7 +523,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     $config = CRM_Core_Config::singleton();
     if (in_array('CiviMember', $config->enableComponents) && empty($this->_ccid)) {
       if (isset($params['selectMembership']) &&
-        $params['selectMembership'] != 'no_thanks'
+        $params['selectMembership'] !== 'no_thanks'
       ) {
         $this->buildMembershipBlock(
           $this->_membershipContactID,
@@ -1020,7 +1021,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
 
     // create an activity record
     if ($contribution) {
-      CRM_Activity_BAO_Activity::addActivity($contribution, NULL, $targetContactID, $actParams);
+      CRM_Activity_BAO_Activity::addActivity($contribution, 'Contribution', $targetContactID, $actParams);
     }
 
     $transaction->commit();
@@ -1145,18 +1146,8 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     // create employer relationship with $contactID only when new organization is there
     // else retain the existing relationship
     else {
-      // get the Employee relationship type id
-      $relTypeId = CRM_Core_DAO::getFieldValue('CRM_Contact_DAO_RelationshipType', 'Employee of', 'id', 'name_a_b');
-
-      // keep relationship params ready
-      $relParams['relationship_type_id'] = $relTypeId . '_a_b';
-      $relParams['is_permission_a_b'] = 1;
-      $relParams['is_active'] = 1;
       $isNotCurrentEmployer = TRUE;
     }
-
-    // formalities for creating / editing organization.
-    $behalfOrganization['contact_type'] = 'Organization';
 
     if (!$orgID) {
       // check if matching organization contact exists
@@ -1182,14 +1173,26 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     }
 
     // create organization, add location
+    $behalfOrganization['contact_type'] = 'Organization';
     $orgID = CRM_Contact_BAO_Contact::createProfileContact($behalfOrganization, $fields, $orgID,
       NULL, NULL, 'Organization'
     );
     // create relationship
     if ($isNotCurrentEmployer) {
-      $relParams['contact_check'][$orgID] = 1;
-      $cid = ['contact' => $contactID];
-      CRM_Contact_BAO_Relationship::legacyCreateMultiple($relParams, $cid);
+      try {
+        \Civi\Api4\Relationship::create(FALSE)
+          ->addValue('contact_id_a', $contactID)
+          ->addValue('contact_id_b', $orgID)
+          ->addValue('relationship_type_id', CRM_Core_DAO::getFieldValue('CRM_Contact_DAO_RelationshipType', 'Employee of', 'id', 'name_a_b'))
+          ->addValue('is_permission_a_b:name', 'View and update')
+          ->execute();
+      }
+      catch (CRM_Core_Exception $e) {
+        // Ignore if duplicate relationship.
+        if ($e->getMessage() !== 'Duplicate Relationship') {
+          throw $e;
+        }
+      }
     }
 
     // if multiple match - send a duplicate alert
@@ -1903,9 +1906,19 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     $params['invoiceID'] = md5(uniqid(rand(), TRUE));
 
     // We want to move away from passing in amount as it is calculated by the actually-submitted params.
-    $params['amount'] = $params['amount'] ?? $form->getMainContributionAmount($params);
+    if ($form->getMainContributionAmount($params)) {
+      $params['amount'] = $form->getMainContributionAmount($params);
+    }
     $paramsProcessedForForm = $form->_params = self::getFormParams($params['id'], $params);
-    $form->_amount = $params['amount'];
+
+    $order = new CRM_Financial_BAO_Order();
+    $order->setPriceSelectionFromUnfilteredInput($params);
+    if (isset($params['amount'])) {
+      // @todo deprecate receiving amount, calculate on the form.
+      $order->setOverrideTotalAmount($params['amount']);
+    }
+    $amount = $order->getTotalAmount();
+    $form->_amount = $params['amount'] = $form->_params['amount'] = $params['amount'] ?? $amount;
     // hack these in for test support.
     $form->_fields['billing_first_name'] = 1;
     $form->_fields['billing_last_name'] = 1;
@@ -1983,7 +1996,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
       if (!empty($params['payment_processor_id'])) {
         $params['is_pay_later'] = 0;
       }
-      elseif ($params['amount'] !== 0) {
+      elseif (($params['amount'] ?? 0) !== 0) {
         $params['is_pay_later'] = civicrm_api3('contribution_page', 'getvalue', [
           'id' => $id,
           'return' => 'is_pay_later',
