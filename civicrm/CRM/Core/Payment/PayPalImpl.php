@@ -969,6 +969,8 @@ class CRM_Core_Payment_PayPalImpl extends CRM_Core_Payment {
     // Allow further manipulation of the arguments via custom hooks ..
     CRM_Utils_Hook::alterPaymentProcessorParams($this, $params, $paypalParams);
 
+    $paypalParams['notify_url'] = str_replace( '%2F', '/', $paypalParams['notify_url'] );
+
     $uri = '';
     foreach ($paypalParams as $key => $value) {
       if ($value === NULL) {
