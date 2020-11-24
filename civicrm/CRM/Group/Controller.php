@@ -15,6 +15,7 @@
  * @copyright CiviCRM LLC https://civicrm.org/licensing
  */
 class CRM_Group_Controller extends CRM_Core_Controller {
+
   protected $entity = 'Contact';
 
   /**
