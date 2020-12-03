@@ -2,7 +2,7 @@
 /*
 Plugin Name: CiviCRM
 Description: CiviCRM - Growing and Sustaining Relationships
-Version: 5.31.1
+Version: 5.32.0
 Requires at least: 4.9
 Requires PHP:      7.1
 Author: CiviCRM LLC
@@ -56,7 +56,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // Set version here: when it changes, will force JS to reload
-define( 'CIVICRM_PLUGIN_VERSION', '5.31.1' );
+define( 'CIVICRM_PLUGIN_VERSION', '5.32.0' );
 
 // Store reference to this file
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -478,6 +478,11 @@ class CiviCRM_For_WordPress {
       $current_url = admin_url();
     }
     $current_screen = wp_parse_url($current_url);
+
+    // Bail if entry is missing for some reason.
+    if (!isset($current_screen['query'])) {
+      return $settings;
+    }
 
     // Bail if this is not CiviCRM admin.
     if ($pagenow != 'admin.php' || false === strpos($current_screen['query'], 'page=CiviCRM')) {
