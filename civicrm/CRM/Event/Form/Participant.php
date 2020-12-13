@@ -367,6 +367,9 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
 
     // when fee amount is included in form
     if (!empty($_POST['hidden_feeblock']) || !empty($_POST['send_receipt'])) {
+      if ($this->_submitValues['event_id']) {
+        $this->_eventId = $this->_submitValues['event_id'];
+      }
       CRM_Event_Form_EventFees::preProcess($this);
       $this->buildEventFeeForm($this);
       CRM_Event_Form_EventFees::setDefaultValues($this);
@@ -2295,6 +2298,10 @@ INNER JOIN civicrm_price_field_value value ON ( value.id = lineItem.price_field_
       ];
 
       CRM_Utils_System::appendBreadCrumb($breadCrumbs);
+    }
+    else {
+      $this->assign('id', $this->_id);
+      $this->assign('contact_id', $this->_contactId);
     }
   }
 
