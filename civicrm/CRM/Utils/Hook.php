@@ -339,7 +339,7 @@ abstract class CRM_Utils_Hook {
    * @return null
    *   the return value is ignored
    */
-  public static function pre($op, $objectName, $id, &$params) {
+  public static function pre($op, $objectName, $id, &$params = []) {
     $event = new \Civi\Core\Event\PreEvent($op, $objectName, $id, $params);
     \Civi::dispatcher()->dispatch('hook_civicrm_pre', $event);
     return $event->getReturnValues();
@@ -2208,7 +2208,7 @@ abstract class CRM_Utils_Hook {
   }
 
   /**
-   * This hook is called while viewing contact dashboard.
+   * This hook is called while initializing the default dashlets for a contact dashboard.
    *
    * @param array $availableDashlets
    *   List of dashlets; each is formatted per api/v3/Dashboard
@@ -2407,32 +2407,6 @@ abstract class CRM_Utils_Hook {
   public static function caseChange(\Civi\CCase\Analyzer $analyzer) {
     $event = new \Civi\CCase\Event\CaseChangeEvent($analyzer);
     \Civi::dispatcher()->dispatch('hook_civicrm_caseChange', $event);
-  }
-
-  /**
-   * Generate a default CRUD URL for an entity.
-   *
-   * @param array $spec
-   *   With keys:.
-   *   - action: int, eg CRM_Core_Action::VIEW or CRM_Core_Action::UPDATE
-   *   - entity_table: string
-   *   - entity_id: int
-   * @param CRM_Core_DAO $bao
-   * @param array $link
-   *   To define the link, add these keys to $link:.
-   *   - title: string
-   *   - path: string
-   *   - query: array
-   *   - url: string (used in lieu of "path"/"query")
-   *      Note: if making "url" CRM_Utils_System::url(), set $htmlize=false
-   * @return mixed
-   * @deprecated
-   */
-  public static function crudLink($spec, $bao, &$link) {
-    return self::singleton()->invoke(['spec', 'bao', 'link'], $spec, $bao, $link,
-      self::$_nullObject, self::$_nullObject, self::$_nullObject,
-      'civicrm_crudLink'
-    );
   }
 
   /**

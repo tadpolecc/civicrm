@@ -105,22 +105,25 @@ class Manager {
       $angularModules['crmAttachment'] = include "$civicrm_root/ang/crmAttachment.ang.php";
       $angularModules['crmAutosave'] = include "$civicrm_root/ang/crmAutosave.ang.php";
       $angularModules['crmCxn'] = include "$civicrm_root/ang/crmCxn.ang.php";
-      // $angularModules['crmExample'] = include "$civicrm_root/ang/crmExample.ang.php";
+      $angularModules['crmMonaco'] = include "$civicrm_root/ang/crmMonaco.ang.php";
       $angularModules['crmResource'] = include "$civicrm_root/ang/crmResource.ang.php";
       $angularModules['crmRouteBinder'] = include "$civicrm_root/ang/crmRouteBinder.ang.php";
       $angularModules['crmUi'] = include "$civicrm_root/ang/crmUi.ang.php";
       $angularModules['crmUtil'] = include "$civicrm_root/ang/crmUtil.ang.php";
       $angularModules['dialogService'] = include "$civicrm_root/ang/dialogService.ang.php";
+      $angularModules['jsonFormatter'] = include "$civicrm_root/ang/jsonFormatter.ang.php";
       $angularModules['ngRoute'] = include "$civicrm_root/ang/ngRoute.ang.php";
       $angularModules['ngSanitize'] = include "$civicrm_root/ang/ngSanitize.ang.php";
       $angularModules['ui.utils'] = include "$civicrm_root/ang/ui.utils.ang.php";
       $angularModules['ui.bootstrap'] = include "$civicrm_root/ang/ui.bootstrap.ang.php";
       $angularModules['ui.sortable'] = include "$civicrm_root/ang/ui.sortable.ang.php";
       $angularModules['unsavedChanges'] = include "$civicrm_root/ang/unsavedChanges.ang.php";
-      $angularModules['statuspage'] = include "$civicrm_root/ang/crmStatusPage.ang.php";
+      $angularModules['crmStatusPage'] = include "$civicrm_root/ang/crmStatusPage.ang.php";
       $angularModules['exportui'] = include "$civicrm_root/ang/exportui.ang.php";
       $angularModules['api4Explorer'] = include "$civicrm_root/ang/api4Explorer.ang.php";
       $angularModules['api4'] = include "$civicrm_root/ang/api4.ang.php";
+      $angularModules['crmDashboard'] = include "$civicrm_root/ang/crmDashboard.ang.php";
+      $angularModules['crmD3'] = include "$civicrm_root/ang/crmD3.ang.php";
 
       foreach (\CRM_Core_Component::getEnabledComponents() as $component) {
         $angularModules = array_merge($angularModules, $component->getAngularModules());
@@ -416,6 +419,7 @@ class Manager {
             case 'settingsFactory':
             case 'requires':
             case 'permissions':
+            case 'bundles':
               if (!empty($module[$resType])) {
                 $result[$moduleName] = $module[$resType];
               }
