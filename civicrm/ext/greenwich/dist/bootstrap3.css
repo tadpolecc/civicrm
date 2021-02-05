@@ -7278,6 +7278,10 @@
 	font-weight: normal;
 }
 
+#bootstrap-theme .select2-choices {
+	margin-bottom: 0;
+}
+
 #bootstrap-theme .form-control .select2-choice {
 	border: 0;
 	border-radius: 2px;

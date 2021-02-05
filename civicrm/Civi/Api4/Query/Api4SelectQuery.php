@@ -369,7 +369,7 @@ class Api4SelectQuery {
     // For WHERE clause, expr must be the name of a field.
     if ($type === 'WHERE') {
       $field = $this->getField($expr, TRUE);
-      FormattingUtil::formatInputValue($value, $expr, $field);
+      FormattingUtil::formatInputValue($value, $expr, $field, $operator);
       $fieldAlias = $field['sql_name'];
     }
     // For HAVING, expr must be an item in the SELECT clause
@@ -380,7 +380,7 @@ class Api4SelectQuery {
         // Attempt to format if this is a real field
         if (isset($this->apiFieldSpec[$expr])) {
           $field = $this->getField($expr);
-          FormattingUtil::formatInputValue($value, $expr, $field);
+          FormattingUtil::formatInputValue($value, $expr, $field, $operator);
         }
       }
       // Expr references a non-field expression like a function; convert to alias
@@ -394,7 +394,7 @@ class Api4SelectQuery {
           list($selectField) = explode(':', $selectAlias);
           if ($selectAlias === $selectExpr && $fieldName === $selectField && isset($this->apiFieldSpec[$fieldName])) {
             $field = $this->getField($fieldName);
-            FormattingUtil::formatInputValue($value, $expr, $field);
+            FormattingUtil::formatInputValue($value, $expr, $field, $operator);
             $fieldAlias = $selectAlias;
             break;
           }
@@ -412,13 +412,13 @@ class Api4SelectQuery {
       if (is_string($value)) {
         $valExpr = $this->getExpression($value);
         if ($fieldName && $valExpr->getType() === 'SqlString') {
-          FormattingUtil::formatInputValue($valExpr->expr, $fieldName, $this->apiFieldSpec[$fieldName]);
+          FormattingUtil::formatInputValue($valExpr->expr, $fieldName, $this->apiFieldSpec[$fieldName], $operator);
         }
         return sprintf('%s %s %s', $fieldAlias, $operator, $valExpr->render($this->apiFieldSpec));
       }
       elseif ($fieldName) {
         $field = $this->getField($fieldName);
-        FormattingUtil::formatInputValue($value, $fieldName, $field);
+        FormattingUtil::formatInputValue($value, $fieldName, $field, $operator);
       }
     }
 
@@ -535,7 +535,8 @@ class Api4SelectQuery {
       $side = array_shift($join) ? 'INNER' : 'LEFT';
       // Add all fields from joined entity to spec
       $joinEntityGet = \Civi\API\Request::create($entity, 'get', ['version' => 4, 'checkPermissions' => $this->getCheckPermissions()]);
-      foreach ($joinEntityGet->entityFields() as $field) {
+      $joinEntityFields = $joinEntityGet->entityFields();
+      foreach ($joinEntityFields as $field) {
         $field['sql_name'] = '`' . $alias . '`.`' . $field['column_name'] . '`';
         $this->addSpecField($alias . '.' . $field['name'], $field);
       }
@@ -543,7 +544,7 @@ class Api4SelectQuery {
         $conditions = $this->getBridgeJoin($join, $entity, $alias);
       }
       else {
-        $conditions = $this->getJoinConditions($join, $entity, $alias);
+        $conditions = $this->getJoinConditions($join, $entity, $alias, $joinEntityFields);
       }
       foreach (array_filter($join) as $clause) {
         $conditions[] = $this->treeWalkClauses($clause, 'ON');
@@ -559,20 +560,30 @@ class Api4SelectQuery {
    * @param array $joinTree
    * @param string $joinEntity
    * @param string $alias
+   * @param array $joinEntityFields
    * @return array
    */
-  private function getJoinConditions($joinTree, $joinEntity, $alias) {
+  private function getJoinConditions($joinTree, $joinEntity, $alias, $joinEntityFields) {
     $conditions = [];
     // getAclClause() expects a stack of 1-to-1 join fields to help it dedupe, but this is more flexible,
     // so unless this is a direct 1-to-1 join with the main entity, we'll just hack it
     // with a padded empty stack to bypass its deduping.
     $stack = [NULL, NULL];
-    // If we're not explicitly referencing the joinEntity ID in the ON clause, search for a default
-    $explicitId = array_filter($joinTree, function($clause) use ($alias) {
+    // See if the ON clause already contains an FK reference to joinEntity
+    $explicitFK = array_filter($joinTree, function($clause) use ($alias, $joinEntityFields) {
       list($sideA, $op, $sideB) = array_pad((array) $clause, 3, NULL);
-      return $op === '=' && ($sideA === "$alias.id" || $sideB === "$alias.id");
+      if ($op !== '=' || !$sideB) {
+        return FALSE;
+      }
+      foreach ([$sideA, $sideB] as $expr) {
+        if ($expr === "$alias.id" || !empty($joinEntityFields["$alias.$expr"]['fk_entity'])) {
+          return TRUE;
+        }
+      }
+      return FALSE;
     });
-    if (!$explicitId) {
+    // If we're not explicitly referencing the ID (or some other FK field) of the joinEntity, search for a default
+    if (!$explicitFK) {
       foreach ($this->apiFieldSpec as $name => $field) {
         if ($field['entity'] !== $joinEntity && $field['fk_entity'] === $joinEntity) {
           $conditions[] = $this->treeWalkClauses([$name, '=', "$alias.id"], 'ON');

@@ -359,11 +359,11 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     // Fix the display of the monetary value, CRM-4038.
     if (isset($defaults['total_amount'])) {
       $total_value = $defaults['total_amount'];
-      $defaults['total_amount'] = CRM_Utils_Money::format($total_value, NULL, '%a');
+      $defaults['total_amount'] = CRM_Utils_Money::formatLocaleNumericRoundedForDefaultCurrency($total_value);
       if (!empty($defaults['tax_amount'])) {
         $componentDetails = CRM_Contribute_BAO_Contribution::getComponentDetails($this->_id);
         if (empty($componentDetails['membership']) && empty($componentDetails['participant'])) {
-          $defaults['total_amount'] = CRM_Utils_Money::format($total_value - $defaults['tax_amount'], NULL, '%a');
+          $defaults['total_amount'] = CRM_Utils_Money::formatLocaleNumericRoundedForDefaultCurrency($total_value - $defaults['tax_amount']);
         }
       }
     }
@@ -1114,7 +1114,6 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     );
 
     $paymentParams['contributionID'] = $contribution->id;
-    $paymentParams['contributionTypeID'] = $contribution->financial_type_id;
     $paymentParams['contributionPageID'] = $contribution->contribution_page_id;
     $paymentParams['contributionRecurID'] = $contribution->contribution_recur_id;
 
@@ -1483,7 +1482,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
 
     $isEmpty = array_keys(array_flip($submittedValues['soft_credit_contact_id']));
     if ($this->_id && count($isEmpty) == 1 && key($isEmpty) == NULL) {
-      civicrm_api3('ContributionSoft', 'get', ['contribution_id' => $this->_id, 'pcp_id' => NULL, 'api.ContributionSoft.delete' => 1]);
+      civicrm_api3('ContributionSoft', 'get', ['contribution_id' => $this->_id, 'pcp_id' => ['IS NULL' => 1], 'api.ContributionSoft.delete' => 1]);
     }
 
     // set the contact, when contact is selected

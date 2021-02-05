@@ -1437,7 +1437,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
   public static function add(&$params, $ids = []) {
     if (empty($params['id']) && !empty($ids['ufgroup'])) {
       $params['id'] = $ids['ufgroup'];
-      Civi::log()->warning('ids parameter is deprecated', ['civi.tag' => 'deprecated']);
+      CRM_Core_Error::deprecatedWarning('ids parameter is deprecated');
     }
     $fields = [
       'is_active',
@@ -1459,6 +1459,10 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
     if (!empty($params['group_type']) && is_array($params['group_type'])) {
       $params['group_type'] = implode(',', $params['group_type']);
     }
+
+    $hook = empty($params['id']) ? 'create' : 'edit';
+    CRM_Utils_Hook::pre($hook, 'UFGroup', ($params['id'] ?? NULL), $params);
+
     $ufGroup = new CRM_Core_DAO_UFGroup();
     $ufGroup->copyValues($params);
 
@@ -1474,6 +1478,8 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
       $ufGroup->name = $ufGroup->name . "_{$ufGroup->id}";
       $ufGroup->save();
     }
+
+    CRM_Utils_Hook::post($hook, 'UFGroup', $ufGroup->id, $ufGroup);
 
     return $ufGroup;
   }

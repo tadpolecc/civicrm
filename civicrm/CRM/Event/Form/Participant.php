@@ -480,12 +480,12 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
       $statuses = array_flip(CRM_Event_PseudoConstant::participantStatus());
       $defaults[$this->_id]['status_id'] = $statuses['Registered'] ?? NULL;
       if (!empty($defaults[$this->_id]['event_id'])) {
-        $contributionTypeId = CRM_Core_DAO::getFieldValue('CRM_Event_DAO_Event',
+        $financialTypeID = CRM_Core_DAO::getFieldValue('CRM_Event_DAO_Event',
           $defaults[$this->_id]['event_id'],
           'financial_type_id'
         );
-        if ($contributionTypeId) {
-          $defaults[$this->_id]['financial_type_id'] = $contributionTypeId;
+        if ($financialTypeID) {
+          $defaults[$this->_id]['financial_type_id'] = $financialTypeID;
         }
       }
 
@@ -1261,7 +1261,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
         $contributionParams['non_deductible_amount'] = 'null';
         $contributionParams['receipt_date'] = !empty($params['send_receipt']) ? CRM_Utils_Array::value('receive_date', $params) : 'null';
         $contributionParams['contact_id'] = $this->_contactID;
-        $contributionParams['receive_date'] = CRM_Utils_Array::value('receive_date', $params, 'null');
+        $contributionParams['receive_date'] = $params['receive_date'] ?? date('Y-m-d');
 
         $recordContribution = [
           'financial_type_id',
