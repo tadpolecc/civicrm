@@ -51,6 +51,11 @@ class CiviCRM_For_WordPress_Admin_Metabox_Contact_Add {
    */
   public function __construct() {
 
+    // Bail if CiviCRM is not installed.
+    if (!CIVICRM_INSTALLED) {
+      return;
+    }
+
     // Store reference to CiviCRM plugin object.
     $this->civi = civi_wp();
 
@@ -68,6 +73,11 @@ class CiviCRM_For_WordPress_Admin_Metabox_Contact_Add {
    * @since 5.34
    */
   public function register_hooks() {
+
+    // Bail if the current WordPress User cannot add Contacts.
+    if (!$this->civi->users->check_civicrm_permission('add_contacts')) {
+      return;
+    }
 
     // Add our meta boxes.
     add_action('wp_dashboard_setup', [$this, 'meta_box_add']);
