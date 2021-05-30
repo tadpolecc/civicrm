@@ -8,6 +8,8 @@
  * Author: CiviCRM LLC
  * Author URI: https://civicrm.org/
  * Plugin URI: https://docs.civicrm.org/sysadmin/en/latest/install/wordpress/
+ * GitHub Plugin URI: tadpolecc/civicrm
+ * GitHub Plugin URI: https://github.com/tadpolecc/civicrm.git 
  * License: AGPL3
  * Text Domain: civicrm
  * Domain Path: /languages
