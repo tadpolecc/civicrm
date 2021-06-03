@@ -132,7 +132,6 @@ AND (
     // this function is expensive and should be sparingly used if groupIDs is empty
     if (empty($groupIDs)) {
       $groupIDClause = NULL;
-      $groupIDs = [];
     }
     else {
       if (!is_array($groupIDs)) {
@@ -162,27 +161,8 @@ AND (
 
     $dao = CRM_Core_DAO::executeQuery($query);
     $processGroupIDs = [];
-    $refreshGroupIDs = $groupIDs;
     while ($dao->fetch()) {
       $processGroupIDs[] = $dao->id;
-
-      // remove this id from refreshGroupIDs
-      foreach ($refreshGroupIDs as $idx => $gid) {
-        if ($gid == $dao->id) {
-          unset($refreshGroupIDs[$idx]);
-          break;
-        }
-      }
-    }
-
-    if (!empty($refreshGroupIDs)) {
-      $refreshGroupIDString = CRM_Core_DAO::escapeString(implode(', ', $refreshGroupIDs));
-      $query = "
-UPDATE civicrm_group g
-SET    g.cache_date = NOW()
-WHERE  g.id IN ( {$refreshGroupIDString} )
-";
-      CRM_Core_DAO::executeQuery($query);
     }
 
     if (empty($processGroupIDs)) {
@@ -578,7 +558,7 @@ ORDER BY   gc.contact_id, g.children
   public static function invalidateGroupContactCache($groupID) {
     CRM_Core_DAO::executeQuery("UPDATE civicrm_group
       SET cache_date = NULL
-      WHERE id = %1", [
+      WHERE id = %1 AND (saved_search_id IS NOT NULL OR children IS NOT NULL)", [
         1 => [$groupID, 'Positive'],
       ]);
   }

@@ -1178,10 +1178,7 @@ CREATE TABLE `civicrm_financial_type` (
 ,
         PRIMARY KEY (`id`)
  
-    ,     UNIQUE INDEX `UI_id`(
-        id
-  )
-  
+ 
  
 )  ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC  ;
 
@@ -1641,7 +1638,7 @@ CREATE TABLE `civicrm_queue_item` (
      `weight` int NOT NULL   ,
      `submit_time` datetime NOT NULL   COMMENT 'date on which this item was submitted to the queue',
      `release_time` datetime    COMMENT 'date on which this job becomes available; null if ASAP',
-     `data` text    COMMENT 'Serialized queue data' 
+     `data` longtext    COMMENT 'Serialized queue data' 
 ,
         PRIMARY KEY (`id`)
  
@@ -3420,13 +3417,9 @@ CREATE TABLE `civicrm_entity_file` (
 ,
         PRIMARY KEY (`id`)
  
-    ,     INDEX `index_entity`(
-        entity_table
-      , entity_id
-  )
-  ,     UNIQUE INDEX `UI_entity_table_entity_id_file_id`(
-        entity_table
-      , entity_id
+    ,     UNIQUE INDEX `UI_entity_id_entity_table_file_id`(
+        entity_id
+      , entity_table
       , file_id
   )
   
@@ -5011,13 +5004,9 @@ CREATE TABLE `civicrm_line_item` (
 ,
         PRIMARY KEY (`id`)
  
-    ,     INDEX `index_entity`(
-        entity_table
-      , entity_id
-  )
-  ,     UNIQUE INDEX `UI_line_item_value`(
-        entity_table
-      , entity_id
+    ,     UNIQUE INDEX `UI_line_item_value`(
+        entity_id
+      , entity_table
       , contribution_id
       , price_field_value_id
       , price_field_id

@@ -1461,21 +1461,21 @@
     },
     {
         "name": "pear/log",
-        "version": "1.13.2",
-        "version_normalized": "1.13.2.0",
+        "version": "1.13.3",
+        "version_normalized": "1.13.3.0",
         "source": {
             "type": "git",
             "url": "https://github.com/pear/Log.git",
-            "reference": "d8cde3dba893a36ec561bf6188fdc39f4221c4d3"
+            "reference": "21af0be11669194d72d88b5ee9d5f176dc75d9a3"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/pear/Log/zipball/d8cde3dba893a36ec561bf6188fdc39f4221c4d3",
-            "reference": "d8cde3dba893a36ec561bf6188fdc39f4221c4d3",
+            "url": "https://api.github.com/repos/pear/Log/zipball/21af0be11669194d72d88b5ee9d5f176dc75d9a3",
+            "reference": "21af0be11669194d72d88b5ee9d5f176dc75d9a3",
             "shasum": ""
         },
         "require": {
-            "pear/pear_exception": "1.0.1",
+            "pear/pear_exception": "1.0.1 || 1.0.2",
             "php": ">5.2"
         },
         "require-dev": {
@@ -1484,13 +1484,16 @@
         "suggest": {
             "pear/db": "Install optionally via your project's composer.json"
         },
-        "time": "2020-06-02T00:04:03+00:00",
+        "time": "2021-05-04T23:51:30+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
             "psr-0": {
                 "Log": "./"
-            }
+            },
+            "exclude-from-classmap": [
+                "/examples/"
+            ]
         },
         "notification-url": "https://packagist.org/downloads/",
         "include-path": [
@@ -1512,7 +1515,11 @@
         "keywords": [
             "log",
             "logging"
-        ]
+        ],
+        "support": {
+            "issues": "https://github.com/pear/Log/issues",
+            "source": "https://github.com/pear/Log"
+        }
     },
     {
         "name": "pear/mail",
