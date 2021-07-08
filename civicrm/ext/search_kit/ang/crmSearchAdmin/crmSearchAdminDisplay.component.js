@@ -67,6 +67,17 @@
         },
       };
 
+      this.toggleLimit = function() {
+        if (ctrl.display.settings.limit) {
+          ctrl.display.settings.limit = 0;
+          if (ctrl.display.settings.pager) {
+            ctrl.display.settings.pager = false;
+          }
+        } else {
+          ctrl.display.settings.limit = CRM.crmSearchAdmin.defaultPagerSize;
+        }
+      };
+
       // Drag-n-drop settings for reordering columns
       this.sortableOptions = {
         connectWith: '.crm-search-admin-edit-columns',
@@ -333,7 +344,7 @@
           results: [{
             text: ts('Columns'),
             children: ctrl.crmSearchAdmin.getSelectFields(disabledIf)
-          }].concat(ctrl.crmSearchAdmin.getAllFields('', disabledIf))
+          }].concat(ctrl.crmSearchAdmin.getAllFields('', ['Field', 'Custom'], disabledIf))
         };
       };
 

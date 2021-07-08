@@ -344,20 +344,9 @@ class CRM_Member_BAO_Membership extends CRM_Member_DAO_Membership {
 
     // Record contribution for this membership and create a MembershipPayment
     // @todo deprecate this.
-    if (!empty($params['contribution_status_id']) && empty($params['relate_contribution_id'])) {
+    if (!empty($params['contribution_status_id'])) {
       $memInfo = array_merge($params, ['membership_id' => $membership->id]);
       $params['contribution'] = self::recordMembershipContribution($memInfo);
-    }
-
-    // Add/update MembershipPayment record for this membership if it is a related contribution
-    // @todo remove this - called from one remaining place in CRM_Member_Form_Membership
-    if (!empty($params['relate_contribution_id'])) {
-      $membershipPaymentParams = [
-        'membership_id' => $membership->id,
-        'membership_type_id' => $membership->membership_type_id,
-        'contribution_id' => $params['relate_contribution_id'],
-      ];
-      civicrm_api3('MembershipPayment', 'create', $membershipPaymentParams);
     }
 
     // If the membership has no associated contribution then we ensure
@@ -936,7 +925,7 @@ INNER JOIN  civicrm_membership_type type ON ( type.id = membership.membership_ty
         'contact_type' => $contactType,
         'used' => 'Unsupervised',
       ];
-      $fieldsArray = CRM_Dedupe_BAO_Rule::dedupeRuleFields($ruleParams);
+      $fieldsArray = CRM_Dedupe_BAO_DedupeRule::dedupeRuleFields($ruleParams);
 
       $tmpContactField = [];
       if (is_array($fieldsArray)) {
@@ -1773,6 +1762,8 @@ INNER JOIN  civicrm_contact contact ON ( contact.id = membership.contact_id AND 
   }
 
   /**
+   * @deprecated
+   *
    * @param int $contactID
    * @param int $membershipTypeID
    * @param bool $is_test
@@ -1786,7 +1777,6 @@ INNER JOIN  civicrm_contact contact ON ( contact.id = membership.contact_id AND 
    * @param $membershipSource
    * @param $isPayLater
    * @param array $memParams
-   * @param array $formDates
    * @param null|CRM_Contribute_BAO_Contribution $contribution
    * @param array $lineItems
    *
@@ -1794,7 +1784,8 @@ INNER JOIN  civicrm_contact contact ON ( contact.id = membership.contact_id AND 
    * @throws \CRM_Core_Exception
    * @throws \CiviCRM_API3_Exception
    */
-  public static function processMembership($contactID, $membershipTypeID, $is_test, $changeToday, $modifiedID, $customFieldsFormatted, $numRenewTerms, $membershipID, $pending, $contributionRecurID, $membershipSource, $isPayLater, $memParams = [], $formDates = [], $contribution = NULL, $lineItems = []) {
+  public static function processMembership($contactID, $membershipTypeID, $is_test, $changeToday, $modifiedID, $customFieldsFormatted, $numRenewTerms, $membershipID, $pending, $contributionRecurID, $membershipSource, $isPayLater, $memParams = [], $contribution = NULL, $lineItems = []) {
+    CRM_Core_Error::deprecatedFunctionWarning('use the order api, BAO functions should only be called from unit tested core code.');
     $renewalMode = $updateStatusId = FALSE;
     $allStatus = CRM_Member_PseudoConstant::membershipStatus();
     $format = '%Y%m%d';
@@ -1856,10 +1847,7 @@ INNER JOIN  civicrm_contact contact ON ( contact.id = membership.contact_id AND 
 
         $currentMembership['join_date'] = CRM_Utils_Date::customFormat($currentMembership['join_date'], $format);
         foreach (['start_date', 'end_date'] as $dateType) {
-          $currentMembership[$dateType] = $formDates[$dateType] ?? NULL;
-          if (empty($currentMembership[$dateType])) {
-            $currentMembership[$dateType] = $dates[$dateType] ?? NULL;
-          }
+          $currentMembership[$dateType] = $dates[$dateType] ?? NULL;
         }
         $currentMembership['is_test'] = $is_test;
 
@@ -1891,11 +1879,8 @@ INNER JOIN  civicrm_contact contact ON ( contact.id = membership.contact_id AND 
 
         // Insert renewed dates for CURRENT membership
         $memParams['join_date'] = CRM_Utils_Date::isoToMysql($membership->join_date);
-        $memParams['start_date'] = $formDates['start_date'] ?? CRM_Utils_Date::isoToMysql($membership->start_date);
-        $memParams['end_date'] = $formDates['end_date'] ?? NULL;
-        if (empty($memParams['end_date'])) {
-          $memParams['end_date'] = $dates['end_date'] ?? NULL;
-        }
+        $memParams['start_date'] = CRM_Utils_Date::isoToMysql($membership->start_date);
+        $memParams['end_date'] = $dates['end_date'] ?? NULL;
         $memParams['membership_type_id'] = $membershipTypeID;
 
         //set the log start date.
@@ -1929,10 +1914,7 @@ INNER JOIN  civicrm_contact contact ON ( contact.id = membership.contact_id AND 
         $dates = CRM_Member_BAO_MembershipType::getDatesForMembershipType($membershipTypeID, NULL, NULL, NULL, $numRenewTerms);
 
         foreach (['join_date', 'start_date', 'end_date'] as $dateType) {
-          $memParams[$dateType] = $formDates[$dateType] ?? NULL;
-          if (empty($memParams[$dateType])) {
-            $memParams[$dateType] = $dates[$dateType] ?? NULL;
-          }
+          $memParams[$dateType] = $dates[$dateType] ?? NULL;
         }
 
         $status = CRM_Member_BAO_MembershipStatus::getMembershipStatusByDate(CRM_Utils_Date::customFormat($dates['start_date'],

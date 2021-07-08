@@ -81,7 +81,7 @@ trait Api3TestTrait {
       $prefix .= ': ';
     }
     if ($expectedError && !empty($apiResult['is_error'])) {
-      $this->assertContains($expectedError, $apiResult['error_message'], 'api error message not as expected' . $prefix);
+      $this->assertStringContainsString($expectedError, $apiResult['error_message'], 'api error message not as expected' . $prefix);
     }
     $this->assertEquals(1, $apiResult['is_error'], "api call should have failed but it succeeded " . $prefix . (print_r($apiResult, TRUE)));
     $this->assertNotEmpty($apiResult['error_message']);
@@ -228,6 +228,9 @@ trait Api3TestTrait {
     $params += [
       'version' => $this->_apiversion,
     ];
+    if (!empty($this->isGetSafe) && !isset($params['return'])) {
+      $params['return'] = 'id';
+    }
     $result = $this->civicrm_api($entity, 'getsingle', $params);
     if (!is_array($result) || !empty($result['is_error']) || isset($result['values'])) {
       $unfilteredResult = $this->civicrm_api($entity, 'get', ['version' => $this->_apiversion]);

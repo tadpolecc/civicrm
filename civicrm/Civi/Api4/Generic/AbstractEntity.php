@@ -56,6 +56,13 @@ abstract class AbstractEntity {
   abstract public static function getFields();
 
   /**
+   * @return \Civi\Api4\Generic\CheckAccessAction
+   */
+  public static function checkAccess() {
+    return new CheckAccessAction(self::getEntityName(), __FUNCTION__);
+  }
+
+  /**
    * Returns a list of permissions needed to access the various actions in this api.
    *
    * @return array
@@ -139,6 +146,7 @@ abstract class AbstractEntity {
       'type' => [self::stripNamespace(get_parent_class(static::class))],
       'paths' => static::getEntityPaths(),
       'class' => static::class,
+      'id_field' => 'id',
     ];
     // Add info for entities with a corresponding DAO
     $dao = \CRM_Core_DAO_AllCoreTables::getFullName($info['name']);
@@ -151,7 +159,9 @@ abstract class AbstractEntity {
     foreach (ReflectionUtils::getTraits(static::class) as $trait) {
       $info['type'][] = self::stripNamespace($trait);
     }
-    $info['searchable'] = !in_array('OptionList', $info['type']);
+    // Entities without a @searchable annotation will default to secondary,
+    // which makes them visible in SearchKit but not at the top of the list.
+    $info['searchable'] = 'secondary';
     $reflection = new \ReflectionClass(static::class);
     $info = array_merge($info, ReflectionUtils::getCodeDocs($reflection, NULL, ['entity' => $info['name']]));
     unset($info['package'], $info['method']);

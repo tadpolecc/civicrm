@@ -109,11 +109,9 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
   }
 
   /**
-   * Create/ update several fields at once in a mysql efficient way.
-   *
+   * Save multiple fields, now deprecated in favor of self::writeRecords.
    * https://lab.civicrm.org/dev/core/issues/1093
-   *
-   * The intention is that apiv4 would expose any BAO with bulkSave as a new action.
+   * @deprecated
    *
    * @param array $bulkParams
    *   Array of arrays as would be passed into create
@@ -123,9 +121,26 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
    * @throws \CiviCRM_API3_Exception
    */
   public static function bulkSave($bulkParams, $defaults = []) {
-    $addedColumns = $sql = $customFields = $pre = $post = [];
+    CRM_Core_Error::deprecatedFunctionWarning(__CLASS__ . '::writeRecords');
     foreach ($bulkParams as $index => $fieldParams) {
-      $params = array_merge($defaults, $fieldParams);
+      $bulkParams[$index] = array_merge($defaults, $fieldParams);
+    }
+    self::writeRecords($bulkParams);
+  }
+
+  /**
+   * Create/update several fields at once in a mysql efficient way.
+   *
+   * @param array $records
+   * @return CRM_Core_DAO_CustomField[]
+   * @throws CRM_Core_Exception
+   * @throws CiviCRM_API3_Exception
+   */
+  public static function writeRecords(array $records) {
+    $addedColumns = $sql = $customFields = $pre = $post = [];
+    foreach ($records as $index => $params) {
+      CRM_Utils_Hook::pre(empty($params['id']) ? 'create' : 'edit', 'CustomField', $params['id'] ?? NULL, $params);
+
       $changeSerialize = self::getChangeSerialize($params);
       $customField = self::createCustomFieldRecord($params);
       // Serialize/deserialize sql must run after/before the table is altered
@@ -136,9 +151,7 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
         $post[] = self::getAlterSerializeSQL($customField);
       }
       $fieldSQL = self::getAlterFieldSQL($customField, empty($params['id']) ? 'add' : 'modify');
-      if (!isset($params['custom_group_id'])) {
-        $params['custom_group_id'] = civicrm_api3('CustomField', 'getvalue', ['id' => $customField->id, 'return' => 'custom_group_id']);
-      }
+
       $tableName = CRM_Core_DAO::getFieldValue('CRM_Core_DAO_CustomGroup', $customField->custom_group_id, 'table_name');
       $sql[$tableName][] = $fieldSQL;
       $addedColumns[$tableName][] = $customField->name;
@@ -166,9 +179,12 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
     }
 
     CRM_Utils_System::flushCache();
+    Civi::cache('metadata')->clear();
+
     foreach ($customFields as $index => $customField) {
-      CRM_Utils_Hook::post(empty($bulkParams[$index]['id']) ? 'create' : 'edit', 'CustomField', $customField->id, $customField);
+      CRM_Utils_Hook::post(empty($records[$index]['id']) ? 'create' : 'edit', 'CustomField', $customField->id, $customField);
     }
+    return $customFields;
   }
 
   /**
@@ -320,7 +336,7 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
     }
     if ($customDataType && !is_array($customDataType)) {
 
-      if (in_array($customDataType, CRM_Contact_BAO_ContactType::subTypes())) {
+      if (in_array($customDataType, CRM_Contact_BAO_ContactType::subTypes(), TRUE)) {
         // This is the case when getFieldsForImport() requires fields
         // limited strictly to a subtype.
         $customDataSubType = $customDataType;
@@ -328,7 +344,7 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
         $onlySubType = TRUE;
       }
 
-      if (in_array($customDataType, array_keys(CRM_Core_SelectValues::customGroupExtends()))) {
+      if (array_key_exists($customDataType, CRM_Core_SelectValues::customGroupExtends())) {
         // this makes the method flexible to support retrieving fields
         // for multiple extends value.
         $customDataType = [$customDataType];
@@ -388,7 +404,7 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
         if (is_array($customDataType)) {
           $value = NULL;
           foreach ($customDataType as $dataType) {
-            if (in_array($dataType, array_keys(CRM_Core_SelectValues::customGroupExtends()))) {
+            if (array_key_exists($dataType, CRM_Core_SelectValues::customGroupExtends())) {
               if (in_array($dataType, ['Individual', 'Household', 'Organization'])) {
                 $val = "'" . CRM_Utils_Type::escape($dataType, 'String') . "', 'Contact' ";
               }

@@ -8,12 +8,13 @@
     templateUrl: '~/crmSearchAdmin/crmSearchAdmin.html',
     controller: function($scope, $element, $location, $timeout, crmApi4, dialogService, searchMeta, formatForSelect2) {
       var ts = $scope.ts = CRM.ts('org.civicrm.search_kit'),
-        ctrl = this;
+        ctrl = this,
+        fieldsForJoinGetters = {};
 
       this.DEFAULT_AGGREGATE_FN = 'GROUP_CONCAT';
 
       this.selectedRows = [];
-      this.limit = CRM.cache.get('searchPageSize', 30);
+      this.limit = CRM.crmSearchAdmin.defaultPagerSize;
       this.page = 1;
       this.displayTypes = _.indexBy(CRM.crmSearchAdmin.displayTypes, 'id');
       // After a search this.results is an object of result arrays keyed by page,
@@ -30,12 +31,6 @@
         {k: 'INNER', v: ts('With (required)')},
         {k: 'EXCLUDE', v: ts('Without')},
       ];
-      // Try to create a sensible list of entities one might want to search for,
-      // excluding those whos primary purpose is to provide joins or option lists to other entities
-      var primaryEntities = _.filter(CRM.crmSearchAdmin.schema, function(entity) {
-        return !_.includes(entity.type, 'EntityBridge') && !_.includes(entity.type, 'OptionList');
-      });
-      $scope.entities = formatForSelect2(primaryEntities, 'name', 'title_plural', ['description', 'icon']);
       $scope.getEntity = searchMeta.getEntity;
       $scope.getField = searchMeta.getField;
       this.perm = {
@@ -62,6 +57,15 @@
             }
           });
         }
+
+        var primaryEntities = _.filter(CRM.crmSearchAdmin.schema, {searchable: 'primary'}),
+          secondaryEntities = _.filter(CRM.crmSearchAdmin.schema, {searchable: 'secondary'});
+        $scope.mainEntitySelect = formatForSelect2(primaryEntities, 'name', 'title_plural', ['description', 'icon']);
+        $scope.mainEntitySelect.push({
+          text: ts('More...'),
+          description: ts('Other less-commonly searched entities'),
+          children: formatForSelect2(secondaryEntities, 'name', 'title_plural', ['description', 'icon'])
+        });
 
         $scope.$watchCollection('$ctrl.savedSearch.api_params.select', onChangeSelect);
 
@@ -569,8 +573,6 @@
       $scope.onChangeLimit = function() {
         // Refresh only if search has already been run
         if (ctrl.autoSearch || ctrl.results) {
-          // Save page size in localStorage
-          CRM.cache.set('searchPageSize', ctrl.limit);
           ctrl.refreshAll();
         }
       };
@@ -730,17 +732,28 @@
       }
 
       $scope.fieldsForGroupBy = function() {
-        return {results: ctrl.getAllFields('', function(key) {
+        return {results: ctrl.getAllFields('', ['Field', 'Custom'], function(key) {
             return _.contains(ctrl.savedSearch.api_params.groupBy, key);
           })
         };
       };
 
       $scope.fieldsForSelect = function() {
-        return {results: ctrl.getAllFields(':label', function(key) {
+        return {results: ctrl.getAllFields(':label', ['Field', 'Custom', 'Extra'], function(key) {
             return _.contains(ctrl.savedSearch.api_params.select, key);
           })
         };
+      };
+
+      function getFieldsForJoin(joinEntity) {
+        return {results: ctrl.getAllFields(':name', ['Field', 'Custom'], null, joinEntity)};
+      }
+
+      $scope.fieldsForJoin = function(joinEntity) {
+        if (!fieldsForJoinGetters[joinEntity]) {
+          fieldsForJoinGetters[joinEntity] = _.wrap(joinEntity, getFieldsForJoin);
+        }
+        return fieldsForJoinGetters[joinEntity];
       };
 
       $scope.fieldsForWhere = function() {
@@ -772,7 +785,7 @@
         });
       }
 
-      this.getAllFields = function(suffix, disabledIf) {
+      this.getAllFields = function(suffix, allowedTypes, disabledIf, topJoin) {
         disabledIf = disabledIf || _.noop;
         function formatFields(entityName, join) {
           var prefix = join ? join.alias + '.' : '',
@@ -788,14 +801,16 @@
               if (disabledIf(item.id)) {
                 item.disabled = true;
               }
-              result.push(item);
+              if (!allowedTypes || _.includes(allowedTypes, field.type)) {
+                result.push(item);
+              }
             });
           }
 
           // Add extra searchable fields from bridge entity
           if (join && join.bridge) {
             addFields(_.filter(searchMeta.getEntity(join.bridge).fields, function(field) {
-              return (field.name !== 'id' && field.name !== 'entity_id' && field.name !== 'entity_table' && !field.fk_entity);
+              return (field.name !== 'id' && field.name !== 'entity_id' && field.name !== 'entity_table' && !field.fk_entity && !_.includes(field.name, '.'));
             }));
           }
 
@@ -804,13 +819,11 @@
         }
 
         var mainEntity = searchMeta.getEntity(ctrl.savedSearch.api_entity),
-          result = [{
-            text: mainEntity.title_plural,
-            icon: mainEntity.icon,
-            children: formatFields(ctrl.savedSearch.api_entity)
-          }];
-        _.each(ctrl.savedSearch.api_params.join, function(join) {
-          var joinInfo = searchMeta.getJoin(join[0]),
+          joinEntities = _.map(ctrl.savedSearch.api_params.join, 0),
+          result = [];
+
+        function addJoin(join) {
+          var joinInfo = searchMeta.getJoin(join),
             joinEntity = searchMeta.getEntity(joinInfo.entity);
           result.push({
             text: joinInfo.label,
@@ -818,7 +831,20 @@
             icon: joinEntity.icon,
             children: formatFields(joinEntity.name, joinInfo)
           });
+        }
+
+        // Place specified join at top of list
+        if (topJoin) {
+          addJoin(topJoin);
+          _.pull(joinEntities, topJoin);
+        }
+
+        result.push({
+          text: mainEntity.title_plural,
+          icon: mainEntity.icon,
+          children: formatFields(ctrl.savedSearch.api_entity)
         });
+        _.each(joinEntities, addJoin);
         return result;
       };
 

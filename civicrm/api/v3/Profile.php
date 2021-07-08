@@ -489,7 +489,7 @@ function _civicrm_api3_profile_getbillingpseudoprofile(&$params) {
  *
  * @return array|void
  */
-function _civicrm_api3_buildprofile_submitfields($profileID, $optionsBehaviour = 1, $is_flush) {
+function _civicrm_api3_buildprofile_submitfields($profileID, $optionsBehaviour, $is_flush) {
   static $profileFields = [];
   if ($is_flush) {
     $profileFields = [];
@@ -533,6 +533,7 @@ function _civicrm_api3_buildprofile_submitfields($profileID, $optionsBehaviour =
     $hardCodedEntityFields = [
       'state_province' => 'state_province_id',
       'country' => 'country_id',
+      'county' => 'county_id',
       'participant_status' => 'status_id',
       'gender' => 'gender_id',
       'financial_type' => 'financial_type_id',
@@ -614,7 +615,7 @@ function _civicrm_api3_buildprofile_submitfields($profileID, $optionsBehaviour =
  * @return bool
  */
 function _civicrm_api3_order_by_weight($a, $b) {
-  return ($b['weight'] ?? 0) < ($a['weight'] ?? 0);
+  return ($b['weight'] ?? 0) < ($a['weight'] ?? 0) ? 1 : -1;
 }
 
 /**

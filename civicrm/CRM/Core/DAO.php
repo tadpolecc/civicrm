@@ -526,11 +526,14 @@ class CRM_Core_DAO extends DB_DataObject {
   /**
    * Returns list of FK relationships.
    *
-   *
    * @return CRM_Core_Reference_Basic[]
    */
   public static function getReferenceColumns() {
-    return [];
+    if (!isset(Civi::$statics[static::class]['links'])) {
+      Civi::$statics[static::class]['links'] = static::createReferenceColumns(static::class);
+      CRM_Core_DAO_AllCoreTables::invoke(static::class, 'links_callback', Civi::$statics[static::class]['links']);
+    }
+    return Civi::$statics[static::class]['links'];
   }
 
   /**
@@ -888,7 +891,7 @@ class CRM_Core_DAO extends DB_DataObject {
    *
    * @param array $record
    *
-   * @return $this
+   * @return static
    * @throws \CRM_Core_Exception
    */
   public static function writeRecord(array $record): CRM_Core_DAO {
@@ -909,11 +912,26 @@ class CRM_Core_DAO extends DB_DataObject {
   }
 
   /**
+   * Bulk save multiple records
+   *
+   * @param array[] $records
+   * @return static[]
+   * @throws CRM_Core_Exception
+   */
+  public static function writeRecords(array $records) {
+    $results = [];
+    foreach ($records as $record) {
+      $results[] = static::writeRecord($record);
+    }
+    return $results;
+  }
+
+  /**
    * Delete a record from supplied params.
    *
    * @param array $record
    *   'id' is required.
-   * @return CRM_Core_DAO
+   * @return static
    * @throws CRM_Core_Exception
    */
   public static function deleteRecord(array $record) {
@@ -935,6 +953,21 @@ class CRM_Core_DAO extends DB_DataObject {
     CRM_Utils_Hook::post('delete', $entityName, $record['id'], $instance);
 
     return $instance;
+  }
+
+  /**
+   * Bulk delete multiple records.
+   *
+   * @param array[] $records
+   * @return static[]
+   * @throws CRM_Core_Exception
+   */
+  public static function deleteRecords(array $records) {
+    $results = [];
+    foreach ($records as $record) {
+      $results[] = static::deleteRecord($record);
+    }
+    return $results;
   }
 
   /**
@@ -1778,11 +1811,9 @@ LIKE %1
       $newObject = new $daoName();
 
       $fields = $object->fields();
-      if (!is_array($fieldsFix)) {
-        $fieldsToPrefix = [];
-        $fieldsToSuffix = [];
-        $fieldsToReplace = [];
-      }
+      $fieldsToPrefix = [];
+      $fieldsToSuffix = [];
+      $fieldsToReplace = [];
       if (!empty($fieldsFix['prefix'])) {
         $fieldsToPrefix = $fieldsFix['prefix'];
       }
@@ -1793,6 +1824,7 @@ LIKE %1
         $fieldsToReplace = $fieldsFix['replace'];
       }
 
+      $localizableFields = FALSE;
       foreach ($fields as $name => $value) {
         if ($name == 'id' || $value['name'] == 'id') {
           // copy everything but the id!
@@ -1816,11 +1848,33 @@ LIKE %1
           $newObject->$dbName = CRM_Utils_Date::isoToMysql($newObject->$dbName);
         }
 
+        if (!empty($value['localizable'])) {
+          $localizableFields = TRUE;
+        }
+
         if ($newData) {
           $newObject->copyValues($newData);
         }
       }
       $newObject->save();
+
+      // ensure we copy all localized fields as well
+      if (CRM_Core_I18n::isMultilingual() && $localizableFields) {
+        global $dbLocale;
+        $locales = CRM_Core_I18n::getMultilingual();
+        $curLocale = CRM_Core_I18n::getLocale();
+        // loop on other locales
+        foreach ($locales as $locale) {
+          if ($locale != $curLocale) {
+            // setLocale doesn't seems to be reliable to set dbLocale and we only need to change the db locale
+            $dbLocale = '_' . $locale;
+            $newObject->copyLocalizable($object->id, $newObject->id, $fieldsToPrefix, $fieldsToSuffix, $fieldsToReplace);
+          }
+        }
+        // restore dbLocale to starting value
+        $dbLocale = '_' . $curLocale;
+      }
+
       if (!$blockCopyofCustomValues) {
         $newObject->copyCustomFields($object->id, $newObject->id);
       }
@@ -1828,6 +1882,67 @@ LIKE %1
     }
 
     return $newObject;
+  }
+
+  /**
+   * Method that copies localizable fields from an old entity to a new one.
+   *
+   * Fixes bug dev/core#2479,
+   * where non current locale fields are copied from current locale losing translation when copying
+   *
+   * @param int $entityID
+   * @param int $newEntityID
+   * @param array $fieldsToPrefix
+   * @param array $fieldsToSuffix
+   * @param array $fieldsToReplace
+   */
+  protected function copyLocalizable($entityID, $newEntityID, $fieldsToPrefix, $fieldsToSuffix, $fieldsToReplace) {
+    $entity = get_class($this);
+    $object = new $entity();
+    $object->id = $entityID;
+    $object->find();
+
+    $newObject = new $entity();
+    $newObject->id = $newEntityID;
+
+    $newObject->find();
+
+    if ($object->fetch() && $newObject->fetch()) {
+
+      $fields = $object->fields();
+      foreach ($fields as $name => $value) {
+
+        if ($name == 'id' || $value['name'] == 'id') {
+          // copy everything but the id!
+          continue;
+        }
+
+        // only copy localizable fields
+        if (!$value['localizable']) {
+          continue;
+        }
+
+        $dbName = $value['name'];
+        $type = CRM_Utils_Type::typeToString($value['type']);
+        $newObject->$dbName = $object->$dbName;
+        if (isset($fieldsToPrefix[$dbName])) {
+          $newObject->$dbName = $fieldsToPrefix[$dbName] . $newObject->$dbName;
+        }
+        if (isset($fieldsToSuffix[$dbName])) {
+          $newObject->$dbName .= $fieldsToSuffix[$dbName];
+        }
+        if (isset($fieldsToReplace[$dbName])) {
+          $newObject->$dbName = $fieldsToReplace[$dbName];
+        }
+
+        if ($type == 'Timestamp' || $type == 'Date') {
+          $newObject->$dbName = CRM_Utils_Date::isoToMysql($newObject->$dbName);
+        }
+
+      }
+      $newObject->save();
+
+    }
   }
 
   /**
@@ -1978,7 +2093,7 @@ SELECT contact_id
    * @return object
    *   an object of type referenced by daoName
    */
-  public static function commonRetrieveAll($daoName, $fieldIdName = 'id', $fieldId, &$details, $returnProperities = NULL) {
+  public static function commonRetrieveAll($daoName, $fieldIdName, $fieldId, &$details, $returnProperities = NULL) {
     require_once str_replace('_', DIRECTORY_SEPARATOR, $daoName) . ".php";
     $object = new $daoName();
     $object->$fieldIdName = $fieldId;
@@ -2960,7 +3075,7 @@ SELECT contact_id
         $clauses[$fieldName] = CRM_Utils_SQL::mergeSubquery('Contact');
       }
       // Clause for an entity_table/entity_id combo
-      if ($fieldName == 'entity_id' && isset($fields['entity_table'])) {
+      if ($fieldName === 'entity_id' && isset($fields['entity_table'])) {
         $relatedClauses = [];
         $relatedEntities = $this->buildOptions('entity_table', 'get');
         foreach ((array) $relatedEntities as $table => $ent) {
@@ -3009,7 +3124,7 @@ SELECT contact_id
 
   /**
    * ensure database name is 'safe', i.e. only contains word characters (includes underscores)
-   * and dashes, and contains at least one [a-z] case insenstive.
+   * and dashes, and contains at least one [a-z] case insensitive.
    *
    * @param $database
    *

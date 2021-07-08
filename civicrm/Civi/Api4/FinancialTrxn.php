@@ -28,8 +28,10 @@ namespace Civi\Api4;
  *
  * @see https://docs.civicrm.org/dev/en/latest/financial/financialentities/#financial-transactions
  *
+ * @searchable secondary
  * @package Civi\Api4
  */
 class FinancialTrxn extends Generic\DAOEntity {
+  use Generic\Traits\ReadOnly;
 
 }

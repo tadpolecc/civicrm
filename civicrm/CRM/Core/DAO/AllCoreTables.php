@@ -203,7 +203,7 @@ class CRM_Core_DAO_AllCoreTables {
    */
   public static function getBAOClassName($daoName) {
     $baoName = str_replace('_DAO_', '_BAO_', $daoName);
-    return class_exists($baoName) ? $baoName : $daoName;
+    return $daoName === $baoName || class_exists($baoName) ? $baoName : $daoName;
   }
 
   /**
@@ -274,6 +274,23 @@ class CRM_Core_DAO_AllCoreTables {
    */
   public static function getClasses() {
     return array_values(self::daoToClass());
+  }
+
+  /**
+   * Get a list of all extant BAO classes.
+   *
+   * @return array
+   *   Ex: ['Contact' => 'CRM_Contact_BAO_Contact']
+   */
+  public static function getBaoClasses() {
+    $r = [];
+    foreach (\CRM_Core_DAO_AllCoreTables::daoToClass() as $entity => $daoClass) {
+      $baoClass = str_replace('_DAO_', '_BAO_', $daoClass);
+      if (class_exists($baoClass)) {
+        $r[$entity] = $baoClass;
+      }
+    }
+    return $r;
   }
 
   /**

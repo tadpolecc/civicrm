@@ -390,8 +390,9 @@ abstract class AbstractAction implements \ArrayAccess {
    * This function is called if checkPermissions is set to true.
    *
    * @return bool
+   * @internal Implement/override in civicrm-core.git only. Signature may evolve.
    */
-  public function isAuthorized() {
+  public function isAuthorized(): bool {
     $permissions = $this->getPermissions();
     return \CRM_Core_Permission::check($permissions);
   }
@@ -433,14 +434,19 @@ abstract class AbstractAction implements \ArrayAccess {
    */
   public function entityFields() {
     if (!$this->_entityFields) {
+      $allowedTypes = ['Field', 'Filter', 'Extra'];
+      if (method_exists($this, 'getCustomGroup')) {
+        $allowedTypes[] = 'Custom';
+      }
       $getFields = \Civi\API\Request::create($this->getEntityName(), 'getFields', [
         'version' => 4,
         'checkPermissions' => $this->checkPermissions,
         'action' => $this->getActionName(),
-        'includeCustom' => FALSE,
+        'where' => [['type', 'IN', $allowedTypes]],
       ]);
       $result = new Result();
-      $getFields->_run($result);
+      // Pass TRUE for the private $isInternal param
+      $getFields->_run($result, TRUE);
       $this->_entityFields = (array) $result->indexBy('name');
     }
     return $this->_entityFields;

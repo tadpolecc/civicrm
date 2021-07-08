@@ -89,7 +89,7 @@ function civicrm_api3_verify_mandatory($params, $daoName = NULL, $keys = [], $ve
     else {
       // Disallow empty values except for the number zero.
       // TODO: create a utility for this since it's needed in many places.
-      if (!array_key_exists($key, $params) || (empty($params[$key]) && $params[$key] !== 0 && $params[$key] !== '0')) {
+      if (!array_key_exists($key, $params) || (empty($params[$key]) && $params[$key] !== 0.0 && $params[$key] !== 0 && $params[$key] !== '0')) {
         $unmatched[] = $key;
       }
     }
@@ -320,15 +320,26 @@ function _civicrm_api3_get_DAO($name) {
   if ($name === 'MailingRecipients') {
     return 'CRM_Mailing_DAO_Recipients';
   }
-  // FIXME: DAO should be renamed CRM_ACL_DAO_AclRole
   if ($name === 'AclRole') {
-    return 'CRM_ACL_DAO_EntityRole';
+    return 'CRM_ACL_DAO_ACLEntityRole';
   }
   // FIXME: DAO should be renamed CRM_SMS_DAO_SmsProvider
   // But this would impact SMS extensions so need to coordinate
   // Probably best approach is to migrate them to use the api and decouple them from core BAOs
   if ($name === 'SmsProvider') {
     return 'CRM_SMS_DAO_Provider';
+  }
+  // Entity was renamed to CRM_Dedupe_DAO_DedupeRule for APIv4
+  if ($name === 'Rule') {
+    return 'CRM_Dedupe_DAO_DedupeRule';
+  }
+  // Entity was renamed to CRM_Dedupe_DAO_DedupeRuleGroup for APIv4
+  if ($name === 'RuleGroup') {
+    return 'CRM_Dedupe_DAO_DedupeRuleGroup';
+  }
+  // Entity was renamed to CRM_Dedupe_DAO_DedupeException for APIv4
+  if ($name === 'Exception') {
+    return 'CRM_Dedupe_DAO_DedupeException';
   }
   // FIXME: DAO names should follow CamelCase convention
   if ($name === 'Im' || $name === 'Acl' || $name === 'Pcp') {

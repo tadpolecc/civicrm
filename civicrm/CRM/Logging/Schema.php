@@ -242,6 +242,9 @@ AND    (TABLE_NAME LIKE 'log_civicrm_%' $nonStandardTableNameString )
       $tableNames = $this->tables;
     }
 
+    // Sort the table names so the sql output is consistent for those sites
+    // loading it asynchronously (using the setting 'logging_no_trigger_permission')
+    asort($tableNames);
     foreach ($tableNames as $table) {
       $validName = CRM_Core_DAO::shortenSQLName($table, 48, TRUE);
 
@@ -518,10 +521,8 @@ AND    (TABLE_NAME LIKE 'log_civicrm_%' $nonStandardTableNameString )
 
   /**
    * Fix schema differences.
-   *
-   * @param bool $rebuildTrigger
    */
-  public function fixSchemaDifferencesForAll($rebuildTrigger = FALSE) {
+  public function fixSchemaDifferencesForAll(): void {
     $diffs = [];
     $this->resetTableColumnsCache();
 
@@ -536,10 +537,6 @@ AND    (TABLE_NAME LIKE 'log_civicrm_%' $nonStandardTableNameString )
 
     foreach ($diffs as $table => $cols) {
       $this->fixSchemaDifferencesFor($table, $cols);
-    }
-    if ($rebuildTrigger) {
-      // invoke the meta trigger creation call
-      CRM_Core_DAO::triggerRebuild(NULL, TRUE);
     }
   }
 

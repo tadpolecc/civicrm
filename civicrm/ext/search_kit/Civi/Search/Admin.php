@@ -32,6 +32,7 @@ class Admin {
       'functions' => \CRM_Api4_Page_Api4Explorer::getSqlFunctions(),
       'displayTypes' => Display::getDisplayTypes(['id', 'name', 'label', 'description', 'icon']),
       'styles' => \CRM_Utils_Array::makeNonAssociative(self::getStyles()),
+      'defaultPagerSize' => \Civi::settings()->get('default_pager_size'),
       'afformEnabled' => $extensions->isActiveModule('afform'),
       'afformAdminEnabled' => $extensions->isActiveModule('afform_admin'),
     ];
@@ -81,8 +82,8 @@ class Admin {
   public static function getSchema() {
     $schema = [];
     $entities = \Civi\Api4\Entity::get()
-      ->addSelect('name', 'title', 'type', 'title_plural', 'description', 'label_field', 'icon', 'paths', 'dao', 'bridge', 'ui_join_filters')
-      ->addWhere('searchable', '=', TRUE)
+      ->addSelect('name', 'title', 'type', 'title_plural', 'description', 'label_field', 'icon', 'paths', 'dao', 'bridge', 'ui_join_filters', 'searchable')
+      ->addWhere('searchable', '!=', 'none')
       ->addOrderBy('title_plural')
       ->setChain([
         'get' => ['$name', 'getActions', ['where' => [['name', '=', 'get']]], ['params']],
@@ -101,7 +102,7 @@ class Admin {
           }
         }
         $getFields = civicrm_api4($entity['name'], 'getFields', [
-          'select' => ['name', 'title', 'label', 'description', 'options', 'input_type', 'input_attrs', 'data_type', 'serialize', 'entity', 'fk_entity', 'readonly'],
+          'select' => ['name', 'title', 'label', 'description', 'type', 'options', 'input_type', 'input_attrs', 'data_type', 'serialize', 'entity', 'fk_entity', 'readonly', 'operators'],
           'where' => [['name', 'NOT IN', ['api_key', 'hash']]],
           'orderBy' => ['label'],
         ]);
@@ -121,7 +122,7 @@ class Admin {
     // Add in FK fields for implicit joins
     // For example, add a `campaign_id.title` field to the Contribution entity
     foreach ($schema as &$entity) {
-      if (in_array('DAOEntity', $entity['type'], TRUE) && !in_array('EntityBridge', $entity['type'], TRUE)) {
+      if ($entity['searchable'] !== 'bridge') {
         foreach (array_reverse($entity['fields'], TRUE) as $index => $field) {
           if (!empty($field['fk_entity']) && !$field['options'] && empty($field['serialize']) && !empty($schema[$field['fk_entity']]['label_field'])) {
             $isCustom = strpos($field['name'], '.');
@@ -189,15 +190,18 @@ class Admin {
         });
         $fields = array_column($entity['fields'], NULL, 'name');
         $bridge = in_array('EntityBridge', $entity['type']) ? $entity['name'] : NULL;
+        $bridgeFields = array_keys($entity['bridge'] ?? []);
         foreach ($references as $reference) {
           $keyField = $fields[$reference->getReferenceKey()] ?? NULL;
-          // Exclude any joins that are better represented by pseudoconstants
-          if (is_a($reference, 'CRM_Core_Reference_OptionValue')
-            || !$keyField || !empty($keyField['options'])
+          if (
+            // Sanity check - keyField must exist
+            !$keyField ||
+            // Exclude any joins that are better represented by pseudoconstants
+            is_a($reference, 'CRM_Core_Reference_OptionValue') || (!$bridge && !empty($keyField['options'])) ||
             // Limit bridge joins to just the first
-            || $bridge && array_search($keyField['name'], $entity['bridge']) !== 0
+            ($bridge && array_search($keyField['name'], $bridgeFields) !== 0) ||
             // Sanity check - table should match
-            || $daoClass::getTableName() !== $reference->getReferenceTable()
+            $daoClass::getTableName() !== $reference->getReferenceTable()
           ) {
             continue;
           }
@@ -237,7 +241,7 @@ class Admin {
             // Bridge joins (sanity check - bridge must specify exactly 2 FK fields)
             elseif (count($entity['bridge']) === 2) {
               // Get the other entity being linked through this bridge
-              $baseKey = array_search($reference->getReferenceKey(), $entity['bridge']) ? $entity['bridge'][0] : $entity['bridge'][1];
+              $baseKey = array_search($reference->getReferenceKey(), $bridgeFields) ? $bridgeFields[0] : $bridgeFields[1];
               $baseEntity = $allowedEntities[$fields[$baseKey]['fk_entity']] ?? NULL;
               if (!$baseEntity) {
                 continue;
@@ -248,7 +252,7 @@ class Admin {
               $alias = $baseEntity['name'] . "_{$bridge}_" . $targetEntityName;
               $joins[$baseEntity['name']][] = [
                 'label' => $baseEntity['title'] . ' ' . $targetsTitle,
-                'description' => E::ts('Multiple %1 per %2', [1 => $targetsTitle, 2 => $baseEntity['title']]),
+                'description' => $entity['bridge'][$baseKey]['description'] ?? E::ts('Multiple %1 per %2', [1 => $targetsTitle, 2 => $baseEntity['title']]),
                 'entity' => $targetEntityName,
                 'conditions' => array_merge(
                   [$bridge],
@@ -263,7 +267,7 @@ class Admin {
                 $alias = $targetEntityName . "_{$bridge}_" . $baseEntity['name'];
                 $joins[$targetEntityName][] = [
                   'label' => $targetEntity['title'] . ' ' . $baseEntity['title_plural'],
-                  'description' => E::ts('Multiple %1 per %2', [1 => $baseEntity['title_plural'], 2 => $targetEntity['title']]),
+                  'description' => $entity['bridge'][$reference->getReferenceKey()]['description'] ?? E::ts('Multiple %1 per %2', [1 => $baseEntity['title_plural'], 2 => $targetEntity['title']]),
                   'entity' => $baseEntity['name'],
                   'conditions' => array_merge(
                     [$bridge],

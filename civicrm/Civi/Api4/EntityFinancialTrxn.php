@@ -24,11 +24,23 @@ namespace Civi\Api4;
  *
  * @see https://docs.civicrm.org/dev/en/latest/financial/financialentities/
  *
- * @bridge entity_id financial_trxn_id
- *
+ * @searchable bridge
  * @package Civi\Api4
  */
 class EntityFinancialTrxn extends Generic\DAOEntity {
   use Generic\Traits\EntityBridge;
+  use Generic\Traits\ReadOnly;
+
+  /**
+   * @return array
+   */
+  public static function getInfo() {
+    $info = parent::getInfo();
+    $info['bridge'] = [
+      'entity_id' => [],
+      'financial_trxn_id' => [],
+    ];
+    return $info;
+  }
 
 }
