@@ -1,5 +1,4 @@
 <?php
-
 /*
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC. All rights reserved.                        |
@@ -9,13 +8,6 @@
  | and copyright information, see https://civicrm.org/licensing       |
  +--------------------------------------------------------------------+
  */
-
-/**
- *
- * @package CRM
- * @copyright CiviCRM LLC https://civicrm.org/licensing
- */
-
 namespace Civi\Api4;
 
 /**
@@ -107,7 +99,7 @@ class CustomValue {
    * @throws \API_Exception
    */
   public static function replace($customGroup, $checkPermissions = TRUE) {
-    return (new Generic\BasicReplaceAction("Custom_$customGroup", __FUNCTION__, ['id', 'entity_id']))
+    return (new Generic\BasicReplaceAction("Custom_$customGroup", __FUNCTION__))
       ->setCheckPermissions($checkPermissions);
   }
 
@@ -150,6 +142,7 @@ class CustomValue {
       'class' => __CLASS__,
       'type' => ['CustomValue'],
       'searchable' => 'secondary',
+      'primary_key' => ['id'],
       'see' => [
         'https://docs.civicrm.org/user/en/latest/organising-your-data/creating-custom-fields/#multiple-record-fieldsets',
         '\Civi\Api4\CustomGroup',

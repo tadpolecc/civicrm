@@ -4774,6 +4774,7 @@ VALUES
    ('contact_reference_options'     , 'Contact Reference Autocomplete Options', NULL, 1, 1, 1),
    ('website_type'                  , 'Website Type'                       , NULL, 1, 1, 0),
    ('tag_used_for'                  , 'Tag Used For'                       , NULL, 1, 1, 1),
+   ('note_used_for'                 , 'Note Used For'                      , NULL, 1, 1, 1),
    ('currencies_enabled'            , 'Currencies Enabled'                 , NULL, 1, 1, 0),
    ('event_badge'                   , 'Event Name Badge'                   , NULL, 1, 1, 0),
    ('note_privacy'                  , 'Privacy levels for notes'           , NULL, 1, 1, 0),
@@ -4858,6 +4859,7 @@ SELECT @option_group_id_acsOpt         := max(id) from civicrm_option_group wher
 SELECT @option_group_id_acConRef       := max(id) from civicrm_option_group where name = 'contact_reference_options';
 SELECT @option_group_id_website        := max(id) from civicrm_option_group where name = 'website_type';
 SELECT @option_group_id_tuf            := max(id) from civicrm_option_group where name = 'tag_used_for';
+SELECT @option_group_id_nuf            := max(id) from civicrm_option_group where name = 'note_used_for';
 SELECT @option_group_id_currency       := max(id) from civicrm_option_group where name = 'currencies_enabled';
 SELECT @option_group_id_eventBadge     := max(id) from civicrm_option_group where name = 'event_badge';
 SELECT @option_group_id_notePrivacy    := max(id) from civicrm_option_group where name = 'note_privacy';
@@ -5274,7 +5276,7 @@ VALUES
   (@option_group_id_sfe, 'pptx',  16, 'pptx',   NULL, 0, 0, 16, NULL, 0, 0, 1, NULL, NULL, NULL),
 
   (@option_group_id_we, 'Textarea', 1, 'Textarea', NULL, 0, NULL, 1, NULL, 0, 1, 1, NULL, NULL, NULL),
-  (@option_group_id_we, 'CKEditor', 2, 'CKEditor', NULL, 0, NULL, 2, NULL, 0, 1, 1, NULL, NULL, NULL),
+  (@option_group_id_we, 'CKEditor 4', 2, 'CKEditor', NULL, 0, NULL, 2, NULL, 0, 1, 1, NULL, NULL, NULL),
 
   (@option_group_id_mt, 'Search Builder',      1, 'Search Builder',      NULL, 0, 0,    1, NULL, 0, 1, 1, NULL, NULL, NULL),
   (@option_group_id_mt, 'Import Contact',      2, 'Import Contact',      NULL, 0, 0,    2, NULL, 0, 1, 1, NULL, NULL, NULL),
@@ -5360,10 +5362,16 @@ VALUES
    (@option_group_id_website, 'Vine',  12, 'Vine ',  NULL, 0, NULL, 12, NULL, 0, 0, 1, NULL, NULL, NULL),
 
 -- Tag used for
-   (@option_group_id_tuf, 'Contacts',   'civicrm_contact',  'Contacts',     NULL, 0, NULL, 1, NULL, 0, 0, 1, NULL, NULL, NULL),
-   (@option_group_id_tuf, 'Activities', 'civicrm_activity', 'Activities',   NULL, 0, NULL, 2, NULL, 0, 0, 1, NULL, NULL, NULL),
-   (@option_group_id_tuf, 'Cases',      'civicrm_case',     'Cases',        NULL, 0, NULL, 3, NULL, 0, 0, 1, NULL, NULL, NULL),
-   (@option_group_id_tuf, 'Attachments','civicrm_file',     'Attachements', NULL, 0, NULL, 4, NULL, 0, 0, 1, NULL, NULL, NULL),
+   (@option_group_id_tuf, 'Contacts',    'civicrm_contact',  'Contact',  NULL, 0, NULL, 1, NULL, 0, 0, 1, NULL, NULL, NULL),
+   (@option_group_id_tuf, 'Activities',  'civicrm_activity', 'Activity', NULL, 0, NULL, 2, NULL, 0, 0, 1, NULL, NULL, NULL),
+   (@option_group_id_tuf, 'Cases',       'civicrm_case',     'Case',     NULL, 0, NULL, 3, NULL, 0, 0, 1, NULL, NULL, NULL),
+   (@option_group_id_tuf, 'Attachments', 'civicrm_file',     'File',     NULL, 0, NULL, 4, NULL, 0, 0, 1, NULL, NULL, NULL),
+
+-- Note used for
+   (@option_group_id_nuf, 'Contacts',      'civicrm_contact',      'Contact',      NULL, 0, NULL, 1, NULL, 0, 0, 1, NULL, NULL, NULL),
+   (@option_group_id_nuf, 'Relationships', 'civicrm_relationship', 'Relationship', NULL, 0, NULL, 2, NULL, 0, 0, 1, NULL, NULL, NULL),
+   (@option_group_id_nuf, 'Participants',  'civicrm_participant',  'Participant',  NULL, 0, NULL, 3, NULL, 0, 0, 1, NULL, NULL, NULL),
+   (@option_group_id_nuf, 'Contributions', 'civicrm_contribution', 'Contribution', NULL, 0, NULL, 4, NULL, 0, 0, 1, NULL, NULL, NULL),
 
    (@option_group_id_currency, 'USD ($)',      'USD',     'USD',       NULL, 0, 1, 1, NULL, 0, 0, 1, NULL, NULL, NULL),
 
@@ -6534,16 +6542,16 @@ INSERT INTO civicrm_msg_template
 {ts}Activity Summary{/ts} - {$activityTypeName}
 ===========================================================
 {if !empty($isCaseActivity)}
-{ts}Your Case Role(s){/ts} : {$contact.role}
-{if $manageCaseURL}
+{ts}Your Case Role(s){/ts} : {$contact.role|default:\'\'}
+{if !empty($manageCaseURL)}
 {ts}Manage Case{/ts} : {$manageCaseURL}
 {/if}
 {/if}
 
-{if $editActURL}
+{if !empty($editActURL)}
 {ts}Edit activity{/ts} : {$editActURL}
 {/if}
-{if $viewActURL}
+{if !empty($viewActURL)}
 {ts}View activity{/ts} : {$viewActURL}
 {/if}
 
@@ -6555,6 +6563,7 @@ INSERT INTO civicrm_msg_template
 {/if}
 {/foreach}
 
+{if !empty($activity.customGroups)}
 {foreach from=$activity.customGroups key=customGroupName item=customGroup}
 ==========================================================
 {$customGroupName}
@@ -6568,6 +6577,7 @@ INSERT INTO civicrm_msg_template
 {/foreach}
 
 {/foreach}
+{/if}
 ', '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -6576,100 +6586,101 @@ INSERT INTO civicrm_msg_template
 </head>
 <body>
 
-{capture assign=headerStyle}colspan="2" style="text-align: left; padding: 4px; border-bottom: 1px solid #999; background-color: #eee;"{/capture}
-{capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
-{capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
+  {capture assign=headerStyle}colspan="2" style="text-align: left; padding: 4px; border-bottom: 1px solid #999; background-color: #eee;"{/capture}
+  {capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
+  {capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
 
-<center>
-  <table id="crm-event_receipt" style="font-family: Arial, Verdana, sans-serif; text-align: left; width:100%; max-width:700px; padding:0; margin:0; border:0px;">
+  <center>
+    <table id="crm-event_receipt" style="font-family: Arial, Verdana, sans-serif; text-align: left; width:100%; max-width:700px; padding:0; margin:0; border:0px;">
 
-  <!-- BEGIN HEADER -->
-  <!-- You can add table row(s) here with logo or other header elements -->
-  <!-- END HEADER -->
+    <!-- BEGIN HEADER -->
+    <!-- You can add table row(s) here with logo or other header elements -->
+    <!-- END HEADER -->
 
-  <!-- BEGIN CONTENT -->
+    <!-- BEGIN CONTENT -->
 
-  <tr>
-   <td>
-    <table style="border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse; width:100%;">
-     <tr>
-      <th {$headerStyle}>
-       {ts}Activity Summary{/ts} - {$activityTypeName}
-      </th>
-     </tr>
-     {if !empty($isCaseActivity)}
       <tr>
-       <td {$labelStyle}>
-        {ts}Your Case Role(s){/ts}
-       </td>
-       <td {$valueStyle}>
-        {$contact.role}
-       </td>
-      </tr>
-      {if $manageCaseURL}
-       <tr>
-       <td colspan="2" {$valueStyle}>
-     <a href="{$manageCaseURL}" title="{ts}Manage Case{/ts}">{ts}Manage Case{/ts}</a>
-       </td>
-       </tr>
-      {/if}
-     {/if}
-     {if $editActURL}
-     <tr>
-       <td colspan="2" {$valueStyle}>
-   <a href="{$editActURL}" title="{ts}Edit activity{/ts}">{ts}Edit activity{/ts}</a>
-       </td>
-     </tr>
-     {/if}
-     {if $viewActURL}
-     <tr>
-       <td colspan="2" {$valueStyle}>
-   <a href="{$viewActURL}" title="{ts}View activity{/ts}">{ts}View activity{/ts}</a>
-       </td>
-     </tr>
-     {/if}
-     {foreach from=$activity.fields item=field}
-      <tr>
-       <td {$labelStyle}>
-        {$field.label}{if !empty($field.category)}({$field.category}){/if}
-       </td>
-       <td {$valueStyle}>
-        {if $field.type eq \'Date\'}
-         {$field.value|crmDate:$config->dateformatDatetime}
-        {else}
-         {$field.value}
-        {/if}
-       </td>
-      </tr>
-     {/foreach}
+        <td>
+          <table style="border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse; width:100%;">
+            <tr>
+              <th {$headerStyle}>
+                {ts}Activity Summary{/ts} - {$activityTypeName}
+              </th>
+            </tr>
+            {if !empty($isCaseActivity)}
+              <tr>
+                <td {$labelStyle}>
+                  {ts}Your Case Role(s){/ts}
+                </td>
+                <td {$valueStyle}>
+                  {$contact.role|default:\'\'}
+                </td>
+              </tr>
+              {if !empty($manageCaseURL)}
+                <tr>
+                  <td colspan="2" {$valueStyle}>
+                    <a href="{$manageCaseURL}" title="{ts}Manage Case{/ts}">{ts}Manage Case{/ts}</a>
+                  </td>
+                </tr>
+              {/if}
+            {/if}
+            {if !empty($editActURL)}
+              <tr>
+                <td colspan="2" {$valueStyle}>
+                  <a href="{$editActURL}" title="{ts}Edit activity{/ts}">{ts}Edit activity{/ts}</a>
+                </td>
+              </tr>
+            {/if}
+            {if !empty($viewActURL)}
+              <tr>
+                <td colspan="2" {$valueStyle}>
+                  <a href="{$viewActURL}" title="{ts}View activity{/ts}">{ts}View activity{/ts}</a>
+                </td>
+              </tr>
+            {/if}
+            {foreach from=$activity.fields item=field}
+              <tr>
+                <td {$labelStyle}>
+                  {$field.label}{if !empty($field.category)}({$field.category}){/if}
+                </td>
+                <td {$valueStyle}>
+                  {if $field.type eq \'Date\'}
+                    {$field.value|crmDate:$config->dateformatDatetime}
+                  {else}
+                    {$field.value}
+                  {/if}
+                </td>
+              </tr>
+            {/foreach}
 
-     {foreach from=$activity.customGroups key=customGroupName item=customGroup}
-      <tr>
-       <th {$headerStyle}>
-        {$customGroupName}
-       </th>
-      </tr>
-      {foreach from=$customGroup item=field}
-       <tr>
-        <td {$labelStyle}>
-         {$field.label}
+            {if !empty($activity.customGroups)}
+              {foreach from=$activity.customGroups key=customGroupName item=customGroup}
+                <tr>
+                  <th {$headerStyle}>
+                    {$customGroupName}
+                  </th>
+                </tr>
+                {foreach from=$customGroup item=field}
+                  <tr>
+                    <td {$labelStyle}>
+                      {$field.label}
+                    </td>
+                    <td {$valueStyle}>
+                      {if $field.type eq \'Date\'}
+                        {$field.value|crmDate:$config->dateformatDatetime}
+                      {else}
+                        {$field.value}
+                      {/if}
+                    </td>
+                  </tr>
+                {/foreach}
+              {/foreach}
+            {/if}
+          </table>
         </td>
-        <td {$valueStyle}>
-         {if $field.type eq \'Date\'}
-          {$field.value|crmDate:$config->dateformatDatetime}
-         {else}
-          {$field.value}
-         {/if}
-        </td>
-       </tr>
-      {/foreach}
-     {/foreach}
+      </tr>
     </table>
-   </td>
-  </tr>
- </table>
-</center>
-
+  </center>
 </body>
 </html>
 ', 'case_activity', @tpl_ovid_case_activity, 1,          0),
@@ -6678,16 +6689,16 @@ INSERT INTO civicrm_msg_template
 {ts}Activity Summary{/ts} - {$activityTypeName}
 ===========================================================
 {if !empty($isCaseActivity)}
-{ts}Your Case Role(s){/ts} : {$contact.role}
-{if $manageCaseURL}
+{ts}Your Case Role(s){/ts} : {$contact.role|default:\'\'}
+{if !empty($manageCaseURL)}
 {ts}Manage Case{/ts} : {$manageCaseURL}
 {/if}
 {/if}
 
-{if $editActURL}
+{if !empty($editActURL)}
 {ts}Edit activity{/ts} : {$editActURL}
 {/if}
-{if $viewActURL}
+{if !empty($viewActURL)}
 {ts}View activity{/ts} : {$viewActURL}
 {/if}
 
@@ -6699,6 +6710,7 @@ INSERT INTO civicrm_msg_template
 {/if}
 {/foreach}
 
+{if !empty($activity.customGroups)}
 {foreach from=$activity.customGroups key=customGroupName item=customGroup}
 ==========================================================
 {$customGroupName}
@@ -6712,6 +6724,7 @@ INSERT INTO civicrm_msg_template
 {/foreach}
 
 {/foreach}
+{/if}
 ', '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -6720,100 +6733,101 @@ INSERT INTO civicrm_msg_template
 </head>
 <body>
 
-{capture assign=headerStyle}colspan="2" style="text-align: left; padding: 4px; border-bottom: 1px solid #999; background-color: #eee;"{/capture}
-{capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
-{capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
+  {capture assign=headerStyle}colspan="2" style="text-align: left; padding: 4px; border-bottom: 1px solid #999; background-color: #eee;"{/capture}
+  {capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
+  {capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
 
-<center>
-  <table id="crm-event_receipt" style="font-family: Arial, Verdana, sans-serif; text-align: left; width:100%; max-width:700px; padding:0; margin:0; border:0px;">
+  <center>
+    <table id="crm-event_receipt" style="font-family: Arial, Verdana, sans-serif; text-align: left; width:100%; max-width:700px; padding:0; margin:0; border:0px;">
 
-  <!-- BEGIN HEADER -->
-  <!-- You can add table row(s) here with logo or other header elements -->
-  <!-- END HEADER -->
+    <!-- BEGIN HEADER -->
+    <!-- You can add table row(s) here with logo or other header elements -->
+    <!-- END HEADER -->
 
-  <!-- BEGIN CONTENT -->
+    <!-- BEGIN CONTENT -->
 
-  <tr>
-   <td>
-    <table style="border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse; width:100%;">
-     <tr>
-      <th {$headerStyle}>
-       {ts}Activity Summary{/ts} - {$activityTypeName}
-      </th>
-     </tr>
-     {if !empty($isCaseActivity)}
       <tr>
-       <td {$labelStyle}>
-        {ts}Your Case Role(s){/ts}
-       </td>
-       <td {$valueStyle}>
-        {$contact.role}
-       </td>
-      </tr>
-      {if $manageCaseURL}
-       <tr>
-       <td colspan="2" {$valueStyle}>
-     <a href="{$manageCaseURL}" title="{ts}Manage Case{/ts}">{ts}Manage Case{/ts}</a>
-       </td>
-       </tr>
-      {/if}
-     {/if}
-     {if $editActURL}
-     <tr>
-       <td colspan="2" {$valueStyle}>
-   <a href="{$editActURL}" title="{ts}Edit activity{/ts}">{ts}Edit activity{/ts}</a>
-       </td>
-     </tr>
-     {/if}
-     {if $viewActURL}
-     <tr>
-       <td colspan="2" {$valueStyle}>
-   <a href="{$viewActURL}" title="{ts}View activity{/ts}">{ts}View activity{/ts}</a>
-       </td>
-     </tr>
-     {/if}
-     {foreach from=$activity.fields item=field}
-      <tr>
-       <td {$labelStyle}>
-        {$field.label}{if !empty($field.category)}({$field.category}){/if}
-       </td>
-       <td {$valueStyle}>
-        {if $field.type eq \'Date\'}
-         {$field.value|crmDate:$config->dateformatDatetime}
-        {else}
-         {$field.value}
-        {/if}
-       </td>
-      </tr>
-     {/foreach}
+        <td>
+          <table style="border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse; width:100%;">
+            <tr>
+              <th {$headerStyle}>
+                {ts}Activity Summary{/ts} - {$activityTypeName}
+              </th>
+            </tr>
+            {if !empty($isCaseActivity)}
+              <tr>
+                <td {$labelStyle}>
+                  {ts}Your Case Role(s){/ts}
+                </td>
+                <td {$valueStyle}>
+                  {$contact.role|default:\'\'}
+                </td>
+              </tr>
+              {if !empty($manageCaseURL)}
+                <tr>
+                  <td colspan="2" {$valueStyle}>
+                    <a href="{$manageCaseURL}" title="{ts}Manage Case{/ts}">{ts}Manage Case{/ts}</a>
+                  </td>
+                </tr>
+              {/if}
+            {/if}
+            {if !empty($editActURL)}
+              <tr>
+                <td colspan="2" {$valueStyle}>
+                  <a href="{$editActURL}" title="{ts}Edit activity{/ts}">{ts}Edit activity{/ts}</a>
+                </td>
+              </tr>
+            {/if}
+            {if !empty($viewActURL)}
+              <tr>
+                <td colspan="2" {$valueStyle}>
+                  <a href="{$viewActURL}" title="{ts}View activity{/ts}">{ts}View activity{/ts}</a>
+                </td>
+              </tr>
+            {/if}
+            {foreach from=$activity.fields item=field}
+              <tr>
+                <td {$labelStyle}>
+                  {$field.label}{if !empty($field.category)}({$field.category}){/if}
+                </td>
+                <td {$valueStyle}>
+                  {if $field.type eq \'Date\'}
+                    {$field.value|crmDate:$config->dateformatDatetime}
+                  {else}
+                    {$field.value}
+                  {/if}
+                </td>
+              </tr>
+            {/foreach}
 
-     {foreach from=$activity.customGroups key=customGroupName item=customGroup}
-      <tr>
-       <th {$headerStyle}>
-        {$customGroupName}
-       </th>
-      </tr>
-      {foreach from=$customGroup item=field}
-       <tr>
-        <td {$labelStyle}>
-         {$field.label}
+            {if !empty($activity.customGroups)}
+              {foreach from=$activity.customGroups key=customGroupName item=customGroup}
+                <tr>
+                  <th {$headerStyle}>
+                    {$customGroupName}
+                  </th>
+                </tr>
+                {foreach from=$customGroup item=field}
+                  <tr>
+                    <td {$labelStyle}>
+                      {$field.label}
+                    </td>
+                    <td {$valueStyle}>
+                      {if $field.type eq \'Date\'}
+                        {$field.value|crmDate:$config->dateformatDatetime}
+                      {else}
+                        {$field.value}
+                      {/if}
+                    </td>
+                  </tr>
+                {/foreach}
+              {/foreach}
+            {/if}
+          </table>
         </td>
-        <td {$valueStyle}>
-         {if $field.type eq \'Date\'}
-          {$field.value|crmDate:$config->dateformatDatetime}
-         {else}
-          {$field.value}
-         {/if}
-        </td>
-       </tr>
-      {/foreach}
-     {/foreach}
+      </tr>
     </table>
-   </td>
-  </tr>
- </table>
-</center>
-
+  </center>
 </body>
 </html>
 ', 'case_activity', @tpl_ovid_case_activity, 0,          1) ,      
@@ -7085,7 +7099,7 @@ INSERT INTO civicrm_msg_template
 {if !empty($receive_date)}
 {ts}Date Received{/ts}: {$receive_date|truncate:10:\'\'|crmDate}
 {/if}
-{if $receipt_date}
+{if !empty($receipt_date)}
 {ts}Receipt Date{/ts}: {$receipt_date|truncate:10:\'\'|crmDate}
 {/if}
 {if !empty($formValues.paidBy) and empty($formValues.hidden_CreditCard)}
@@ -7148,7 +7162,7 @@ INSERT INTO civicrm_msg_template
 {if $formValues.product_sku}
 {ts}SKU{/ts}: {$formValues.product_sku}
 {/if}
-{if $fulfilled_date}
+{if !empty($fulfilled_date)}
 {ts}Sent{/ts}: {$fulfilled_date|crmDate}
 {/if}
 {/if}
@@ -7317,7 +7331,7 @@ INSERT INTO civicrm_msg_template
       </tr>
      {/if}
 
-      {if $receipt_date}
+      {if !empty($receipt_date)}
       <tr>
        <td {$labelStyle}>
         {ts}Receipt Date{/ts}
@@ -7457,7 +7471,7 @@ INSERT INTO civicrm_msg_template
         </td>
        </tr>
       {/if}
-      {if $fulfilled_date}
+      {if !empty($fulfilled_date)}
        <tr>
         <td {$labelStyle}>
          {ts}Sent{/ts}
@@ -7533,7 +7547,7 @@ INSERT INTO civicrm_msg_template
 {if !empty($receive_date)}
 {ts}Date Received{/ts}: {$receive_date|truncate:10:\'\'|crmDate}
 {/if}
-{if $receipt_date}
+{if !empty($receipt_date)}
 {ts}Receipt Date{/ts}: {$receipt_date|truncate:10:\'\'|crmDate}
 {/if}
 {if !empty($formValues.paidBy) and empty($formValues.hidden_CreditCard)}
@@ -7596,7 +7610,7 @@ INSERT INTO civicrm_msg_template
 {if $formValues.product_sku}
 {ts}SKU{/ts}: {$formValues.product_sku}
 {/if}
-{if $fulfilled_date}
+{if !empty($fulfilled_date)}
 {ts}Sent{/ts}: {$fulfilled_date|crmDate}
 {/if}
 {/if}
@@ -7765,7 +7779,7 @@ INSERT INTO civicrm_msg_template
       </tr>
      {/if}
 
-      {if $receipt_date}
+      {if !empty($receipt_date)}
       <tr>
        <td {$labelStyle}>
         {ts}Receipt Date{/ts}
@@ -7905,7 +7919,7 @@ INSERT INTO civicrm_msg_template
         </td>
        </tr>
       {/if}
-      {if $fulfilled_date}
+      {if !empty($fulfilled_date)}
        <tr>
         <td {$labelStyle}>
          {ts}Sent{/ts}
@@ -14292,7 +14306,7 @@ You were registered by: {$payer.name}
 {if $value neq \'skip\'}
 {if !empty($isPrimary)}
 {if $lineItem|@count GT 1} {* Header for multi participant registration cases. *}
-{ts 1=$priceset+1}Participant %1{/ts} {$part.$priceset.info}
+{ts 1=$priceset+1}Participant %1{/ts} {if !empty($part.$priceset)}{$part.$priceset.info}{/if}
 
 {/if}
 {/if}
@@ -15074,7 +15088,7 @@ You were registered by: {$payer.name}
 {if $value neq \'skip\'}
 {if !empty($isPrimary)}
 {if $lineItem|@count GT 1} {* Header for multi participant registration cases. *}
-{ts 1=$priceset+1}Participant %1{/ts} {$part.$priceset.info}
+{ts 1=$priceset+1}Participant %1{/ts} {if !empty($part.$priceset)}{$part.$priceset.info}{/if}
 
 {/if}
 {/if}
@@ -16282,7 +16296,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
 {$event.location.address.1.display|strip_tags:false}
 {/if}{*End of isShowLocation condition*}
 
-{if $event.location.phone.1.phone || $event.location.email.1.email}
+{if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
 
 {ts}Event Contacts:{/ts}
 {foreach from=$event.location.phone item=phone}
@@ -16305,7 +16319,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
 {$contact.email}
 {/if}
 
-{if $register_date}
+{if !empty($register_date)}
 {ts}Registration Date{/ts}: {$participant.register_date|crmDate}
 {/if}
 
@@ -16369,7 +16383,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
       </tr>
      {/if}
 
-     {if $event.location.phone.1.phone || $event.location.email.1.email}
+     {if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
       <tr>
        <td colspan="2" {$labelStyle}>
         {ts}Event Contacts:{/ts}
@@ -16414,7 +16428,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
       </tr>
      {/if}
 
-     {if $register_date}
+     {if !empty($register_date)}
       <tr>
        <td {$labelStyle}>
         {ts}Registration Date{/ts}
@@ -16460,7 +16474,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
 {$event.location.address.1.display|strip_tags:false}
 {/if}{*End of isShowLocation condition*}
 
-{if $event.location.phone.1.phone || $event.location.email.1.email}
+{if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
 
 {ts}Event Contacts:{/ts}
 {foreach from=$event.location.phone item=phone}
@@ -16483,7 +16497,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
 {$contact.email}
 {/if}
 
-{if $register_date}
+{if !empty($register_date)}
 {ts}Registration Date{/ts}: {$participant.register_date|crmDate}
 {/if}
 
@@ -16547,7 +16561,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
       </tr>
      {/if}
 
-     {if $event.location.phone.1.phone || $event.location.email.1.email}
+     {if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
       <tr>
        <td colspan="2" {$labelStyle}>
         {ts}Event Contacts:{/ts}
@@ -16592,7 +16606,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
       </tr>
      {/if}
 
-     {if $register_date}
+     {if !empty($register_date)}
       <tr>
        <td {$labelStyle}>
         {ts}Registration Date{/ts}
@@ -17186,7 +17200,7 @@ or want to inquire about reinstating your registration for this event.{/ts}
 {$event.location.address.1.display|strip_tags:false}
 {/if}{*End of isShowLocation condition*}
 
-{if $event.location.phone.1.phone || $event.location.email.1.email}
+{if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
 
 {ts}Event Contacts:{/ts}
 {foreach from=$event.location.phone item=phone}
@@ -17276,7 +17290,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
       </tr>
      {/if}
 
-     {if $event.location.phone.1.phone || $event.location.email.1.email}
+     {if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
       <tr>
        <td colspan="2" {$labelStyle}>
         {ts}Event Contacts:{/ts}
@@ -17371,7 +17385,7 @@ or want to inquire about reinstating your registration for this event.{/ts}
 {$event.location.address.1.display|strip_tags:false}
 {/if}{*End of isShowLocation condition*}
 
-{if $event.location.phone.1.phone || $event.location.email.1.email}
+{if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
 
 {ts}Event Contacts:{/ts}
 {foreach from=$event.location.phone item=phone}
@@ -17461,7 +17475,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
       </tr>
      {/if}
 
-     {if $event.location.phone.1.phone || $event.location.email.1.email}
+     {if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
       <tr>
        <td colspan="2" {$labelStyle}>
         {ts}Event Contacts:{/ts}
@@ -17553,7 +17567,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 {$event.location.address.1.display|strip_tags:false}
 {/if}{*End of isShowLocation condition*}
 
-{if $event.location.phone.1.phone || $event.location.email.1.email}
+{if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
 
 {ts}Event Contacts:{/ts}
 {foreach from=$event.location.phone item=phone}
@@ -17639,7 +17653,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
       </tr>
      {/if}
 
-     {if $event.location.phone.1.phone || $event.location.email.1.email}
+     {if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
       <tr>
        <td colspan="2" {$labelStyle}>
         {ts}Event Contacts:{/ts}
@@ -17729,7 +17743,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 {$event.location.address.1.display|strip_tags:false}
 {/if}{*End of isShowLocation condition*}
 
-{if $event.location.phone.1.phone || $event.location.email.1.email}
+{if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
 
 {ts}Event Contacts:{/ts}
 {foreach from=$event.location.phone item=phone}
@@ -17815,7 +17829,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
       </tr>
      {/if}
 
-     {if $event.location.phone.1.phone || $event.location.email.1.email}
+     {if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
       <tr>
        <td colspan="2" {$labelStyle}>
         {ts}Event Contacts:{/ts}
@@ -23135,6 +23149,7 @@ INSERT IGNORE INTO civicrm_extension (type, full_name, name, label, file, is_act
 INSERT IGNORE INTO civicrm_extension (type, full_name, name, label, file, is_active) VALUES ('module', 'financialacls', 'Financial ACLs', 'Financial ACLs', 'financialacls', 1);
 INSERT IGNORE INTO civicrm_extension (type, full_name, name, label, file, is_active) VALUES ('module', 'contributioncancelactions', 'Contribution cancel actions', 'Contribution cancel actions', 'contributioncancelactions', 1);
 INSERT IGNORE INTO civicrm_extension (type, full_name, name, label, file, is_active) VALUES ('module', 'recaptcha', 'reCAPTCHA', 'reCAPTCHA', 'recaptcha', 1);
+INSERT IGNORE INTO civicrm_extension (type, full_name, name, label, file, is_active) VALUES ('module', 'ckeditor4', 'CKEditor4', 'CKEditor4', 'ckeditor4', 1);
 
 -- +--------------------------------------------------------------------+
 -- | Copyright CiviCRM LLC. All rights reserved.                        |
@@ -23232,8 +23247,7 @@ VALUES
     ( @domainID, 'civicrm/import/activity?reset=1',                         'Import Activities',      'Import Activities',    'import contacts',  '',             @contactlastID, '1', '1',   8 ),
     ( @domainID, 'civicrm/group/add?reset=1',                               'New Group',              'New Group',            'edit groups',      '',             @contactlastID, '1', NULL,  9 ),
     ( @domainID, 'civicrm/group?reset=1',                                   'Manage Groups',          'Manage Groups',        'access CiviCRM',   '',             @contactlastID, '1', '1',   10 ),
-    ( @domainID, 'civicrm/tag?reset=1&action=add',                    'New Tag',                'New Tag',              'manage tags', '',           @contactlastID, '1', NULL, 11 ),
-    ( @domainID, 'civicrm/tag?reset=1',                               'Manage Tags (Categories)', 'Manage Tags (Categories)', 'manage tags', '',     @contactlastID, '1','1', 12 ),
+    ( @domainID, 'civicrm/tag?reset=1',                               'Manage Tags', 'Manage Tags (Categories)', 'manage tags', '',     @contactlastID, '1','1', 12 ),
     ( @domainID, 'civicrm/contact/deduperules?reset=1',  'Find and Merge Duplicate Contacts', 'Find and Merge Duplicate Contacts', 'administer dedupe rules,merge duplicate contacts', 'OR', @contactlastID, '1', NULL, 13 );
 
 INSERT INTO civicrm_navigation
@@ -23430,7 +23444,7 @@ INSERT INTO civicrm_navigation
 VALUES
     ( @domainID, 'civicrm/admin/custom/group?reset=1',      'Custom Fields', 'Custom Fields',                             'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 1 ),
     ( @domainID, 'civicrm/admin/uf/group?reset=1',          'Profiles', 'Profiles',                                       'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 2 ),
-    ( @domainID, 'civicrm/tag?reset=1',               'Tags (Categories)', 'Tags (Categories)',                     'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 3 ),
+    ( @domainID, 'civicrm/tag?reset=1',               'Tags', 'Tags (Categories)',                     'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 3 ),
     ( @domainID, 'civicrm/admin/options/activity_type?reset=1', 'Activity Types', 'Activity Types',   'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 4 ),
     ( @domainID, 'civicrm/admin/reltype?reset=1',           'Relationship Types', 'Relationship Types',                   'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 5 ),
     ( @domainID, 'civicrm/admin/options/subtype?reset=1',   'Contact Types','Contact Types',                              'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 6 ),
@@ -23940,4 +23954,4 @@ INSERT INTO `civicrm_report_instance`
     ( `domain_id`, `title`, `report_id`, `description`, `permission`, `form_values`)
 VALUES
     (  @domainID, 'Survey Details', 'survey/detail', 'Detailed report for canvassing, phone-banking, walk lists or other surveys.', 'access CiviReport', 'a:39:{s:6:"fields";a:2:{s:9:"sort_name";s:1:"1";s:6:"result";s:1:"1";}s:22:"assignee_contact_id_op";s:2:"eq";s:25:"assignee_contact_id_value";s:0:"";s:12:"sort_name_op";s:3:"has";s:15:"sort_name_value";s:0:"";s:17:"street_number_min";s:0:"";s:17:"street_number_max";s:0:"";s:16:"street_number_op";s:3:"lte";s:19:"street_number_value";s:0:"";s:14:"street_name_op";s:3:"has";s:17:"street_name_value";s:0:"";s:15:"postal_code_min";s:0:"";s:15:"postal_code_max";s:0:"";s:14:"postal_code_op";s:3:"lte";s:17:"postal_code_value";s:0:"";s:7:"city_op";s:3:"has";s:10:"city_value";s:0:"";s:20:"state_province_id_op";s:2:"in";s:23:"state_province_id_value";a:0:{}s:13:"country_id_op";s:2:"in";s:16:"country_id_value";a:0:{}s:12:"survey_id_op";s:2:"in";s:15:"survey_id_value";a:0:{}s:12:"status_id_op";s:2:"eq";s:15:"status_id_value";s:1:"1";s:11:"custom_1_op";s:2:"in";s:14:"custom_1_value";a:0:{}s:11:"custom_2_op";s:2:"in";s:14:"custom_2_value";a:0:{}s:17:"custom_3_relative";s:1:"0";s:13:"custom_3_from";s:0:"";s:11:"custom_3_to";s:0:"";s:11:"description";s:75:"Detailed report for canvassing, phone-banking, walk lists or other surveys.";s:13:"email_subject";s:0:"";s:8:"email_to";s:0:"";s:8:"email_cc";s:0:"";s:10:"permission";s:17:"access CiviReport";s:6:"groups";s:0:"";s:9:"domain_id";i:1;}');
-UPDATE civicrm_domain SET version = '5.39.1';
+UPDATE civicrm_domain SET version = '5.40.0';

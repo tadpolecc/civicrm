@@ -14,27 +14,16 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC https://civicrm.org/licensing
+ *
  */
 
+?><!-- assets/templates/metaboxes/metabox.error.php.php -->
+<p><?php printf(
+  __('CiviCRM requires PHP version %1$s or greater. You are running PHP version %2$s', 'civicrm'),
+  CIVICRM_WP_PHP_MINIMUM,
+  PHP_VERSION
+); ?></p>
 
-namespace Civi\Api4\Service\Schema\Joinable;
+<p><?php _e('You will have to upgrade PHP before you can run this version CiviCRM.', 'civicrm'); ?></p>
 
-class BridgeJoinable extends Joinable {
-  /**
-   * @var Joinable
-   */
-  protected $middleLink;
-
-  public function __construct($targetTable, $targetColumn, $alias, Joinable $middleLink) {
-    parent::__construct($targetTable, $targetColumn, $alias);
-    $this->middleLink = $middleLink;
-  }
-
-  /**
-   * @return Joinable
-   */
-  public function getMiddleLink() {
-    return $this->middleLink;
-  }
-
-}
+<p><?php _e('To continue using CiviCRM without upgrading PHP, you will have to revert both the plugin and the database to a backup of your previous version.', 'civicrm'); ?></p>

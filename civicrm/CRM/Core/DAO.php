@@ -33,6 +33,13 @@ require_once 'CRM/Core/I18n.php';
 class CRM_Core_DAO extends DB_DataObject {
 
   /**
+   * Primary key field(s).
+   *
+   * @var string[]
+   */
+  public static $_primaryKey = ['id'];
+
+  /**
    * How many times has this instance been cloned.
    *
    * @var int
@@ -107,8 +114,6 @@ class CRM_Core_DAO extends DB_DataObject {
    */
   public static $_factory = NULL;
 
-  public static $_checkedSqlFunctionsExist = FALSE;
-
   /**
    * https://issues.civicrm.org/jira/browse/CRM-17748
    * internal variable for DAO to hold per-query settings
@@ -135,6 +140,15 @@ class CRM_Core_DAO extends DB_DataObject {
     $className = static::class;
     CRM_Core_Error::deprecatedWarning("$className needs to be regenerated. Missing getEntityTitle method.");
     return CRM_Core_DAO_AllCoreTables::getBriefName($className);
+  }
+
+  /**
+   * Returns user-friendly description of this entity.
+   *
+   * @return string|null
+   */
+  public static function getEntityDescription() {
+    return NULL;
   }
 
   public function __clone() {
@@ -2452,23 +2466,6 @@ SELECT contact_id
   }
 
   /**
-   * Because sql functions are sometimes lost, esp during db migration, we check here to avoid numerous support requests
-   * @see http://issues.civicrm.org/jira/browse/CRM-13822
-   * TODO: Alternative solutions might be
-   *  * Stop using functions and find another way to strip numeric characters from phones
-   *  * Give better error messages (currently a missing fn fatals with "unknown error")
-   */
-  public static function checkSqlFunctionsExist() {
-    if (!self::$_checkedSqlFunctionsExist) {
-      self::$_checkedSqlFunctionsExist = TRUE;
-      $dao = CRM_Core_DAO::executeQuery("SHOW function status WHERE db = database() AND name = 'civicrm_strip_non_numeric'");
-      if (!$dao->fetch()) {
-        self::triggerRebuild();
-      }
-    }
-  }
-
-  /**
    * Wrapper function to drop triggers.
    *
    * @param string $tableName
@@ -2582,7 +2579,7 @@ SELECT contact_id
    * @param string $tableName
    *   Table referred to.
    *
-   * @return array
+   * @return CRM_Core_Reference_Interface[]
    *   structure of table and column, listing every table with a
    *   foreign key reference to $tableName, and the column where the key appears.
    */
@@ -2619,7 +2616,12 @@ SELECT contact_id
     $contactReferences = [];
     $coreReferences = CRM_Core_DAO::getReferencesToTable('civicrm_contact');
     foreach ($coreReferences as $coreReference) {
-      if (!is_a($coreReference, 'CRM_Core_Reference_Dynamic')) {
+      if (
+        // Exclude option values
+        !is_a($coreReference, 'CRM_Core_Reference_Dynamic') &&
+        // Exclude references to other columns
+        $coreReference->getTargetKey() === 'id'
+      ) {
         $contactReferences[$coreReference->getReferenceTable()][] = $coreReference->getReferenceKey();
       }
     }

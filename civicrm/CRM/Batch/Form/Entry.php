@@ -694,10 +694,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
 
         //send receipt mail.
         if ($contribution->id && !empty($value['send_receipt'])) {
-          // add the domain email id
-          $domainEmail = CRM_Core_BAO_Domain::getNameAndEmail();
-          $domainEmail = "$domainEmail[0] <$domainEmail[1]>";
-          $value['from_email_address'] = $domainEmail;
+          $value['from_email_address'] = $this->getFromEmailAddress();
           $value['contribution_id'] = $contribution->id;
           if (!empty($value['soft_credit'])) {
             $value = array_merge($value, CRM_Contribute_BAO_ContributionSoft::getSoftContribution($contribution->id));
@@ -720,6 +717,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
    *
    * @throws \CRM_Core_Exception
    * @throws \CiviCRM_API3_Exception
+   * @throws \API_Exception
    */
   private function processMembership(array $params) {
     $batchTotal = 0;
@@ -740,38 +738,17 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
             $value[$fieldKey] = CRM_Utils_Rule::cleanMoney($fieldValue);
           }
         }
+        $value = $this->standardiseRow($value);
 
         // update contact information
         $this->updateContactInfo($value);
-
-        $membershipTypeId = $value['membership_type_id'] = $value['membership_type'][1];
-
-        if (!empty($value['membership_source'])) {
-          $value['source'] = $value['membership_source'];
-        }
-
-        unset($value['membership_source']);
-
-        //Get the membership status
-        if (!empty($value['membership_status'])) {
-          $value['status_id'] = $value['membership_status'];
-          unset($value['membership_status']);
-        }
 
         //check for custom data
         $value['custom'] = CRM_Core_BAO_CustomField::postProcess($params['field'][$key],
           $key,
           'Membership',
-          $membershipTypeId
+          $value['membership_type_id']
         );
-
-        if (!empty($value['financial_type'])) {
-          $value['financial_type_id'] = $value['financial_type'];
-        }
-
-        if (!empty($value['payment_instrument'])) {
-          $value['payment_instrument_id'] = $value['payment_instrument'];
-        }
 
         // handle soft credit
         if (!empty($params['soft_credit_contact_id'][$key]) && !empty($params['soft_credit_amount'][$key])) {
@@ -787,76 +764,37 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
             $value['soft_credit'][$key]['soft_credit_type_id'] = CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_ContributionSoft', 'soft_credit_type_id', 'Gift');
           }
         }
-        if (!empty($value['total_amount'])) {
-          $value['total_amount'] = (float) $value['total_amount'];
-        }
-
         $batchTotal += $value['total_amount'];
-
-        unset($value['financial_type']);
-        unset($value['payment_instrument']);
-
         $value['batch_id'] = $this->_batchId;
         $value['skipRecentView'] = TRUE;
 
-        // make entry in line item for contribution
+        $order = new CRM_Financial_BAO_Order();
+        // We use the override total amount because we are dealing with a
+        // possibly tax_inclusive total, which is assumed for the override total.
+        $order->setOverrideTotalAmount($value['total_amount']);
+        $order->setLineItem([
+          'membership_type_id' => $value['membership_type_id'],
+          'financial_type_id' => $value['financial_type_id'],
+        ], $key);
 
-        $editedFieldParams = [
-          'price_set_id' => $priceSetId,
-          'name' => $value['membership_type'][0],
-        ];
-
-        $editedResults = [];
-        CRM_Price_BAO_PriceField::retrieve($editedFieldParams, $editedResults);
-
-        if (!empty($editedResults)) {
-          unset($this->_priceSet['fields']);
-          $this->_priceSet['fields'][$editedResults['id']] = $priceSets['fields'][$editedResults['id']];
-          unset($this->_priceSet['fields'][$editedResults['id']]['options']);
-          $fid = $editedResults['id'];
-          $editedFieldParams = [
-            'price_field_id' => $editedResults['id'],
-            'membership_type_id' => $value['membership_type_id'],
-          ];
-
-          $editedResults = [];
-          CRM_Price_BAO_PriceFieldValue::retrieve($editedFieldParams, $editedResults);
-          $this->_priceSet['fields'][$fid]['options'][$editedResults['id']] = $priceSets['fields'][$fid]['options'][$editedResults['id']];
-          if (!empty($value['total_amount'])) {
-            $this->_priceSet['fields'][$fid]['options'][$editedResults['id']]['amount'] = $value['total_amount'];
-          }
-
-          $fieldID = key($this->_priceSet['fields']);
-          $value['price_' . $fieldID] = $editedResults['id'];
-
-          $lineItem = [];
-          CRM_Price_BAO_PriceSet::processAmount($this->_priceSet['fields'],
-            $value, $lineItem[$priceSetId]
-          );
-
-          //CRM-11529 for backoffice transactions
-          //when financial_type_id is passed in form, update the
-          //lineitems with the financial type selected in form
-          if (!empty($value['financial_type_id']) && !empty($lineItem[$priceSetId])) {
-            foreach ($lineItem[$priceSetId] as &$values) {
-              $values['financial_type_id'] = $value['financial_type_id'];
-            }
-          }
-
-          $value['lineItems'] = $lineItem;
+        if (!empty($order->getLineItems())) {
+          $value['lineItems'] = [$order->getPriceSetID() => $order->getPriceFieldIndexedLineItems()];
           $value['processPriceSet'] = TRUE;
         }
         // end of contribution related section
 
-        unset($value['membership_type']);
-
+        $membershipParams = [
+          'start_date' => $value['membership_start_date'] ?? NULL,
+          'end_date' => $value['membership_end_date'] ?? NULL,
+          'join_date' => $value['membership_join_date'] ?? NULL,
+          'campaign_id' => $value['member_campaign_id'] ?? NULL,
+        ];
         $value['is_renew'] = FALSE;
         if (!empty($params['member_option']) && CRM_Utils_Array::value($key, $params['member_option']) == 2) {
 
           // The following parameter setting may be obsolete.
           $this->_params = $params;
           $value['is_renew'] = TRUE;
-          $isPayLater = $params['is_pay_later'] ?? NULL;
 
           $formDates = [
             'end_date' => $value['membership_end_date'] ?? NULL,
@@ -865,7 +803,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
           $membershipSource = $value['source'] ?? NULL;
           $membership = $this->legacyProcessMembership(
             $value['contact_id'], $value['membership_type_id'],
-            $value['custom'], $membershipSource, $isPayLater, ['campaign_id' => $value['member_campaign_id'] ?? NULL], $formDates
+            $value['custom'], $membershipSource, ['campaign_id' => $value['member_campaign_id'] ?? NULL], $formDates
           );
 
           // make contribution entry
@@ -877,17 +815,9 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
           $this->setCurrentRowMembershipID($membership->id);
         }
         else {
-          $calcDates = CRM_Member_BAO_MembershipType::getDatesForMembershipType($membershipTypeId,
-            $value['membership_join_date'] ?? NULL, $value['membership_start_date'] ?? NULL, $value['membership_end_date'] ?? NULL
-          );
-          $value['join_date'] = $value['membership_join_date'] ?? $calcDates['join_date'];
-          $value['start_date'] = $value['membership_start_date'] ?? $calcDates['start_date'];
-          $value['end_date'] = $value['membership_end_date'] ?? $calcDates['end_date'];
-
-          unset($value['membership_start_date']);
-          unset($value['membership_end_date']);
-          $membership = CRM_Member_BAO_Membership::create($value);
-          $this->setCurrentRowMembershipID($membership->id);
+          // @todo - specify the relevant fields - don't copy all over
+          $membershipParams = array_merge($value, $membershipParams);
+          $membership = CRM_Member_BAO_Membership::create($membershipParams);
         }
 
         //process premiums
@@ -914,12 +844,6 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
 
         //send receipt mail.
         if ($membership->id && !empty($value['send_receipt'])) {
-
-          // add the domain email id
-          $domainEmail = CRM_Core_BAO_Domain::getNameAndEmail();
-          $domainEmail = "$domainEmail[0] <$domainEmail[1]>";
-
-          $value['from_email_address'] = $domainEmail;
           $value['membership_id'] = $membership->id;
           $this->emailReceipt($this, $value, $membership);
         }
@@ -939,17 +863,14 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
    *
    * @return bool
    *   true if mail was sent successfully
-   * @throws \CRM_Core_Exception
+   * @throws \CRM_Core_Exception|\API_Exception
    *
    * @deprecated
    *   This function is shared with Batch_Entry which has limited overlap
    *   & needs rationalising.
    *
    */
-  public function emailReceipt($form, &$formValues, $membership) {
-    // retrieve 'from email id' for acknowledgement
-    $receiptFrom = $formValues['from_email_address'] ?? NULL;
-
+  protected function emailReceipt($form, &$formValues, $membership): bool {
     // @todo figure out how much of the stuff below is genuinely shared with the batch form & a logical shared place.
     if (!empty($formValues['payment_instrument_id'])) {
       $paymentInstrument = CRM_Contribute_PseudoConstant::paymentInstrument();
@@ -991,7 +912,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
         'groupName' => 'msg_tpl_workflow_membership',
         'valueName' => 'membership_offline_receipt',
         'contactId' => $form->_receiptContactId,
-        'from' => $receiptFrom,
+        'from' => $this->getFromEmailAddress(),
         'toName' => $form->_contributorDisplayName,
         'toEmail' => $form->_contributorEmail,
         'PDFFilename' => ts('receipt') . '.pdf',
@@ -1071,7 +992,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
    * @throws \CRM_Core_Exception
    * @throws \CiviCRM_API3_Exception
    */
-  protected function legacyProcessMembership($contactID, $membershipTypeID, $customFieldsFormatted, $membershipSource, $isPayLater, $memParams = [], $formDates = []): CRM_Member_BAO_Membership {
+  protected function legacyProcessMembership($contactID, $membershipTypeID, $customFieldsFormatted, $membershipSource, $memParams = [], $formDates = []): CRM_Member_BAO_Membership {
     $updateStatusId = FALSE;
     $changeToday = NULL;
     $is_test = FALSE;
@@ -1085,6 +1006,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
     $statusFormat = '%Y-%m-%d';
     $membershipTypeDetails = CRM_Member_BAO_MembershipType::getMembershipType($membershipTypeID);
     $ids = [];
+    $isPayLater = NULL;
 
     // CRM-7297 - allow membership type to be be changed during renewal so long as the parent org of new membershipType
     // is the same as the parent org of an existing membership of the contact
@@ -1276,6 +1198,48 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
     $membership->find(TRUE);
 
     return $membership;
+  }
+
+  /**
+   * @return string
+   * @throws \CRM_Core_Exception
+   */
+  private function getFromEmailAddress(): string {
+    $domainEmail = CRM_Core_BAO_Domain::getNameAndEmail();
+    return "$domainEmail[0] <$domainEmail[1]>";
+  }
+
+  /**
+   * Standardise the values in the row from profile-weirdness to civi-standard.
+   *
+   * The row uses odd field names such as financial_type rather than financial
+   * type id. We standardise at this point.
+   *
+   * @param array $row
+   *
+   * @return array
+   */
+  private function standardiseRow(array $row): array {
+    $renameFieldMapping = [
+      'financial_type' => 'financial_type_id',
+      'payment_instrument' => 'payment_instrument_id',
+      'membership_source' => 'source',
+      'membership_status' => 'status_id',
+    ];
+    foreach ($renameFieldMapping as $weirdProfileName => $betterName) {
+      // Check if isset as some like payment instrument and source are optional.
+      if (isset($row[$weirdProfileName]) && empty($row[$betterName])) {
+        $row[$betterName] = $row[$weirdProfileName];
+        unset($row[$weirdProfileName]);
+      }
+    }
+
+    // The latter format would be normal here - it's unclear if it is sometimes in the former format.
+    $row['membership_type_id'] = $row['membership_type_id'] ?? $row['membership_type'][1];
+    unset($row['membership_type']);
+    // total_amount is required.
+    $row['total_amount'] = (float) $row['total_amount'];
+    return $row;
   }
 
 }

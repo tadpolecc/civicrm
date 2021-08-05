@@ -14,6 +14,7 @@ use Civi\Api4\ActivityContact;
 use Civi\Api4\Contribution;
 use Civi\Api4\ContributionRecur;
 use Civi\Api4\LineItem;
+use Civi\Api4\ContributionSoft;
 use Civi\Api4\PaymentProcessor;
 use Civi\Api4\PledgePayment;
 
@@ -185,12 +186,17 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
         $lineTotal += (float) ($lineItem['line_total'] ?? 0);
       }
     }
+    if (($params['tax_amount'] ?? '') === 'null') {
+      CRM_Core_Error::deprecatedWarning('tax_amount should be not passed in (preferable) or a float');
+    }
     if (!isset($params['tax_amount']) && $setPrevContribution && (isset($params['total_amount']) ||
      isset($params['financial_type_id']))) {
       $params['tax_amount'] = $taxAmount;
       $params['total_amount'] = $taxAmount + $lineTotal;
     }
-    if (isset($params['tax_amount']) && $params['tax_amount'] != $taxAmount && empty($params['skipLineItem'])) {
+    if (isset($params['tax_amount']) && empty($params['skipLineItem'])
+      && !CRM_Utils_Money::equals($params['tax_amount'], $taxAmount, ($params['currency'] ?? Civi::settings()->get('defaultCurrency')))
+    ) {
       CRM_Core_Error::deprecatedWarning('passing in incorrect tax amounts is deprecated');
     }
 
@@ -462,7 +468,7 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
    */
   public static function getNumTermsByContributionAndMembershipType($membershipTypeID, $contributionID) {
     $numTerms = CRM_Core_DAO::singleValueQuery("
-      SELECT membership_num_terms FROM civicrm_line_item li
+      SELECT v.membership_num_terms FROM civicrm_line_item li
       LEFT JOIN civicrm_price_field_value v ON li.price_field_value_id = v.id
       WHERE contribution_id = %1 AND membership_type_id = %2",
       [1 => [$contributionID, 'Integer'], 2 => [$membershipTypeID, 'Integer']]
@@ -1314,13 +1320,13 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
       return (bool) ContributionRecur::get(FALSE)->addWhere('id', '=', $recurringContributionID)->addSelect('is_email_receipt')->execute()->first()['is_email_receipt'];
     }
     $contributionPage = Contribution::get(FALSE)
-      ->addSelect('contribution_page.is_email_receipt')
+      ->addSelect('contribution_page_id.is_email_receipt')
       ->addWhere('contribution_page_id', 'IS NOT NULL')
       ->addWhere('id', '=', $contributionID)
       ->execute()->first();
 
     if (!empty($contributionPage)) {
-      return (bool) $contributionPage['contribution_page.is_email_receipt'];
+      return (bool) $contributionPage['contribution_page_id.is_email_receipt'];
     }
     // This would be the case for backoffice (where is_email_receipt is not passed in) or events, where Event::sendMail will filter
     // again anyway.
@@ -2430,7 +2436,7 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
       SELECT contribution.id AS id
       FROM civicrm_contribution contribution
       LEFT JOIN civicrm_line_item i ON i.contribution_id = contribution.id AND i.entity_table = 'civicrm_contribution' $liWhere
-      WHERE contribution.is_test = 0 AND contribution.contact_id = {$contactId}
+      WHERE contribution.is_test = 0 AND contribution.is_template != '1' AND contribution.contact_id = {$contactId}
       $additionalWhere
       AND i.id IS NULL";
 
@@ -2438,7 +2444,7 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
       SELECT contribution.id
       FROM civicrm_contribution contribution INNER JOIN civicrm_contribution_soft softContribution
       ON ( contribution.id = softContribution.contribution_id )
-      WHERE contribution.is_test = 0 AND softContribution.contact_id = {$contactId} ";
+      WHERE contribution.is_test = 0 AND contribution.is_template != '1' AND softContribution.contact_id = {$contactId} ";
     $query = "SELECT count( x.id ) count FROM ( ";
     $query .= $contactContributionsSQL;
 
@@ -3376,7 +3382,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    * @return null|\CRM_Core_BAO_FinancialTrxn
    */
   public static function recordFinancialAccounts(&$params, $financialTrxnValues = NULL) {
-    $skipRecords = $update = $return = $isRelatedId = FALSE;
+    $skipRecords = $update = $return = FALSE;
     $isUpdate = !empty($params['prevContribution']);
 
     $additionalParticipantId = [];
@@ -3399,13 +3405,13 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       $entityTable = 'civicrm_contribution';
     }
 
-    if (CRM_Utils_Array::value('contribution_mode', $params) == 'membership') {
-      $isRelatedId = TRUE;
-    }
-
     $entityID[] = $entityId;
     if (!empty($additionalParticipantId)) {
       $entityID += $additionalParticipantId;
+      // build line item array if necessary
+      if ($additionalParticipantId) {
+        CRM_Price_BAO_LineItem::getLineItemArray($params, $entityID, str_replace('civicrm_', '', $entityTable));
+      }
     }
     // prevContribution appears to mean - original contribution object- ie copy of contribution from before the update started that is being updated
     if (empty($params['prevContribution'])) {
@@ -3413,11 +3419,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     }
 
     $statusId = $params['contribution']->contribution_status_id;
-
-    // build line item array if its not set in $params
-    if (empty($params['line_item']) || $additionalParticipantId) {
-      CRM_Price_BAO_LineItem::getLineItemArray($params, $entityID, str_replace('civicrm_', '', $entityTable), $isRelatedId);
-    }
 
     if ($contributionStatus != 'Failed' &&
       !($contributionStatus == 'Pending' && !$params['contribution']->is_pay_later)
@@ -4189,11 +4190,13 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       );
     }
 
-    $participantPayment = civicrm_api3('ParticipantPayment', 'get', ['contribution_id' => $contributionID, 'return' => 'participant_id', 'sequential' => 1])['values'];
-    if (!empty($participantPayment) && empty($input['IAmAHorribleNastyBeyondExcusableHackInTheCRMEventFORMTaskClassThatNeedsToBERemoved'])) {
-      $participantParams['id'] = $participantPayment[0]['participant_id'];
-      $participantParams['status_id'] = 'Registered';
-      civicrm_api3('Participant', 'create', $participantParams);
+    $participantPayments = civicrm_api3('ParticipantPayment', 'get', ['contribution_id' => $contributionID, 'return' => 'participant_id', 'sequential' => 1])['values'];
+    if (!empty($participantPayments) && empty($input['IAmAHorribleNastyBeyondExcusableHackInTheCRMEventFORMTaskClassThatNeedsToBERemoved'])) {
+      foreach ($participantPayments as $participantPayment) {
+        $participantParams['id'] = $participantPayment['participant_id'];
+        $participantParams['status_id'] = 'Registered';
+        civicrm_api3('Participant', 'create', $participantParams);
+      }
     }
 
     $contributionParams['id'] = $contributionID;
@@ -4206,6 +4209,14 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     $transaction->commit();
     \Civi::log()->info("Contribution {$contributionParams['id']} updated successfully");
 
+    $contributionSoft = ContributionSoft::get(FALSE)
+      ->addWhere('contribution_id', '=', $contributionID)
+      ->addWhere('pcp_id', '>', 0)
+      ->addSelect('*')
+      ->execute()->first();
+    if (!empty($contributionSoft)) {
+      CRM_Contribute_BAO_ContributionSoft::pcpNotifyOwner($contributionID, $contributionSoft);
+    }
     // @todo - check if Contribution::create does this, test, remove.
     CRM_Contribute_BAO_ContributionRecur::updateRecurLinkedPledge($contributionID, $recurringContributionID,
       $contributionParams['contribution_status_id'], $input['amount']);
@@ -4390,9 +4401,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
 
     foreach ($params['line_items'] as &$lineItems) {
       foreach ($lineItems['line_item'] as &$item) {
-        if (empty($item['financial_type_id'])) {
-          $item['financial_type_id'] = $params['financial_type_id'];
-        }
         $lineItemAmount += $item['line_total'] + ($item['tax_amount'] ?? 0.00);
       }
     }
@@ -5329,9 +5337,7 @@ LIMIT 1;";
       'module' => 'CiviEvent',
     ];
 
-    list($custom_pre_id,
-      $custom_post_ids
-      ) = CRM_Core_BAO_UFJoin::getUFGroupIds($ufJoinParams);
+    [$custom_pre_id, $custom_post_ids] = CRM_Core_BAO_UFJoin::getUFGroupIds($ufJoinParams);
 
     $values['custom_pre_id'] = $custom_pre_id;
     $values['custom_post_id'] = $custom_post_ids;

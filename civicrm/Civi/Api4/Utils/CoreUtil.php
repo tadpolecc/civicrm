@@ -10,13 +10,6 @@
  +--------------------------------------------------------------------+
  */
 
-/**
- *
- * @package CRM
- * @copyright CiviCRM LLC https://civicrm.org/licensing
- */
-
-
 namespace Civi\Api4\Utils;
 
 use Civi\API\Request;
@@ -35,7 +28,7 @@ class CoreUtil {
     if ($entityName === 'CustomValue' || strpos($entityName, 'Custom_') === 0) {
       return 'CRM_Core_BAO_CustomValue';
     }
-    $dao = self::getApiClass($entityName)::getInfo()['dao'] ?? NULL;
+    $dao = self::getInfoItem($entityName, 'dao');
     if (!$dao) {
       return NULL;
     }
@@ -57,6 +50,17 @@ class CoreUtil {
     // Because "Case" is a reserved php keyword
     $className = 'Civi\Api4\\' . ($entityName === 'Case' ? 'CiviCase' : $entityName);
     return class_exists($className) ? $className : NULL;
+  }
+
+  /**
+   * Get item from an entity's getInfo array
+   *
+   * @param string $entityName
+   * @param string $keyToReturn
+   * @return mixed
+   */
+  public static function getInfoItem(string $entityName, string $keyToReturn) {
+    return self::getApiClass($entityName)::getInfo()[$keyToReturn] ?? NULL;
   }
 
   /**
@@ -166,6 +170,12 @@ class CoreUtil {
    * @throws \Civi\API\Exception\UnauthorizedException
    */
   public static function checkAccessRecord(\Civi\Api4\Generic\AbstractAction $apiRequest, array $record, int $userID) {
+
+    // Super-admins always have access to everything
+    if (\CRM_Core_Permission::check('all CiviCRM permissions and ACLs', $userID)) {
+      return TRUE;
+    }
+
     // For get actions, just run a get and ACLs will be applied to the query.
     // It's a cheap trick and not as efficient as not running the query at all,
     // but BAO::checkAccess doesn't consistently check permissions for the "get" action.

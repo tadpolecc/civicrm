@@ -216,6 +216,9 @@ class CRM_Admin_Form_ScheduleReminders extends CRM_Admin_Form {
     $this->add('text', 'from_name', ts('From Name'));
     $this->add('text', 'from_email', ts('From Email'));
 
+    $this->add('datepicker', 'effective_start_date', ts('Effective start date'), [], FALSE);
+    $this->add('datepicker', 'effective_end_date', ts('Effective end date'), [], FALSE);
+
     $recipientListingOptions = [];
 
     if ($mappingID) {
@@ -516,6 +519,8 @@ class CRM_Admin_Form_ScheduleReminders extends CRM_Admin_Form {
       'end_frequency_interval',
       'end_action',
       'end_date',
+      'effective_end_date',
+      'effective_start_date',
     ];
 
     if (empty($params['absolute_date'])) {

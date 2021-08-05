@@ -3066,7 +3066,7 @@ CREATE TABLE `civicrm_mailing` (
   `msg_template_id` int unsigned COMMENT 'FK to the message template.',
   `override_verp` tinyint DEFAULT 0 COMMENT 'Overwrite the VERP address in Reply-To',
   `created_id` int unsigned COMMENT 'FK to Contact ID who first created this mailing',
-  `created_date` timestamp NULL DEFAULT NULL COMMENT 'Date and time this mailing was created.',
+  `created_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Date and time this mailing was created.',
   `modified_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'When the mailing (or closely related entity) was created or modified or deleted.',
   `scheduled_id` int unsigned COMMENT 'FK to Contact ID who scheduled this mailing',
   `scheduled_date` timestamp NULL DEFAULT NULL COMMENT 'Date and time this mailing was scheduled.',
@@ -3838,6 +3838,7 @@ CREATE TABLE `civicrm_contribution_product` (
   `comment` text,
   `financial_type_id` int unsigned DEFAULT NULL COMMENT 'FK to Financial Type(for membership price sets only).',
   PRIMARY KEY (`id`),
+  CONSTRAINT FK_civicrm_contribution_product_product_id FOREIGN KEY (`product_id`) REFERENCES `civicrm_product`(`id`) ON DELETE CASCADE,
   CONSTRAINT FK_civicrm_contribution_product_contribution_id FOREIGN KEY (`contribution_id`) REFERENCES `civicrm_contribution`(`id`) ON DELETE CASCADE,
   CONSTRAINT FK_civicrm_contribution_product_financial_type_id FOREIGN KEY (`financial_type_id`) REFERENCES `civicrm_financial_type`(`id`) ON DELETE SET NULL
 )
@@ -4105,6 +4106,7 @@ CREATE TABLE `civicrm_line_item` (
   `financial_type_id` int unsigned DEFAULT NULL COMMENT 'FK to Financial Type.',
   `non_deductible_amount` decimal(20,2) NOT NULL DEFAULT 0.0 COMMENT 'Portion of total amount which is NOT tax deductible.',
   `tax_amount` decimal(20,2) COMMENT 'tax of each item',
+  `membership_num_terms` int unsigned DEFAULT NULL COMMENT 'Number of terms for this membership (only supported in Order->Payment flow). If the field is NULL it means unknown and it will be assumed to be 1 during payment.create if entity_table is civicrm_membership',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `UI_line_item_value`(entity_id, entity_table, contribution_id, price_field_value_id, price_field_id),
   CONSTRAINT FK_civicrm_line_item_contribution_id FOREIGN KEY (`contribution_id`) REFERENCES `civicrm_contribution`(`id`) ON DELETE SET NULL,

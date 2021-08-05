@@ -75,7 +75,7 @@ class Run extends \Civi\Api4\Generic\AbstractAction {
    */
   public function _run(\Civi\Api4\Generic\Result $result) {
     // Only administrators can use this in unsecured "preview mode"
-    if (!(is_string($this->savedSearch) && is_string($this->display)) && $this->checkPermissions && !\CRM_Core_Permission::check('administer CiviCRM')) {
+    if (!(is_string($this->savedSearch) && is_string($this->display)) && $this->checkPermissions && !\CRM_Core_Permission::check('administer CiviCRM data')) {
       throw new UnauthorizedException('Access denied');
     }
     if (is_string($this->savedSearch)) {
@@ -93,9 +93,16 @@ class Run extends \Civi\Api4\Generic\AbstractAction {
     if (!$this->savedSearch || !$this->display) {
       throw new \API_Exception("Error: SearchDisplay not found.");
     }
+    // Displays with acl_bypass must be embedded on an afform which the user has access to
+    if (
+      $this->checkPermissions && !empty($this->display['acl_bypass']) &&
+      !\CRM_Core_Permission::check('all CiviCRM permissions and ACLs') && !$this->loadAfform()
+    ) {
+      throw new UnauthorizedException('Access denied');
+    }
     $entityName = $this->savedSearch['api_entity'];
     $apiParams =& $this->savedSearch['api_params'];
-    $apiParams['checkPermissions'] = $this->checkPermissions;
+    $apiParams['checkPermissions'] = empty($this->display['acl_bypass']);
     $apiParams += ['where' => []];
     $settings = $this->display['settings'];
     $page = NULL;
@@ -206,10 +213,22 @@ class Run extends \Civi\Api4\Generic\AbstractAction {
     // Array is either associative `OP => VAL` or sequential `IN (...)`
     if (is_array($value)) {
       $value = array_filter($value, [$this, 'hasValue']);
-      // Use IN if array does not contain operators as keys
+      // If array does not contain operators as keys, assume array of values
       if (array_diff_key($value, array_flip(CoreUtil::getOperators()))) {
-        $clause[] = [$fieldName, 'IN', $value];
+        // Use IN for regular fields
+        if (empty($field['serialize'])) {
+          $clause[] = [$fieldName, 'IN', $value];
+        }
+        // Use an OR group of CONTAINS for array fields
+        else {
+          $orGroup = [];
+          foreach ($value as $val) {
+            $orGroup[] = [$fieldName, 'CONTAINS', $val];
+          }
+          $clause[] = ['OR', $orGroup];
+        }
       }
+      // Operator => Value array
       else {
         foreach ($value as $operator => $val) {
           $clause[] = [$fieldName, $operator, $val];
@@ -412,9 +431,9 @@ class Run extends \Civi\Api4\Generic\AbstractAction {
    */
   private function getExtraEntityFields(string $entityName): array {
     if (!isset($this->_extraEntityFields[$entityName])) {
-      $info = CoreUtil::getApiClass($entityName)::getInfo();
-      $this->_extraEntityFields[$entityName] = [$info['id_field']];
-      foreach ($info['paths'] ?? [] as $path) {
+      $id = CoreUtil::getInfoItem($entityName, 'primary_key');
+      $this->_extraEntityFields[$entityName] = $id;
+      foreach (CoreUtil::getInfoItem($entityName, 'paths') ?? [] as $path) {
         $matches = [];
         preg_match_all('#\[(\w+)]#', $path, $matches);
         $this->_extraEntityFields[$entityName] = array_unique(array_merge($this->_extraEntityFields[$entityName], $matches[1] ?? []));

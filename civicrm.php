@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CiviCRM
  * Description: CiviCRM - Growing and Sustaining Relationships
- * Version: 5.39.1
+ * Version: 5.40.0
  * Requires at least: 4.9
  * Requires PHP:      7.2
  * Author: CiviCRM LLC
@@ -54,7 +54,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Set version here: when it changes, will force Javascript & CSS to reload.
-define('CIVICRM_PLUGIN_VERSION', '5.39.1');
+define('CIVICRM_PLUGIN_VERSION', '5.40.0');
 
 // Store reference to this file.
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -311,8 +311,10 @@ class CiviCRM_For_WordPress {
 
     // Change option so this action never fires again.
     update_option('civicrm_activation_in_progress', 'false');
+
+    // Try and redirect to the Installer page.
     if (!is_multisite() && !isset($_GET['activate-multi']) && !CIVICRM_INSTALLED) {
-      wp_redirect(admin_url('options-general.php?page=civicrm-install'));
+      wp_redirect(admin_url('admin.php?page=civicrm-install'));
       exit;
     }
   }
@@ -1073,6 +1075,10 @@ class CiviCRM_For_WordPress {
    * @since 4.4
    */
   public function wp_head() {
+
+    if (!$this->initialize()) {
+      return;
+    }
 
     /*
      * CRM-11823

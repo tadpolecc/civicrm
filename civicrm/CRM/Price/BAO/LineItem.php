@@ -72,6 +72,15 @@ class CRM_Price_BAO_LineItem extends CRM_Price_DAO_LineItem {
         civicrm_api3('MembershipPayment', 'create', $membershipPaymentParams);
       }
     }
+    if ($lineItemBAO->entity_table === 'civicrm_participant' && $lineItemBAO->contribution_id && $lineItemBAO->entity_id) {
+      $participantPaymentParams = [
+        'participant_id' => $lineItemBAO->entity_id,
+        'contribution_id' => $lineItemBAO->contribution_id,
+      ];
+      if (!civicrm_api3('ParticipantPayment', 'getcount', $participantPaymentParams)) {
+        civicrm_api3('ParticipantPayment', 'create', $participantPaymentParams);
+      }
+    }
 
     if ($id) {
       // CRM-21281: Restore entity reference in case the post hook needs it
@@ -344,6 +353,11 @@ WHERE li.contribution_id = %1";
 
     if ($entityId && !is_array($entityId)) {
       $entityId = [$entityId];
+    }
+
+    $params = [];
+    foreach ($entityId as $id) {
+      CRM_Utils_Hook::pre('delete', 'LineItem', $id, $params);
     }
 
     $query = "DELETE FROM civicrm_line_item where entity_id IN ('" . implode("','", $entityId) . "') AND entity_table = '$entityTable'";

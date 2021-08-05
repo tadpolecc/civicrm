@@ -10,13 +10,6 @@
  +--------------------------------------------------------------------+
  */
 
-/**
- *
- * @package CRM
- * @copyright CiviCRM LLC https://civicrm.org/licensing
- */
-
-
 namespace Civi\Api4\Service\Spec\Provider;
 
 use Civi\Api4\Query\Api4SelectQuery;
@@ -52,6 +45,7 @@ class ContactGetSpecProvider implements Generic\SpecProviderInterface {
   }
 
   /**
+   * @param array $field
    * @param string $fieldAlias
    * @param string $operator
    * @param mixed $value
@@ -59,7 +53,7 @@ class ContactGetSpecProvider implements Generic\SpecProviderInterface {
    * @param int $depth
    * return string
    */
-  public static function getContactGroupSql(string $fieldAlias, string $operator, $value, Api4SelectQuery $query, int $depth): string {
+  public static function getContactGroupSql(array $field, string $fieldAlias, string $operator, $value, Api4SelectQuery $query, int $depth): string {
     $tempTable = \CRM_Utils_SQL_TempTable::build();
     $tempTable->createWithColumns('contact_id INT');
     $tableName = $tempTable->getName();

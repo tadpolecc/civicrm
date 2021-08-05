@@ -325,12 +325,10 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
     }
     $this->setCustomDataTypes();
 
-    if ($this->_mode) {
-      $this->assign('participantMode', $this->_mode);
-    }
+    $this->assign('participantMode', $this->_mode);
 
+    $this->assign('showFeeBlock', $this->_showFeeBlock);
     if ($this->_showFeeBlock) {
-      $this->assign('showFeeBlock', TRUE);
       $isMonetary = CRM_Core_DAO::getFieldValue('CRM_Event_DAO_Event', $this->_showFeeBlock, 'is_monetary');
       if ($isMonetary) {
         $this->assign('feeBlockPaid', TRUE);
@@ -360,10 +358,8 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
       return;
     }
 
-    if ($this->_id) {
-      // assign participant id to the template
-      $this->assign('participantId', $this->_id);
-    }
+    // assign participant id to the template
+    $this->assign('participantId', $this->_id);
 
     // when fee amount is included in form
     if (!empty($_POST['hidden_feeblock']) || !empty($_POST['send_receipt'])) {

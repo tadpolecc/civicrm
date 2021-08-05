@@ -26,8 +26,8 @@ class Admin {
     $schema = self::getSchema();
     $extensions = \CRM_Extension_System::singleton()->getMapper();
     return [
-      'schema' => $schema,
-      'joins' => self::getJoins(array_column($schema, NULL, 'name')),
+      'schema' => self::addImplicitFKFields($schema),
+      'joins' => self::getJoins($schema),
       'operators' => \CRM_Utils_Array::makeNonAssociative(self::getOperators()),
       'functions' => \CRM_Api4_Page_Api4Explorer::getSqlFunctions(),
       'displayTypes' => Display::getDisplayTypes(['id', 'name', 'label', 'description', 'icon']),
@@ -82,7 +82,7 @@ class Admin {
   public static function getSchema() {
     $schema = [];
     $entities = \Civi\Api4\Entity::get()
-      ->addSelect('name', 'title', 'type', 'title_plural', 'description', 'label_field', 'icon', 'paths', 'dao', 'bridge', 'ui_join_filters', 'searchable')
+      ->addSelect('name', 'title', 'type', 'primary_key', 'title_plural', 'description', 'label_field', 'icon', 'paths', 'dao', 'bridge', 'ui_join_filters', 'searchable')
       ->addWhere('searchable', '!=', 'none')
       ->addOrderBy('title_plural')
       ->setChain([
@@ -119,12 +119,20 @@ class Admin {
         }
       }
     }
-    // Add in FK fields for implicit joins
-    // For example, add a `campaign_id.title` field to the Contribution entity
+    return $schema;
+  }
+
+  /**
+   * Add in FK fields for implicit joins
+   * For example, add a `campaign_id.title` field to the Contribution entity
+   * @param $schema
+   * @return array
+   */
+  private static function addImplicitFKFields($schema) {
     foreach ($schema as &$entity) {
       if ($entity['searchable'] !== 'bridge') {
         foreach (array_reverse($entity['fields'], TRUE) as $index => $field) {
-          if (!empty($field['fk_entity']) && !$field['options'] && empty($field['serialize']) && !empty($schema[$field['fk_entity']]['label_field'])) {
+          if (!empty($field['fk_entity']) && !$field['options'] && !empty($schema[$field['fk_entity']]['label_field'])) {
             $isCustom = strpos($field['name'], '.');
             // Custom fields: append "Contact ID" to original field label
             if ($isCustom) {
@@ -185,8 +193,13 @@ class Admin {
         $daoClass = $entity['dao'];
         $references = $daoClass::getReferenceColumns();
         // Only the first bridge reference gets processed, so if it's dynamic we want to be sure it's first in the list
-        usort($references, function($reference) {
-          return is_a($reference, 'CRM_Core_Reference_Dynamic') ? -1 : 1;
+        usort($references, function($first, $second) {
+          foreach ([-1 => $first, 1 => $second] as $weight => $reference) {
+            if (is_a($reference, 'CRM_Core_Reference_Dynamic')) {
+              return $weight;
+            }
+          }
+          return 0;
         });
         $fields = array_column($entity['fields'], NULL, 'name');
         $bridge = in_array('EntityBridge', $entity['type']) ? $entity['name'] : NULL;
@@ -207,6 +220,7 @@ class Admin {
           }
           // Dynamic references use a column like "entity_table" (for normal joins this value will be null)
           $dynamicCol = $reference->getTypeColumn();
+
           // For dynamic references getTargetEntities will return multiple targets; for normal joins this loop will only run once
           foreach ($reference->getTargetEntities() as $targetTable => $targetEntityName) {
             if (!isset($allowedEntities[$targetEntityName]) || $targetEntityName === $entity['name']) {
@@ -218,8 +232,8 @@ class Admin {
               // Add the straight 1-1 join
               $alias = $entity['name'] . '_' . $targetEntityName . '_' . $keyField['name'];
               $joins[$entity['name']][] = [
-                'label' => $entity['title'] . ' ' . $targetEntity['title'],
-                'description' => $dynamicCol ? '' : $keyField['label'],
+                'label' => $entity['title'] . ' ' . ($dynamicCol ? $targetEntity['title'] : $keyField['label']),
+                'description' => '',
                 'entity' => $targetEntityName,
                 'conditions' => self::getJoinConditions($keyField['name'], $alias . '.' . $reference->getTargetKey(), $targetTable, $dynamicCol),
                 'defaults' => self::getJoinDefaults($alias, $targetEntity),

@@ -42,7 +42,7 @@
     }
   },
   "require": {
-    "php": "~7.2",
+    "php": "~7.2 || ~8",
     "cache/integration-tests": "~0.17.0",
     "dompdf/dompdf" : "~1.0.0",
     "firebase/php-jwt": ">=3 <6",
@@ -260,6 +260,10 @@
       "smartmenus": {
         "url": "https://github.com/vadikom/smartmenus/archive/1.1.0.zip",
         "ignore": [".gitignore", "Gruntfile.js"]
+      },
+      "sms-counter": {
+        "url": "https://github.com/danxexe/sms-counter/archive/master.zip",
+        "ignore": ["examples"]
       }
     },
     "patches": {
