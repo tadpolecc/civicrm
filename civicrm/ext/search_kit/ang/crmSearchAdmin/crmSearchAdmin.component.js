@@ -246,28 +246,24 @@
         return {results: addEntityJoins(ctrl.savedSearch.api_entity)};
       };
 
-      $scope.addJoin = function() {
-        // Debounce the onchange event using timeout
-        $timeout(function() {
-          if ($scope.controls.join) {
-            ctrl.savedSearch.api_params.join = ctrl.savedSearch.api_params.join || [];
-            var join = searchMeta.getJoin($scope.controls.join),
-              entity = searchMeta.getEntity(join.entity),
-              params = [$scope.controls.join, $scope.controls.joinType || 'LEFT'];
-            _.each(_.cloneDeep(join.conditions), function(condition) {
-              params.push(condition);
-            });
-            _.each(_.cloneDeep(join.defaults), function(condition) {
-              params.push(condition);
-            });
-            ctrl.savedSearch.api_params.join.push(params);
-            if (entity.label_field && $scope.controls.joinType !== 'EXCLUDE') {
-              ctrl.savedSearch.api_params.select.push(join.alias + '.' + entity.label_field);
-            }
-            loadFieldOptions();
+      this.addJoin = function(value) {
+        if (value) {
+          ctrl.savedSearch.api_params.join = ctrl.savedSearch.api_params.join || [];
+          var join = searchMeta.getJoin(value),
+            entity = searchMeta.getEntity(join.entity),
+            params = [value, $scope.controls.joinType || 'LEFT'];
+          _.each(_.cloneDeep(join.conditions), function(condition) {
+            params.push(condition);
+          });
+          _.each(_.cloneDeep(join.defaults), function(condition) {
+            params.push(condition);
+          });
+          ctrl.savedSearch.api_params.join.push(params);
+          if (entity.label_field && $scope.controls.joinType !== 'EXCLUDE') {
+            ctrl.savedSearch.api_params.select.push(join.alias + '.' + entity.label_field);
           }
-          $scope.controls.join = '';
-        });
+          loadFieldOptions();
+        }
       };
 
       // Remove an explicit join + all SELECT, WHERE & other JOINs that use it
@@ -300,21 +296,30 @@
       };
 
       $scope.changeGroupBy = function(idx) {
+        // When clearing a selection
         if (!ctrl.savedSearch.api_params.groupBy[idx]) {
           ctrl.clearParam('groupBy', idx);
         }
-        // Remove aggregate functions when no grouping
-        if (!ctrl.savedSearch.api_params.groupBy.length) {
-          _.each(ctrl.savedSearch.api_params.select, function(col, pos) {
-            if (_.contains(col, '(')) {
-              var info = searchMeta.parseExpr(col);
-              if (info.fn.category === 'aggregate') {
-                ctrl.savedSearch.api_params.select[pos] = info.path + info.suffix;
-              }
-            }
-          });
-        }
+        reconcileAggregateColumns();
       };
+
+      function reconcileAggregateColumns() {
+        _.each(ctrl.savedSearch.api_params.select, function(col, pos) {
+          var info = searchMeta.parseExpr(col),
+            fieldExpr = info.path + info.suffix;
+          if (ctrl.canAggregate(col)) {
+            // Ensure all non-grouped columns are aggregated if using GROUP BY
+            if (!info.fn || info.fn.category !== 'aggregate') {
+              ctrl.savedSearch.api_params.select[pos] = ctrl.DEFAULT_AGGREGATE_FN + '(DISTINCT ' + fieldExpr + ') AS ' + ctrl.DEFAULT_AGGREGATE_FN + '_DISTINCT_' + fieldExpr.replace(/[.:]/g, '_');
+            }
+          } else {
+            // Remove aggregate functions when no grouping
+            if (info.fn && info.fn.category === 'aggregate') {
+              ctrl.savedSearch.api_params.select[pos] = fieldExpr;
+            }
+          }
+        });
+      }
 
       function clauseUsesJoin(clause, alias) {
         if (clause[0].indexOf(alias + '.') === 0) {
@@ -408,17 +413,12 @@
         return 'fa-sort disabled';
       };
 
-      $scope.addParam = function(name) {
-        if ($scope.controls[name] && !_.contains(ctrl.savedSearch.api_params[name], $scope.controls[name])) {
-          ctrl.savedSearch.api_params[name].push($scope.controls[name]);
-          if (name === 'groupBy') {
-            // Expand the aggregate block
-            $timeout(function() {
-              $('#crm-search-build-group-aggregate.collapsed .collapsible-title').click();
-            }, 10);
-          }
+      this.addParam = function(name, value) {
+        if (value && !_.contains(ctrl.savedSearch.api_params[name], value)) {
+          ctrl.savedSearch.api_params[name].push(value);
+          // This needs to be called when adding a field as well as changing groupBy
+          reconcileAggregateColumns();
         }
-        $scope.controls[name] = '';
       };
 
       // Deletes an item from an array param
@@ -434,17 +434,6 @@
 
       function unlockTableHeight() {
         $('.crm-search-results', $element).css('height', '');
-      }
-
-      // Ensure all non-grouped columns are aggregated if using GROUP BY
-      function aggregateGroupByColumns() {
-        if (ctrl.savedSearch.api_params.groupBy.length) {
-          _.each(ctrl.savedSearch.api_params.select, function(col, pos) {
-            if (!_.contains(col, '(') && ctrl.canAggregate(col)) {
-              ctrl.savedSearch.api_params.select[pos] = ctrl.DEFAULT_AGGREGATE_FN + '(DISTINCT ' + col + ') AS ' + ctrl.DEFAULT_AGGREGATE_FN + '_DISTINCT_' + col.replace(/[.:]/g, '_');
-            }
-          });
-        }
       }
 
       // Debounced callback for loadResults
@@ -527,7 +516,6 @@
 
       function loadResults() {
         $scope.loading = true;
-        aggregateGroupByColumns();
         _loadResults();
       }
 
@@ -664,16 +652,14 @@
         if (ctrl.savedSearch.api_params.groupBy.indexOf(info.path) > -1) {
           return false;
         }
-        // If the entity this column belongs to is being grouped by id, then also no
-        return ctrl.savedSearch.api_params.groupBy.indexOf(info.prefix + 'id') < 0;
+        // If the entity this column belongs to is being grouped by primary key, then also no
+        var idField = searchMeta.getEntity(info.field.entity).primary_key[0];
+        return ctrl.savedSearch.api_params.groupBy.indexOf(info.prefix + idField) < 0;
       };
 
       $scope.formatResult = function(row, col) {
         var info = searchMeta.parseExpr(col),
           value = row[info.alias];
-        if (info.fn && info.fn.name === 'COUNT') {
-          return value;
-        }
         return formatFieldValue(row, info, value);
       };
 
@@ -708,7 +694,7 @@
       }
 
       function formatFieldValue(row, info, value, index) {
-        var type = info.field.data_type,
+        var type = (info.fn && info.fn.dataType) || info.field.data_type,
           result = value,
           link;
         if (_.isArray(value)) {

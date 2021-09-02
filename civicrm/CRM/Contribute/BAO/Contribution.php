@@ -1140,7 +1140,7 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution {
         $receiveDate = CRM_Utils_Date::isoToMysql($params['contribution']->receive_date);
       }
 
-      $financialAccount = self::getFinancialAccountForStatusChangeTrxn($params, CRM_Utils_Array::value('financial_account_id', $prevFinancialItem));
+      $financialAccount = CRM_Contribute_BAO_FinancialProcessor::getFinancialAccountForStatusChangeTrxn($params, CRM_Utils_Array::value('financial_account_id', $prevFinancialItem));
 
       $currency = $params['prevContribution']->currency;
       if ($params['contribution']->currency) {
@@ -2496,7 +2496,6 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
    *   The count is out on how correct related entities wind up in this case.
    */
   protected static function repeatTransaction(array $input, array $contributionParams) {
-
     $templateContribution = CRM_Contribute_BAO_ContributionRecur::getTemplateContribution(
       (int) $contributionParams['contribution_recur_id'],
       array_filter([
@@ -3376,12 +3375,10 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    *   Contribution object, line item array and params for trxn.
    *
    *
-   * @param array $financialTrxnValues
-   *
    * @return null|\CRM_Core_BAO_FinancialTrxn
    */
-  public static function recordFinancialAccounts(&$params, $financialTrxnValues = NULL) {
-    $skipRecords = $update = $return = FALSE;
+  public static function recordFinancialAccounts(&$params) {
+    $skipRecords = $return = FALSE;
     $isUpdate = !empty($params['prevContribution']);
 
     $additionalParticipantId = [];
@@ -3491,10 +3488,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
         $trxnParams['payment_processor_id'] = $params['payment_processor'];
       }
 
-      // consider external values passed for recording transaction entry
-      if (!empty($financialTrxnValues)) {
-        $trxnParams = array_merge($trxnParams, $financialTrxnValues);
-      }
       if (empty($trxnParams['payment_processor_id'])) {
         unset($trxnParams['payment_processor_id']);
       }
@@ -4386,68 +4379,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
   }
 
   /**
-   * Checks if line items total amounts
-   * match the contribution total amount.
-   *
-   * @param array $params
-   *  array of order params.
-   *
-   * @throws \API_Exception
-   */
-  public static function checkLineItems(&$params) {
-    $totalAmount = $params['total_amount'] ?? NULL;
-    $lineItemAmount = 0;
-
-    foreach ($params['line_items'] as &$lineItems) {
-      foreach ($lineItems['line_item'] as &$item) {
-        $lineItemAmount += $item['line_total'] + ($item['tax_amount'] ?? 0.00);
-      }
-    }
-
-    if (!isset($totalAmount)) {
-      $params['total_amount'] = $lineItemAmount;
-    }
-    else {
-      $currency = $params['currency'] ?? CRM_Core_Config::singleton()->defaultCurrency;
-
-      if (!CRM_Utils_Money::equals($totalAmount, $lineItemAmount, $currency)) {
-        throw new CRM_Contribute_Exception_CheckLineItemsException();
-      }
-    }
-  }
-
-  /**
-   * Get the financial account for the item associated with the new transaction.
-   *
-   * @param array $params
-   * @param int $default
-   *
-   * @return int
-   */
-  public static function getFinancialAccountForStatusChangeTrxn($params, $default) {
-
-    if (!empty($params['financial_account_id'])) {
-      return $params['financial_account_id'];
-    }
-
-    $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus($params['contribution_status_id'], 'name');
-    $preferredAccountsRelationships = [
-      'Refunded' => 'Credit/Contra Revenue Account is',
-      'Chargeback' => 'Chargeback Account is',
-    ];
-
-    if (array_key_exists($contributionStatus, $preferredAccountsRelationships)) {
-      $financialTypeID = !empty($params['financial_type_id']) ? $params['financial_type_id'] : $params['prevContribution']->financial_type_id;
-      return CRM_Financial_BAO_FinancialAccount::getFinancialAccountForFinancialTypeByRelationship(
-        $financialTypeID,
-        $preferredAccountsRelationships[$contributionStatus]
-      );
-    }
-
-    return $default;
-  }
-
-  /**
    * ContributionPage values were being imposed onto values.
    *
    * I have made this explicit and removed the couple (is_recur, is_pay_later) we
@@ -4611,11 +4542,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     elseif ($context === NULL) {
       // erm, yes because? but, hey, it's tested.
       return $lineItemDetails['line_total'];
-    }
-    elseif (empty($lineItemDetails['line_total'])) {
-      // follow legacy code path
-      CRM_Core_Error::deprecatedWarning('Deprecated bit of code, please log a ticket explaining how you got here!');
-      return $params['total_amount'];
     }
     else {
       return self::getMultiplier($params['contribution']->contribution_status_id, $context) * ((float) $lineItemDetails['line_total']);
@@ -5057,7 +4983,7 @@ LIMIT 1;";
     $dao = CRM_Core_DAO::executeQuery($query, $queryParams);
     $financialAccount = [];
     while ($dao->fetch()) {
-      $financialAccount[$dao->id] = $dao->id;
+      $financialAccount[(int) $dao->id] = (int) $dao->id;
     }
     return $financialAccount;
   }
@@ -5232,12 +5158,18 @@ LIMIT 1;";
       return [];
     }
     $result = civicrm_api3('Contribution', 'get', ['id' => $id]);
-    // lab.c.o mail#46 - show labels, not values, for custom fields with option values.
     if (!empty($messageToken['contribution'])) {
+      // lab.c.o mail#46 - show labels, not values, for custom fields with option values.
       foreach ($result['values'][$id] as $fieldName => $fieldValue) {
         if (strpos($fieldName, 'custom_') === 0 && array_search($fieldName, $messageToken['contribution']) !== FALSE) {
           $result['values'][$id][$fieldName] = CRM_Core_BAO_CustomField::displayValue($result['values'][$id][$fieldName], $fieldName);
         }
+      }
+      $processor = new CRM_Contribute_Tokens();
+      $pseudoFields = array_keys($processor->getPseudoTokens());
+      foreach ($pseudoFields as $pseudoField) {
+        $split = explode(':', $pseudoField);
+        $result['values'][$id][$pseudoField] = $processor->getPseudoValue($split[0], $split[1], $result['values'][$id][$split[0]] ?? '');
       }
     }
     return $result;

@@ -63,6 +63,15 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
   protected $_preserveDefault = TRUE;
 
   /**
+   * Renew option for current row.
+   *
+   * This is as set on the form.
+   *
+   * @var int
+   */
+  protected $currentRowIsRenewOption;
+
+  /**
    * Contact fields.
    *
    * @var array
@@ -85,6 +94,18 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
    * @var int
    */
   protected $currentRowContributionID;
+
+  /**
+   * Row being processed.
+   *
+   * @var array
+   */
+  protected $currentRow = [];
+
+  /**
+   * @var array
+   */
+  protected $currentRowExistingMembership;
 
   /**
    * Get the contribution id for the current row.
@@ -113,6 +134,24 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
    */
   public function getCurrentRowMembershipID() {
     return $this->currentRowMembershipID;
+  }
+
+  /**
+   * Get the contact ID for the current row.
+   *
+   * @return int
+   */
+  public function getCurrentRowContactID(): int {
+    return $this->currentRow['contact_id'];
+  }
+
+  /**
+   * Get the membership type ID for the current row.
+   *
+   * @return int
+   */
+  public function getCurrentRowMembershipTypeID(): int {
+    return $this->currentRow['membership_type_id'];
   }
 
   /**
@@ -314,7 +353,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
     $offset = 50;
     if ((count($this->_elementIndex) + $offset) > ini_get("max_input_vars")) {
       // Avoiding 'ts' for obscure messages.
-      CRM_Core_Error::statusBounce('Batch size is too large. Increase value of php.ini setting "max_input_vars" (current val = ' . ini_get("max_input_vars") . ')');
+      CRM_Core_Error::statusBounce(ts('Batch size is too large. Increase value of php.ini setting "max_input_vars" (current val = %1)', [1 => ini_get("max_input_vars")]));
     }
 
     $this->assign('fields', $this->_fields);
@@ -733,12 +772,10 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
           continue;
         }
         $value['contact_id'] = $params['primary_contact_id'][$key];
-        foreach ($value as $fieldKey => $fieldValue) {
-          if (isset($this->_fields[$fieldKey]) && $this->_fields[$fieldKey]['data_type'] === 'Money') {
-            $value[$fieldKey] = CRM_Utils_Rule::cleanMoney($fieldValue);
-          }
-        }
         $value = $this->standardiseRow($value);
+        $this->currentRow = $value;
+        $this->currentRowExistingMembership = NULL;
+        $this->currentRowIsRenewOption = (int) ($params['member_option'][$key] ?? 1);
 
         // update contact information
         $this->updateContactInfo($value);
@@ -771,7 +808,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
         $order = new CRM_Financial_BAO_Order();
         // We use the override total amount because we are dealing with a
         // possibly tax_inclusive total, which is assumed for the override total.
-        $order->setOverrideTotalAmount($value['total_amount']);
+        $order->setOverrideTotalAmount((float) $value['total_amount']);
         $order->setLineItem([
           'membership_type_id' => $value['membership_type_id'],
           'financial_type_id' => $value['financial_type_id'],
@@ -789,12 +826,10 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
           'join_date' => $value['membership_join_date'] ?? NULL,
           'campaign_id' => $value['member_campaign_id'] ?? NULL,
         ];
-        $value['is_renew'] = FALSE;
-        if (!empty($params['member_option']) && CRM_Utils_Array::value($key, $params['member_option']) == 2) {
 
+        if ($this->currentRowIsRenew()) {
           // The following parameter setting may be obsolete.
           $this->_params = $params;
-          $value['is_renew'] = TRUE;
 
           $formDates = [
             'end_date' => $value['membership_end_date'] ?? NULL,
@@ -865,10 +900,6 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
    *   true if mail was sent successfully
    * @throws \CRM_Core_Exception|\API_Exception
    *
-   * @deprecated
-   *   This function is shared with Batch_Entry which has limited overlap
-   *   & needs rationalising.
-   *
    */
   protected function emailReceipt($form, &$formValues, $membership): bool {
     // @todo figure out how much of the stuff below is genuinely shared with the batch form & a logical shared place.
@@ -888,12 +919,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
       $form->assign('contributionStatus', CRM_Contribute_PseudoConstant::contributionStatus($formValues['contribution_status_id'], 'name'));
     }
 
-    if (!empty($formValues['is_renew'])) {
-      $form->assign('receiptType', 'membership renewal');
-    }
-    else {
-      $form->assign('receiptType', 'membership signup');
-    }
+    $form->assign('receiptType', $this->currentRowIsRenew() ? 'membership renewal' : 'membership signup');
     $form->assign('receive_date', CRM_Utils_Array::value('receive_date', $formValues));
     $form->assign('formValues', $formValues);
 
@@ -992,33 +1018,25 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
    * @throws \CRM_Core_Exception
    * @throws \CiviCRM_API3_Exception
    */
-  protected function legacyProcessMembership($contactID, $membershipTypeID, $customFieldsFormatted, $membershipSource, $memParams = [], $formDates = []) {
+  protected function legacyProcessMembership($contactID, $membershipTypeID, $customFieldsFormatted, $membershipSource, $memParams = [], $formDates = []): CRM_Member_DAO_Membership {
     $updateStatusId = FALSE;
     $changeToday = NULL;
     $is_test = FALSE;
-    $modifiedID = NULL;
     $numRenewTerms = 1;
-    $membershipID = NULL;
-    $pending = FALSE;
-    $contributionRecurID = NULL;
     $allStatus = CRM_Member_PseudoConstant::membershipStatus();
     $format = '%Y%m%d';
     $statusFormat = '%Y-%m-%d';
     $membershipTypeDetails = CRM_Member_BAO_MembershipType::getMembershipType($membershipTypeID);
     $ids = [];
     $isPayLater = NULL;
+    $currentMembership = $this->getCurrentMembership();
 
-    // CRM-7297 - allow membership type to be be changed during renewal so long as the parent org of new membershipType
-    // is the same as the parent org of an existing membership of the contact
-    $currentMembership = CRM_Member_BAO_Membership::getContactMembership($contactID, $membershipTypeID,
-      $is_test, $membershipID, TRUE
-    );
     if ($currentMembership) {
 
       // Do NOT do anything.
       //1. membership with status : PENDING/CANCELLED (CRM-2395)
       //2. Paylater/IPN renew. CRM-4556.
-      if ($pending || in_array($currentMembership['status_id'], [
+      if (in_array($currentMembership['status_id'], [
         array_search('Pending', $allStatus),
         // CRM-15475
         array_search('Cancelled', CRM_Member_PseudoConstant::membershipStatus(NULL, " name = 'Cancelled' ", 'name', FALSE, TRUE)),
@@ -1032,17 +1050,11 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
           'join_date' => $currentMembership['join_date'],
           'membership_type_id' => $membershipTypeID,
           'max_related' => !empty($membershipTypeDetails['max_related']) ? $membershipTypeDetails['max_related'] : NULL,
-          'membership_activity_status' => ($pending || $isPayLater) ? 'Scheduled' : 'Completed',
+          'membership_activity_status' => $isPayLater ? 'Scheduled' : 'Completed',
         ], $memParams);
-        if ($contributionRecurID) {
-          $memParams['contribution_recur_id'] = $contributionRecurID;
-        }
 
         return CRM_Member_BAO_Membership::create($memParams);
       }
-
-      // Check and fix the membership if it is STALE
-      CRM_Member_BAO_Membership::fixMembershipStatusBeforeRenew($currentMembership, $changeToday);
 
       // Now Renew the membership
       if (!$currentMembership['is_current_member']) {
@@ -1116,7 +1128,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
         if (!empty($currentMembership['id'])) {
           $ids['membership'] = $currentMembership['id'];
         }
-        $memParams['membership_activity_status'] = ($pending || $isPayLater) ? 'Scheduled' : 'Completed';
+        $memParams['membership_activity_status'] = $isPayLater ? 'Scheduled' : 'Completed';
       }
     }
     else {
@@ -1126,36 +1138,29 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
         'membership_type_id' => $membershipTypeID,
       ], $memParams);
 
-      if (!$pending) {
-        $dates = CRM_Member_BAO_MembershipType::getDatesForMembershipType($membershipTypeID, NULL, NULL, NULL, $numRenewTerms);
+      $dates = CRM_Member_BAO_MembershipType::getDatesForMembershipType($membershipTypeID, NULL, NULL, NULL, $numRenewTerms);
 
-        foreach (['join_date', 'start_date', 'end_date'] as $dateType) {
-          $memParams[$dateType] = $formDates[$dateType] ?? NULL;
-          if (empty($memParams[$dateType])) {
-            $memParams[$dateType] = $dates[$dateType] ?? NULL;
-          }
+      foreach (['join_date', 'start_date', 'end_date'] as $dateType) {
+        $memParams[$dateType] = $formDates[$dateType] ?? NULL;
+        if (empty($memParams[$dateType])) {
+          $memParams[$dateType] = $dates[$dateType] ?? NULL;
         }
+      }
 
-        $status = CRM_Member_BAO_MembershipStatus::getMembershipStatusByDate(CRM_Utils_Date::customFormat($dates['start_date'],
+      $status = CRM_Member_BAO_MembershipStatus::getMembershipStatusByDate(CRM_Utils_Date::customFormat($dates['start_date'],
+        $statusFormat),
+        CRM_Utils_Date::customFormat($dates['end_date'],
           $statusFormat
         ),
-          CRM_Utils_Date::customFormat($dates['end_date'],
-            $statusFormat
-          ),
-          CRM_Utils_Date::customFormat($dates['join_date'],
-            $statusFormat
-          ),
-          'now',
-          TRUE,
-          $membershipTypeID,
-          $memParams
-        );
-        $updateStatusId = $status['id'] ?? NULL;
-      }
-      else {
-        // if IPN/Pay-Later set status to: PENDING
-        $updateStatusId = array_search('Pending', $allStatus);
-      }
+        CRM_Utils_Date::customFormat($dates['join_date'],
+          $statusFormat
+        ),
+        'now',
+        TRUE,
+        $membershipTypeID,
+        $memParams
+      );
+      $updateStatusId = $status['id'] ?? NULL;
 
       if (!empty($membershipSource)) {
         $memParams['source'] = $membershipSource;
@@ -1163,11 +1168,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
       $memParams['is_test'] = $is_test;
       $memParams['is_pay_later'] = $isPayLater;
     }
-    // Putting this in an IF is precautionary as it seems likely that it would be ignored if empty, but
-    // perhaps shouldn't be?
-    if ($contributionRecurID) {
-      $memParams['contribution_recur_id'] = $contributionRecurID;
-    }
+
     //CRM-4555
     //if we decided status here and want to skip status
     //calculation in create( ); then need to pass 'skipStatusCal'.
@@ -1179,14 +1180,6 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
     //since we are renewing,
     //make status override false.
     $memParams['is_override'] = FALSE;
-
-    //CRM-4027, create log w/ individual contact.
-    if ($modifiedID) {
-      // @todo this param is likely unused now.
-      $memParams['is_for_organization'] = TRUE;
-    }
-    $params['modified_id'] = $modifiedID ?? $contactID;
-
     $memParams['custom'] = $customFieldsFormatted;
     // Load all line items & process all in membership. Don't do in contribution.
     // Relevant tests in api_v3_ContributionPageTest.
@@ -1220,6 +1213,11 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
    * @return array
    */
   private function standardiseRow(array $row): array {
+    foreach ($row as $fieldKey => $fieldValue) {
+      if (isset($this->_fields[$fieldKey]) && $this->_fields[$fieldKey]['data_type'] === 'Money') {
+        $row[$fieldKey] = CRM_Utils_Rule::cleanMoney($fieldValue);
+      }
+    }
     $renameFieldMapping = [
       'financial_type' => 'financial_type_id',
       'payment_instrument' => 'payment_instrument_id',
@@ -1240,6 +1238,36 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
     // total_amount is required.
     $row['total_amount'] = (float) $row['total_amount'];
     return $row;
+  }
+
+  /**
+   * Is the current row a renewal.
+   *
+   * @return bool
+   */
+  private function currentRowIsRenew(): bool {
+    return $this->currentRowIsRenewOption === 2;
+  }
+
+  /**
+   * Get any current membership for the current row contact, for the same member organization.
+   *
+   * @return array|bool
+   *
+   * @throws \CiviCRM_API3_Exception
+   * @throws \CRM_Core_Exception
+   */
+  protected function getCurrentMembership() {
+    if (!isset($this->currentRowExistingMembership)) {
+      // CRM-7297 - allow membership type to be be changed during renewal so long as the parent org of new membershipType
+      // is the same as the parent org of an existing membership of the contact
+      $this->currentRowExistingMembership = CRM_Member_BAO_Membership::getContactMembership($this->getCurrentRowContactID(), $this->getCurrentRowMembershipTypeID(),
+        FALSE, NULL, TRUE
+      );
+      // Check and fix the membership if it is STALE
+      CRM_Member_BAO_Membership::fixMembershipStatusBeforeRenew($this->currentRowExistingMembership);
+    }
+    return $this->currentRowExistingMembership;
   }
 
 }
