@@ -182,16 +182,16 @@ class CRM_Utils_Token {
   }
 
   /**
-   * Get< the regex for token replacement
+   * Get the regex for token replacement
    *
    * @param string $token_type
    *   A string indicating the the type of token to be used in the expression.
    *
    * @return string
-   *   regular expression sutiable for using in preg_replace
+   *   regular expression suitable for using in preg_replace
    */
-  private static function tokenRegex($token_type) {
-    return '/(?<!\{|\\\\)\{' . $token_type . '\.([\w]+:?\w*(\-[\w\s]+)?)\}(?!\})/';
+  private static function tokenRegex(string $token_type) {
+    return '/(?<!\{|\\\\)\{' . $token_type . '\.([\w]+(:|\.)?\w*(\-[\w\s]+)?)\}(?!\})/';
   }
 
   /**
@@ -1102,7 +1102,7 @@ class CRM_Utils_Token {
   public static function getTokens($string) {
     $matches = [];
     $tokens = [];
-    preg_match_all('/(?<!\{|\\\\)\{(\w+\.\w+:?\w*)\}(?!\})/',
+    preg_match_all('/(?<!\{|\\\\)\{(\w+\.\w+(:|.)?\w*)\}(?!\})/',
       $string,
       $matches,
       PREG_PATTERN_ORDER
@@ -1110,12 +1110,15 @@ class CRM_Utils_Token {
 
     if ($matches[1]) {
       foreach ($matches[1] as $token) {
-        [$type, $name] = preg_split('/\./', $token, 2);
+        $parts = explode('.', $token, 3);
+        $type = $parts[0];
+        $name = $parts[1];
+        $suffix = !empty($parts[2]) ? ('.' . $parts[2]) : '';
         if ($name && $type) {
           if (!isset($tokens[$type])) {
             $tokens[$type] = [];
           }
-          $tokens[$type][] = $name;
+          $tokens[$type][] = $name . $suffix;
         }
       }
     }
@@ -1630,9 +1633,12 @@ class CRM_Utils_Token {
    * @return string
    * @throws \CiviCRM_API3_Exception
    */
-  public static function replaceCaseTokens($caseId, $str, $knownTokens = [], $escapeSmarty = FALSE) {
-    if (!$knownTokens || empty($knownTokens['case'])) {
+  public static function replaceCaseTokens($caseId, $str, $knownTokens = NULL, $escapeSmarty = FALSE): string {
+    if (strpos($str, '{case.') === FALSE) {
       return $str;
+    }
+    if (!$knownTokens) {
+      $knownTokens = self::getTokens($str);
     }
     $case = civicrm_api3('case', 'getsingle', ['id' => $caseId]);
     return self::replaceEntityTokens('case', $case, $str, $knownTokens, $escapeSmarty);
