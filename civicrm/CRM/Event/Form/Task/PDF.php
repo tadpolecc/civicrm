@@ -48,28 +48,7 @@ class CRM_Event_Form_Task_PDF extends CRM_Event_Form_Task {
   public function preProcess() {
     $this->preProcessPDF();
     parent::preProcess();
-
-    // we have all the participant ids, so now we get the contact ids
-    parent::setContactIDs();
-
     $this->assign('single', $this->_single);
-  }
-
-  /**
-   * Process the form after the input has been submitted and validated.
-   */
-  public function postProcess() {
-    CRM_Contact_Form_Task_PDFLetterCommon::postProcess($this);
-  }
-
-  /**
-   * List available tokens for this form.
-   *
-   * @return array
-   */
-  public function listTokens() {
-    $tokens = CRM_Core_SelectValues::contactTokens();
-    return $tokens;
   }
 
 }

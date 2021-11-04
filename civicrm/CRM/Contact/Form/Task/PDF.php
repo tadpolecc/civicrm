@@ -96,13 +96,6 @@ class CRM_Contact_Form_Task_PDF extends CRM_Contact_Form_Task {
   }
 
   /**
-   * Process the form after the input has been submitted and validated.
-   */
-  public function postProcess() {
-    CRM_Contact_Form_Task_PDFLetterCommon::postProcess($this);
-  }
-
-  /**
    * List available tokens for this form.
    *
    * @return array
@@ -115,6 +108,28 @@ class CRM_Contact_Form_Task_PDF extends CRM_Contact_Form_Task {
       $tokens += CRM_Core_SelectValues::caseTokens($caseTypeId);
     }
     return $tokens;
+  }
+
+  /**
+   * Get the rows from the results to be pdf-d.
+   *
+   * @todo the case handling should be in the case pdf task.
+   * It needs fixing to support standalone & some url fixes
+   *
+   * similar to https://github.com/civicrm/civicrm-core/pull/21688
+   *
+   * @return array
+   */
+  protected function getRows(): array {
+    $rows = [];
+    foreach ($this->_contactIds as $index => $contactID) {
+      $caseID = $this->getVar('_caseId');
+      if (empty($caseID) && !empty($this->_caseIds[$index])) {
+        $caseID = $this->_caseIds[$index];
+      }
+      $rows[] = ['contact_id' => $contactID, 'schema' => ['caseId' => $caseID, 'contactId' => $contactID]];
+    }
+    return $rows;
   }
 
 }

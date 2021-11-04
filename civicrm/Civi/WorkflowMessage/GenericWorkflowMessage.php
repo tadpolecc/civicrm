@@ -15,6 +15,7 @@ namespace Civi\WorkflowMessage;
 use Civi\Schema\Traits\MagicGetterSetterTrait;
 use Civi\WorkflowMessage\Traits\AddressingTrait;
 use Civi\WorkflowMessage\Traits\FinalHelperTrait;
+use Civi\WorkflowMessage\Traits\LocalizationTrait;
 use Civi\WorkflowMessage\Traits\ReflectiveWorkflowTrait;
 
 /**
@@ -24,6 +25,10 @@ use Civi\WorkflowMessage\Traits\ReflectiveWorkflowTrait;
  * @method int|null getContactId()
  * @method $this setContact(array|null $contact)
  * @method array|null getContact()
+ *
+ * @support template-only
+ * GenericWorkflowMessage should aim for "full" support, but it's prudent to keep
+ * it flexible for the first few months. Consider updating to "full" after Dec 2021.
  */
 class GenericWorkflowMessage implements WorkflowMessageInterface {
 
@@ -39,6 +44,9 @@ class GenericWorkflowMessage implements WorkflowMessageInterface {
 
   // Implement setTo(), setReplyTo(), etc
   use AddressingTrait;
+
+  // Implement setLocale(), etc
+  use LocalizationTrait;
 
   /**
    * WorkflowMessage constructor.

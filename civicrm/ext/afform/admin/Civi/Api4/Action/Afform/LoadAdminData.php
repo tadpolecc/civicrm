@@ -116,6 +116,7 @@ class LoadAdminData extends \Civi\Api4\Generic\AbstractAction {
         if (!isset($info['blocks'][$blockTag])) {
           // Load full contents of block used on the form, then recurse into it
           $embeddedForm = Afform::get($this->checkPermissions)
+            ->addSelect('*', 'directive_name')
             ->setFormatWhitespace(TRUE)
             ->setLayoutFormat('shallow')
             ->addWhere('directive_name', '=', $blockTag)
@@ -215,6 +216,7 @@ class LoadAdminData extends \Civi\Api4\Generic\AbstractAction {
    */
   private function loadForm($name) {
     return Afform::get($this->checkPermissions)
+      ->addSelect('*', 'directive_name')
       ->setFormatWhitespace(TRUE)
       ->setLayoutFormat('shallow')
       ->addWhere('name', '=', $name)
@@ -273,9 +275,12 @@ class LoadAdminData extends \Civi\Api4\Generic\AbstractAction {
     foreach ($apiParams['select'] ?? [] as $select) {
       if (strstr($select, ' AS ')) {
         $expr = SqlExpression::convert($select, TRUE);
-        $field = $expr->getFields() ? $selectQuery->getField($expr->getFields()[0]) : NULL;
-        $joinName = explode('.', $expr->getFields()[0] ?? '')[0];
-        $label = $expr::getTitle() . ': ' . (isset($joinMap[$joinName]) ? $joinMap[$joinName] . ' ' : '') . $field['title'];
+        $label = $expr::getTitle();
+        foreach ($expr->getFields() as $num => $fieldName) {
+          $field = $selectQuery->getField($fieldName);
+          $joinName = explode('.', $fieldName)[0];
+          $label .= ($num ? ', ' : ': ') . (isset($joinMap[$joinName]) ? $joinMap[$joinName] . ' ' : '') . $field['title'];
+        }
         $calcFields[] = [
           '#tag' => 'af-field',
           'name' => $expr->getAlias(),

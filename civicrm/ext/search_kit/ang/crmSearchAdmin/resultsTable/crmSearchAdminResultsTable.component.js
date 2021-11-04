@@ -18,8 +18,9 @@
       // Output user-facing name/label fields as a link, if possible
       function getViewLink(fieldExpr, links) {
         var info = searchMeta.parseExpr(fieldExpr),
-          entity = searchMeta.getEntity(info.field.entity);
-        if (!info.fn && entity && info.field.fieldName === entity.label_field) {
+          firstField = _.findWhere(info.args, {type: 'field'}),
+          entity = firstField && searchMeta.getEntity(firstField.field.entity);
+        if (entity && firstField.field.fieldName === entity.label_field) {
           var joinEntity = searchMeta.getJoinEntity(info);
           return _.find(links, {join: joinEntity, action: 'view'});
         }
@@ -34,9 +35,10 @@
             limit: CRM.crmSearchAdmin.defaultPagerSize,
             pager: {show_count: true, expose_limit: true},
             actions: true,
+            classes: ['table', 'table-striped'],
             button: ts('Search'),
             columns: _.transform(ctrl.search.api_params.select, function(columns, fieldExpr) {
-              var column = {label: true},
+              var column = {label: true, sortable: true},
                 link = getViewLink(fieldExpr, links);
               if (link) {
                 column.title = link.title;
@@ -106,11 +108,13 @@
           if (!ui.item.sortable.dropindex && ctrl.crmSearchAdmin.groupExists) {
             ui.item.sortable.cancel();
           }
+          // Function selectors use `ng-repeat` with `track by $index` so must be refreshed when rearranging the array
+          ctrl.crmSearchAdmin.hideFuncitons();
         }
       };
 
       $scope.fieldsForSelect = function() {
-        return {results: ctrl.crmSearchAdmin.getAllFields(':label', ['Field', 'Custom', 'Extra'], function(key) {
+        return {results: ctrl.crmSearchAdmin.getAllFields(':label', ['Field', 'Custom', 'Extra', 'Pseudo'], function(key) {
             return _.contains(ctrl.search.api_params.select, key);
           })
         };

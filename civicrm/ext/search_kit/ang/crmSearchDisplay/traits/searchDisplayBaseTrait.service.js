@@ -3,7 +3,9 @@
 
   // Trait provides base methods and properties common to all search display types
   angular.module('crmSearchDisplay').factory('searchDisplayBaseTrait', function(crmApi4) {
-    var ts = CRM.ts('org.civicrm.search_kit');
+    var ts = CRM.ts('org.civicrm.search_kit'),
+      runCount = 0,
+      seed = Date.now();
 
     // Replace tokens keyed to rowData.
     // Pass view=true to replace with view value, otherwise raw value is used.
@@ -72,12 +74,13 @@
         var ctrl = this;
         this.limit = this.settings.limit;
         this.sort = this.settings.sort ? _.cloneDeep(this.settings.sort) : [];
+        this.seed = Date.now();
 
         this.getResults = _.debounce(function() {
           $scope.$apply(function() {
             ctrl.runSearch();
           });
-        }, 100);
+        }, 800);
 
         // If search is embedded in contact summary tab, display count in tab-header
         var contactTab = $element.closest('.crm-contact-page .ui-tabs-panel').attr('id');
@@ -128,6 +131,7 @@
           display: this.display,
           sort: this.sort,
           limit: this.limit,
+          seed: this.seed,
           filters: _.assign({}, (this.afFieldset ? this.afFieldset.getFieldData() : {}), this.filters),
           afform: this.afFieldset ? this.afFieldset.getFormName() : null
         };
@@ -142,12 +146,16 @@
       // Call SearchDisplay.run and update ctrl.results and ctrl.rowCount
       runSearch: function(editedRow) {
         var ctrl = this,
+          requestId = ++runCount,
           apiParams = this.getApiParams();
         this.loading = true;
         _.each(ctrl.onPreRun, function(callback) {
           callback.call(ctrl, apiParams);
         });
         return crmApi4('SearchDisplay', 'run', apiParams).then(function(results) {
+          if (requestId < runCount) {
+            return; // Another request started after this one
+          }
           ctrl.results = results;
           ctrl.editing = ctrl.loading = false;
           if (!ctrl.rowCount) {
@@ -164,6 +172,9 @@
             callback.call(ctrl, results, 'success', editedRow);
           });
         }, function(error) {
+          if (requestId < runCount) {
+            return; // Another request started after this one
+          }
           ctrl.results = [];
           ctrl.editing = ctrl.loading = false;
           _.each(ctrl.onPostRun, function(callback) {

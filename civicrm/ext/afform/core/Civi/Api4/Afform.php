@@ -95,6 +95,15 @@ class Afform extends Generic\AbstractEntity {
 
   /**
    * @param bool $checkPermissions
+   * @return Action\Afform\GetOptions
+   */
+  public static function getOptions($checkPermissions = TRUE) {
+    return (new Action\Afform\GetOptions('Afform', __FUNCTION__))
+      ->setCheckPermissions($checkPermissions);
+  }
+
+  /**
+   * @param bool $checkPermissions
    * @return Generic\BasicBatchAction
    */
   public static function revert($checkPermissions = TRUE) {
@@ -201,21 +210,32 @@ class Afform extends Generic\AbstractEntity {
       if ($self->getAction() === 'get') {
         $fields[] = [
           'name' => 'module_name',
+          'type' => 'Extra',
           'readonly' => TRUE,
         ];
         $fields[] = [
           'name' => 'directive_name',
+          'type' => 'Extra',
           'readonly' => TRUE,
         ];
         $fields[] = [
           'name' => 'has_local',
+          'type' => 'Extra',
           'data_type' => 'Boolean',
           'readonly' => TRUE,
         ];
         $fields[] = [
           'name' => 'has_base',
+          'type' => 'Extra',
           'data_type' => 'Boolean',
           'readonly' => TRUE,
+        ];
+        $fields[] = [
+          'name' => 'search_displays',
+          'type' => 'Extra',
+          'data_type' => 'Array',
+          'readonly' => TRUE,
+          'description' => 'Embedded search displays, formatted like ["search-name.display-name"]',
         ];
       }
 
@@ -232,6 +252,7 @@ class Afform extends Generic\AbstractEntity {
       "default" => ["administer CiviCRM"],
       // These all check form-level permissions
       'get' => [],
+      'getOptions' => [],
       'prefill' => [],
       'submit' => [],
       'submitFile' => [],

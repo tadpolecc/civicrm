@@ -84,7 +84,7 @@ trait CRM_Contact_Form_Task_PDFTrait {
       ts('Paper Size'),
       [0 => ts('- default -')] + CRM_Core_BAO_PaperSize::getList(TRUE),
       FALSE,
-      ['onChange' => "selectPaper( this.value ); showUpdateFormatChkBox();"]
+      ['onChange' => 'selectPaper( this.value ); showUpdateFormatChkBox();']
     );
     $form->add(
       'select',
@@ -92,7 +92,7 @@ trait CRM_Contact_Form_Task_PDFTrait {
       ts('Orientation'),
       CRM_Core_BAO_PdfFormat::getPageOrientations(),
       FALSE,
-      ['onChange' => "updatePaperDimensions(); showUpdateFormatChkBox();"]
+      ['onChange' => 'updatePaperDimensions(); showUpdateFormatChkBox();']
     );
     $form->add(
       'select',
@@ -158,26 +158,7 @@ trait CRM_Contact_Form_Task_PDFTrait {
 
     CRM_Mailing_BAO_Mailing::commonCompose($form);
 
-    $buttons = [];
-    if ($form->get('action') != CRM_Core_Action::VIEW) {
-      $buttons[] = [
-        'type' => 'upload',
-        'name' => ts('Download Document'),
-        'isDefault' => TRUE,
-        'icon' => 'fa-download',
-      ];
-      $buttons[] = [
-        'type' => 'submit',
-        'name' => ts('Preview'),
-        'subName' => 'preview',
-        'icon' => 'fa-search',
-        'isDefault' => FALSE,
-      ];
-    }
-    $buttons[] = [
-      'type' => 'cancel',
-      'name' => $form->get('action') == CRM_Core_Action::VIEW ? ts('Done') : ts('Cancel'),
-    ];
+    $buttons = $this->getButtons($form);
     $form->addButtons($buttons);
 
     $form->addFormRule(['CRM_Core_Form_Task_PDFLetterCommon', 'formRule'], $form);
@@ -199,6 +180,395 @@ trait CRM_Contact_Form_Task_PDFTrait {
     }
     $form->setDefaults($defaults);
     $form->setTitle('Print/Merge Document');
+  }
+
+  /**
+   * Returns the filename for the pdf by striping off unwanted characters and limits the length to 200 characters.
+   *
+   * @return string
+   *   The name of the file.
+   */
+  public function getFileName(): string {
+    if (!empty($this->getSubmittedValue('pdf_file_name'))) {
+      $fileName = CRM_Utils_File::makeFilenameWithUnicode($this->getSubmittedValue('pdf_file_name'), '_', 200);
+    }
+    elseif (!empty($this->getSubmittedValue('subject'))) {
+      $fileName = CRM_Utils_File::makeFilenameWithUnicode($this->getSubmittedValue('subject'), '_', 200);
+    }
+    else {
+      $fileName = 'CiviLetter';
+    }
+    return $this->isLiveMode() ? $fileName : $fileName . '_preview';
+  }
+
+  /**
+   * Is the form in live mode (as opposed to being run as a preview).
+   *
+   * Returns true if the user has clicked the Download Document button on a
+   * Print/Merge Document (PDF Letter) search task form, or false if the Preview
+   * button was clicked.
+   *
+   * @return bool
+   *   TRUE if the Download Document button was clicked (also defaults to TRUE
+   *     if the form controller does not exist), else FALSE
+   */
+  protected function isLiveMode(): bool {
+    return strpos($this->controller->getButtonName(), '_preview') === FALSE;
+  }
+
+  /**
+   * Process the form after the input has been submitted and validated.
+   *
+   * @throws \CRM_Core_Exception
+   * @throws \CiviCRM_API3_Exception
+   * @throws \API_Exception
+   */
+  public function postProcess(): void {
+    $formValues = $this->controller->exportValues($this->getName());
+    [$formValues, $html_message] = $this->processMessageTemplate($formValues);
+    $html = $activityIds = [];
+
+    // CRM-16725 Skip creation of activities if user is previewing their PDF letter(s)
+    if ($this->isLiveMode()) {
+      $activityIds = $this->createActivities($html_message, $this->_contactIds, $formValues['subject'], CRM_Utils_Array::value('campaign_id', $formValues));
+    }
+
+    if (!empty($formValues['document_file_path'])) {
+      [$html_message, $zip] = CRM_Utils_PDF_Document::unzipDoc($formValues['document_file_path'], $formValues['document_type']);
+    }
+
+    foreach ($this->getRows() as $row) {
+      $tokenHtml = CRM_Core_BAO_MessageTemplate::renderTemplate([
+        'contactId' => $row['contact_id'],
+        'messageTemplate' => ['msg_html' => $html_message],
+        'tokenContext' => array_merge(['schema' => $this->getTokenSchema()], ($row['schema'] ?? [])),
+        'disableSmarty' => (!defined('CIVICRM_MAIL_SMARTY') || !CIVICRM_MAIL_SMARTY),
+      ])['html'];
+
+      $html[] = $tokenHtml;
+    }
+
+    $tee = NULL;
+    if ($this->isLiveMode() && Civi::settings()->get('recordGeneratedLetters') === 'combined-attached') {
+      if (count($activityIds) !== 1) {
+        throw new CRM_Core_Exception('When recordGeneratedLetters=combined-attached, there should only be one activity.');
+      }
+      $tee = CRM_Utils_ConsoleTee::create()->start();
+    }
+
+    $type = $formValues['document_type'];
+    $mimeType = $this->getMimeType($type);
+    // ^^ Useful side-effect: consistently throws error for unrecognized types.
+
+    $fileName = $this->getFileName();
+
+    if ($type === 'pdf') {
+      CRM_Utils_PDF_Utils::html2pdf($html, $fileName, FALSE, $formValues);
+    }
+    elseif (!empty($formValues['document_file_path'])) {
+      $fileName = pathinfo($formValues['document_file_path'], PATHINFO_FILENAME) . '.' . $type;
+      CRM_Utils_PDF_Document::printDocuments($html, $fileName, $type, $zip);
+    }
+    else {
+      CRM_Utils_PDF_Document::html2doc($html, $fileName . '.' . $this->getSubmittedValue('document_type'), $formValues);
+    }
+
+    if ($tee) {
+      $tee->stop();
+      $content = file_get_contents($tee->getFileName(), NULL, NULL, NULL, 5);
+      if (empty($content)) {
+        throw new \CRM_Core_Exception("Failed to capture document content (type=$type)!");
+      }
+      foreach ($activityIds as $activityId) {
+        civicrm_api3('Attachment', 'create', [
+          'entity_table' => 'civicrm_activity',
+          'entity_id' => $activityId,
+          'name' => $fileName,
+          'mime_type' => $mimeType,
+          'options' => [
+            'move-file' => $tee->getFileName(),
+          ],
+        ]);
+      }
+    }
+
+    $this->postProcessHook();
+
+    CRM_Utils_System::civiExit();
+  }
+
+  /**
+   * Convert from a vague-type/file-extension to mime-type.
+   *
+   * @param string $type
+   * @return string
+   * @throws \CRM_Core_Exception
+   */
+  protected function getMimeType($type) {
+    $mimeTypes = [
+      'pdf' => 'application/pdf',
+      'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'odt' => 'application/vnd.oasis.opendocument.text',
+      'html' => 'text/html',
+    ];
+    if (isset($mimeTypes[$type])) {
+      return $mimeTypes[$type];
+    }
+    else {
+      throw new \CRM_Core_Exception("Cannot determine mime type");
+    }
+  }
+
+  /**
+   * @param string $html_message
+   * @param array $contactIds
+   * @param string $subject
+   * @param int $campaign_id
+   * @param array $perContactHtml
+   *
+   * @return array
+   *   List of activity IDs.
+   *   There may be 1 or more, depending on the system-settings
+   *   and use-case.
+   *
+   * @throws \CRM_Core_Exception
+   * @throws \CiviCRM_API3_Exception
+   */
+  protected function createActivities($html_message, $contactIds, $subject, $campaign_id, $perContactHtml = []): array {
+    $activityParams = [
+      'subject' => $subject,
+      'campaign_id' => $campaign_id,
+      'source_contact_id' => CRM_Core_Session::getLoggedInContactID(),
+      'activity_type_id' => CRM_Core_PseudoConstant::getKey('CRM_Activity_BAO_Activity', 'activity_type_id', 'Print PDF Letter'),
+      'activity_date_time' => date('YmdHis'),
+      'details' => $html_message,
+    ];
+    if (!empty($this->_activityId)) {
+      $activityParams += ['id' => $this->_activityId];
+    }
+
+    $activityIds = [];
+    switch (Civi::settings()->get('recordGeneratedLetters')) {
+      case 'none':
+        return [];
+
+      case 'multiple':
+        // One activity per contact.
+        foreach ($contactIds as $i => $contactId) {
+          $fullParams = ['target_contact_id' => $contactId] + $activityParams;
+          if (!empty($this->_caseId)) {
+            $fullParams['case_id'] = $this->_caseId;
+          }
+          elseif (!empty($this->_caseIds[$i])) {
+            $fullParams['case_id'] = $this->_caseIds[$i];
+          }
+
+          if (isset($perContactHtml[$contactId])) {
+            $fullParams['details'] = implode('<hr>', $perContactHtml[$contactId]);
+          }
+          $activity = civicrm_api3('Activity', 'create', $fullParams);
+          $activityIds[$contactId] = $activity['id'];
+        }
+
+        break;
+
+      case 'combined':
+      case 'combined-attached':
+        // One activity with all contacts.
+        $fullParams = ['target_contact_id' => $contactIds] + $activityParams;
+        if (!empty($this->_caseId)) {
+          $fullParams['case_id'] = $this->_caseId;
+        }
+        elseif (!empty($this->_caseIds)) {
+          $fullParams['case_id'] = $this->_caseIds;
+        }
+        $activity = civicrm_api3('Activity', 'create', $fullParams);
+        $activityIds[] = $activity['id'];
+        break;
+
+      default:
+        throw new CRM_Core_Exception('Unrecognized option in recordGeneratedLetters: ' . Civi::settings()->get('recordGeneratedLetters'));
+    }
+
+    return $activityIds;
+  }
+
+  /**
+   * Handle the template processing part of the form
+   *
+   * @param array $formValues
+   *
+   * @return string $html_message
+   *
+   * @throws \CRM_Core_Exception
+   * @throws \CiviCRM_API3_Exception
+   * @throws \Civi\API\Exception\UnauthorizedException
+   */
+  public function processTemplate(&$formValues) {
+    $html_message = $formValues['html_message'] ?? NULL;
+
+    // process message template
+    if (!empty($this->getSubmittedValue('saveTemplate')) || !empty($formValues['updateTemplate'])) {
+      $messageTemplate = [
+        'msg_text' => NULL,
+        'msg_html' => $formValues['html_message'],
+        'msg_subject' => NULL,
+        'is_active' => TRUE,
+      ];
+
+      $messageTemplate['pdf_format_id'] = 'null';
+      if (!empty($formValues['bind_format']) && $formValues['format_id']) {
+        $messageTemplate['pdf_format_id'] = $formValues['format_id'];
+      }
+      if ($this->getSubmittedValue('saveTemplate')) {
+        $messageTemplate['msg_title'] = $this->getSubmittedValue('saveTemplateName');
+        CRM_Core_BAO_MessageTemplate::add($messageTemplate);
+      }
+
+      if ($formValues['template'] && !empty($formValues['updateTemplate'])) {
+        $messageTemplate['id'] = $formValues['template'];
+
+        unset($messageTemplate['msg_title']);
+        CRM_Core_BAO_MessageTemplate::add($messageTemplate);
+      }
+    }
+    elseif (CRM_Utils_Array::value('template', $formValues) > 0) {
+      if (!empty($formValues['bind_format']) && $formValues['format_id']) {
+        $query = "UPDATE civicrm_msg_template SET pdf_format_id = {$formValues['format_id']} WHERE id = {$formValues['template']}";
+      }
+      else {
+        $query = "UPDATE civicrm_msg_template SET pdf_format_id = NULL WHERE id = {$formValues['template']}";
+      }
+      CRM_Core_DAO::executeQuery($query);
+
+      $documentInfo = CRM_Core_BAO_File::getEntityFile('civicrm_msg_template', $formValues['template']);
+      if ($documentInfo) {
+        $info = reset($documentInfo);
+        [$html_message, $formValues['document_type']] = CRM_Utils_PDF_Document::docReader($info['fullPath'], $info['mime_type']);
+        $formValues['document_file_path'] = $info['fullPath'];
+      }
+    }
+    // extract the content of uploaded document file
+    elseif (!empty($formValues['document_file'])) {
+      [$html_message, $formValues['document_type']] = CRM_Utils_PDF_Document::docReader($formValues['document_file']['name'], $formValues['document_file']['type']);
+      $formValues['document_file_path'] = $formValues['document_file']['name'];
+    }
+
+    if (!empty($formValues['update_format'])) {
+      $bao = new CRM_Core_BAO_PdfFormat();
+      $bao->savePdfFormat($formValues, $formValues['format_id']);
+    }
+
+    return $html_message;
+  }
+
+  /**
+   * Part of the post process which prepare and extract information from the template.
+   *
+   *
+   * @param array $formValues
+   *
+   * @return array
+   *   [$categories, $html_message, $messageToken, $returnProperties]
+   */
+  public function processMessageTemplate($formValues) {
+    $html_message = $this->processTemplate($formValues);
+
+    //time being hack to strip '&nbsp;'
+    //from particular letter line, CRM-6798
+    $this->formatMessage($html_message);
+
+    $messageToken = CRM_Utils_Token::getTokens($html_message);
+
+    $returnProperties = [];
+    if (isset($messageToken['contact'])) {
+      foreach ($messageToken['contact'] as $key => $value) {
+        $returnProperties[$value] = 1;
+      }
+    }
+
+    return [$formValues, $html_message, $messageToken, $returnProperties];
+  }
+
+  /**
+   * @param $message
+   */
+  public function formatMessage(&$message) {
+    $newLineOperators = [
+      'p' => [
+        'oper' => '<p>',
+        'pattern' => '/<(\s+)?p(\s+)?>/m',
+      ],
+      'br' => [
+        'oper' => '<br />',
+        'pattern' => '/<(\s+)?br(\s+)?\/>/m',
+      ],
+    ];
+
+    $htmlMsg = preg_split($newLineOperators['p']['pattern'], $message);
+    foreach ($htmlMsg as $k => & $m) {
+      $messages = preg_split($newLineOperators['br']['pattern'], $m);
+      foreach ($messages as $key => & $msg) {
+        $msg = trim($msg);
+        $matches = [];
+        if (preg_match('/^(&nbsp;)+/', $msg, $matches)) {
+          $spaceLen = strlen($matches[0]) / 6;
+          $trimMsg = ltrim($msg, '&nbsp; ');
+          $charLen = strlen($trimMsg);
+          $totalLen = $charLen + $spaceLen;
+          if ($totalLen > 100) {
+            $spacesCount = 10;
+            if ($spaceLen > 50) {
+              $spacesCount = 20;
+            }
+            if ($charLen > 100) {
+              $spacesCount = 1;
+            }
+            $msg = str_repeat('&nbsp;', $spacesCount) . $trimMsg;
+          }
+        }
+      }
+      $m = implode($newLineOperators['br']['oper'], $messages);
+    }
+    $message = implode($newLineOperators['p']['oper'], $htmlMsg);
+  }
+
+  /**
+   * Get the buttons to display.
+   *
+   * @return array
+   */
+  protected function getButtons(): array {
+    $buttons = [];
+    if (!$this->isFormInViewMode()) {
+      $buttons[] = [
+        'type' => 'upload',
+        'name' => $this->getMainSubmitButtonName(),
+        'isDefault' => TRUE,
+        'icon' => 'fa-download',
+      ];
+      $buttons[] = [
+        'type' => 'submit',
+        'name' => ts('Preview'),
+        'subName' => 'preview',
+        'icon' => 'fa-search',
+        'isDefault' => FALSE,
+      ];
+    }
+    $buttons[] = [
+      'type' => 'cancel',
+      'name' => $this->isFormInViewMode() ? ts('Done') : ts('Cancel'),
+    ];
+    return $buttons;
+  }
+
+  /**
+   * Get the name for the main submit button.
+   *
+   * @return string
+   */
+  protected function getMainSubmitButtonName(): string {
+    return ts('Download Document');
   }
 
 }

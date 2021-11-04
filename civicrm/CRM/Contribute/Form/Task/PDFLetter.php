@@ -9,6 +9,8 @@
  +--------------------------------------------------------------------+
  */
 
+use Civi\Token\TokenProcessor;
+
 /**
  *
  * @package CRM
@@ -112,28 +114,38 @@ class CRM_Contribute_Form_Task_PDFLetter extends CRM_Contribute_Form_Task {
     }
     $this->addElement('select', 'email_options', ts('Print and email options'), $emailOptions, [], "<br/>", FALSE);
 
-    $this->addButtons([
-      [
-        'type' => 'upload',
-        'name' => ts('Make Thank-you Letters'),
-        'isDefault' => TRUE,
-      ],
-      [
-        'type' => 'cancel',
-        'name' => ts('Done'),
-      ],
-    ]);
+    $this->addButtons($this->getButtons());
 
+  }
+
+  /**
+   * Get the name for the main submit button.
+   *
+   * @return string
+   */
+  protected function getMainSubmitButtonName(): string {
+    return ts('Make Thank-you Letters');
   }
 
   /**
    * Process the form after the input has been submitted and validated.
    *
    * @throws \CRM_Core_Exception
+   * @throws \CiviCRM_API3_Exception
    */
   public function postProcess() {
     $formValues = $this->controller->exportValues($this->getName());
-    [$formValues, $categories, $html_message, $messageToken, $returnProperties] = CRM_Contact_Form_Task_PDFLetterCommon::processMessageTemplate($formValues);
+    [$formValues, $html_message] = $this->processMessageTemplate($formValues);
+
+    $messageToken = CRM_Utils_Token::getTokens($html_message);
+
+    $returnProperties = [];
+    if (isset($messageToken['contact'])) {
+      foreach ($messageToken['contact'] as $key => $value) {
+        $returnProperties[$value] = 1;
+      }
+    }
+
     $isPDF = FALSE;
     $emailParams = [];
     if (!empty($formValues['email_options'])) {
@@ -205,7 +217,7 @@ class CRM_Contribute_Form_Task_PDFLetter extends CRM_Contribute_Form_Task {
       if (empty($groupBy) || empty($contact['is_sent'][$groupBy][$groupByID])) {
         $html[$contributionId] = $this->generateHtml($contact, $contribution, $groupBy, $contributions, $realSeparator, $tableSeparators, $messageToken, $html_message, $separator, $grouped, $groupByID);
         $contactHtml[$contact['contact_id']][] = $html[$contributionId];
-        if (!empty($formValues['email_options'])) {
+        if ($this->isSendEmails()) {
           if ($this->emailLetter($contact, $html[$contributionId], $isPDF, $formValues, $emailParams)) {
             $emailed++;
             if (!stristr($formValues['email_options'], 'both')) {
@@ -215,39 +227,33 @@ class CRM_Contribute_Form_Task_PDFLetter extends CRM_Contribute_Form_Task {
         }
         $contact['is_sent'][$groupBy][$groupByID] = TRUE;
       }
-      // Update receipt/thankyou dates
-      $contributionParams = ['id' => $contributionId];
-      if ($receipt_update) {
-        $contributionParams['receipt_date'] = $nowDate;
-      }
-      if ($thankyou_update) {
-        $contributionParams['thankyou_date'] = $nowDate;
-      }
-      if ($receipt_update || $thankyou_update) {
-        civicrm_api3('Contribution', 'create', $contributionParams);
-        $receipts = ($receipt_update ? $receipts + 1 : $receipts);
-        $thanks = ($thankyou_update ? $thanks + 1 : $thanks);
+      if ($this->isLiveMode()) {
+        // Update receipt/thankyou dates
+        $contributionParams = ['id' => $contributionId];
+        if ($receipt_update) {
+          $contributionParams['receipt_date'] = $nowDate;
+        }
+        if ($thankyou_update) {
+          $contributionParams['thankyou_date'] = $nowDate;
+        }
+        if ($receipt_update || $thankyou_update) {
+          civicrm_api3('Contribution', 'create', $contributionParams);
+          $receipts = ($receipt_update ? $receipts + 1 : $receipts);
+          $thanks = ($thankyou_update ? $thanks + 1 : $thanks);
+        }
       }
     }
 
     $contactIds = array_keys($contacts);
-    CRM_Contact_Form_Task_PDFLetterCommon::createActivities($this, $html_message, $contactIds, CRM_Utils_Array::value('subject', $formValues, ts('Thank you letter')), CRM_Utils_Array::value('campaign_id', $formValues), $contactHtml);
-    $html = array_diff_key($html, $emailedHtml);
-
-    if (!empty($formValues['is_unit_test'])) {
-      return $html;
+    // CRM-16725 Skip creation of activities if user is previewing their PDF letter(s)
+    if ($this->isLiveMode()) {
+      $this->createActivities($html_message, $contactIds, CRM_Utils_Array::value('subject', $formValues, ts('Thank you letter')), CRM_Utils_Array::value('campaign_id', $formValues), $contactHtml);
     }
+    $html = array_diff_key($html, $emailedHtml);
 
     //CRM-19761
     if (!empty($html)) {
-      // Set the filename for the PDF using the Activity Subject, if defined. Remove unwanted characters and limit the length to 200 characters.
-      if (!empty($formValues['subject'])) {
-        $fileName = CRM_Utils_File::makeFilenameWithUnicode($formValues['subject'], '_', 200);
-      }
-      else {
-        $fileName = 'CiviLetter';
-      }
-
+      $fileName = $this->getFileName();
       if ($this->getSubmittedValue('document_type') === 'pdf') {
         CRM_Utils_PDF_Utils::html2pdf($html, $fileName . '.pdf', FALSE, $formValues);
       }
@@ -278,15 +284,21 @@ class CRM_Contribute_Form_Task_PDFLetter extends CRM_Contribute_Form_Task {
   }
 
   /**
-   * List available tokens for this form.
+   * Are emails to be sent out?
+   *
+   * @return bool
+   */
+  protected function isSendEmails(): bool {
+    return $this->isLiveMode() && $this->getSubmittedValue('email_options');
+  }
+
+  /**
+   * Get the token processor schema required to list any tokens for this task.
    *
    * @return array
    */
-  public function listTokens() {
-    $tokens = CRM_Core_SelectValues::contactTokens();
-    $tokens = array_merge(CRM_Core_SelectValues::contributionTokens(), $tokens);
-    $tokens = array_merge(CRM_Core_SelectValues::domainTokens(), $tokens);
-    return $tokens;
+  public function getTokenSchema(): array {
+    return ['contributionId', 'contactId'];
   }
 
   /**
@@ -424,7 +436,7 @@ class CRM_Contribute_Form_Task_PDFLetter extends CRM_Contribute_Form_Task {
         CRM_Core_Session::setStatus(ts('You have selected the table cell separator, but one or more token fields are not placed inside a table cell. This would result in invalid HTML, so comma separators have been used instead.'));
       }
       $validated = TRUE;
-      $html = str_replace($separator, $realSeparator, $this->resolveTokens($html_message, $contact, $contribution, $messageToken, $grouped, $separator, $groupedContributions));
+      $html = str_replace($separator, $realSeparator, $this->resolveTokens($html_message, $contact, $contribution['id'], $grouped, $separator, $groupedContributions));
     }
 
     return $html;
@@ -532,8 +544,7 @@ class CRM_Contribute_Form_Task_PDFLetter extends CRM_Contribute_Form_Task {
    *
    * @param string $html_message
    * @param array $contact
-   * @param array $contribution
-   * @param array $messageToken
+   * @param int $contributionID
    * @param bool $grouped
    *   Does this letter represent more than one contribution.
    * @param string $separator
@@ -542,20 +553,42 @@ class CRM_Contribute_Form_Task_PDFLetter extends CRM_Contribute_Form_Task {
    *
    * @return string
    */
-  protected function resolveTokens(string $html_message, $contact, $contribution, $messageToken, $grouped, $separator, $contributions): string {
-    if ($grouped) {
-      $tokenHtml = CRM_Utils_Token::replaceMultipleContributionTokens($separator, $html_message, $contributions, $messageToken);
-    }
-    else {
-      // no change to normal behaviour to avoid risk of breakage
-      $tokenHtml = CRM_Utils_Token::replaceContributionTokens($html_message, $contribution, TRUE, $messageToken);
-    }
+  protected function resolveTokens(string $html_message, $contact, $contributionID, $grouped, $separator, $contributions): string {
     $tokenContext = [
       'smarty' => (defined('CIVICRM_MAIL_SMARTY') && CIVICRM_MAIL_SMARTY),
       'contactId' => $contact['contact_id'],
+      'schema' => ['contributionId'],
     ];
-    $smarty = ['contact' => $contact];
-    return CRM_Core_TokenSmarty::render(['html' => $tokenHtml], $tokenContext, $smarty)['html'];
+    if ($grouped) {
+      // First replace the contribution tokens. These are pretty ... special.
+      // if the text looks like `<td>{contribution.currency} {contribution.total_amount}</td>'
+      // and there are 2 rows with a currency separator of
+      // you wind up with a string like
+      // '<td>USD</td><td>USD></td> <td>$50</td><td>$89</td>
+      // see https://docs.civicrm.org/user/en/latest/contributions/manual-receipts-and-thank-yous/#grouped-contribution-thank-you-letters
+      $tokenProcessor = new TokenProcessor(\Civi::dispatcher(), $tokenContext);
+      $contributionTokens = CRM_Utils_Token::getTokens($html_message)['contribution'] ?? [];
+      foreach ($contributionTokens as $token) {
+        $tokenProcessor->addMessage($token, '{contribution.' . $token . '}', 'text/html');
+      }
+
+      foreach ($contributions as $contribution) {
+        $tokenProcessor->addRow([
+          'contributionId' => $contribution['id'],
+          'contribution' => $contribution,
+        ]);
+      }
+      $tokenProcessor->evaluate();
+      $resolvedTokens = [];
+      foreach ($contributionTokens as $token) {
+        foreach ($tokenProcessor->getRows() as $row) {
+          $resolvedTokens[$token][$row->context['contributionId']] = $row->render($token);
+        }
+        $html_message = str_replace('{contribution.' . $token . '}', implode($separator, $resolvedTokens[$token]), $html_message);
+      }
+    }
+    $tokenContext['contributionId'] = $contributionID;
+    return CRM_Core_TokenSmarty::render(['html' => $html_message], $tokenContext)['html'];
   }
 
 }

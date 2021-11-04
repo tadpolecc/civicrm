@@ -23,14 +23,20 @@
  * The intention is that common functionality can be moved here and the other
  * classes cleaned up.
  * Keep old-style token handling out of this class.
+ *
+ * @deprecated
  */
 class CRM_Core_Form_Task_PDFLetterCommon {
 
   /**
    * @var CRM_Core_Form $form
+   *
+   * @deprecated
    */
   public static function preProcess(&$form) {
-    CRM_Utils_System::setTitle('Print/Merge Document');
+    CRM_Core_Error::deprecatedFunctionWarning('no alternative');
+
+    $form->setTitle('Print/Merge Document');
   }
 
   /**
@@ -198,7 +204,25 @@ class CRM_Core_Form_Task_PDFLetterCommon {
    */
   public static function formRule($fields, $files, $self) {
     $errors = [];
-    $template = CRM_Core_Smarty::singleton();
+    $deprecatedTokens = [
+      '{case.status_id}' => '{case.status_id:label}',
+      '{case.case_type_id}' => '{case.case_type_id:label}',
+      '{membership.status}' => '{membership.status_id:label}',
+      '{membership.type}' => '{membership.membership_type_id:label}',
+      '{contribution.campaign}' => '{contribution.campaign_id:label}',
+      '{contribution.payment_instrument}' => '{contribution.payment_instrument_id:label}',
+      '{contribution.contribution_id}' => '{contribution.id}',
+      '{contribution.contribution_source}' => '{contribution.source}',
+    ];
+    $tokenErrors = [];
+    foreach ($deprecatedTokens as $token => $replacement) {
+      if (strpos($fields['html_message'], $token) !== FALSE) {
+        $tokenErrors[] = ts('Token %1 is no longer supported - use %2 instead', [$token, $replacement]);
+      }
+    }
+    if (!empty($tokenErrors)) {
+      $errors['html_message'] = implode('<br>', $tokenErrors);
+    }
 
     // If user uploads non-document file other than odt/docx
     if (empty($fields['template']) &&
@@ -233,11 +257,15 @@ class CRM_Core_Form_Task_PDFLetterCommon {
    *
    * @return string $html_message
    *
+   * @deprecated
+   *
    * @throws \CRM_Core_Exception
    * @throws \CiviCRM_API3_Exception
    * @throws \Civi\API\Exception\UnauthorizedException
    */
   public static function processTemplate(&$formValues) {
+    CRM_Core_Error::deprecatedFunctionWarning('no alternative');
+
     $html_message = $formValues['html_message'] ?? NULL;
 
     // process message template
@@ -295,6 +323,8 @@ class CRM_Core_Form_Task_PDFLetterCommon {
   }
 
   /**
+   * @deprecated
+   *
    * @param $message
    */
   public static function formatMessage(&$message) {
@@ -347,19 +377,12 @@ class CRM_Core_Form_Task_PDFLetterCommon {
    *   The values submitted through the form
    *
    * @deprecated
-   *
-   * @return array
-   *   If formValues['is_unit_test'] is true, otherwise outputs document to browser
    */
-  public static function renderFromRows($rows, $msgPart, $formValues) {
+  public static function renderFromRows($rows, $msgPart, $formValues): void {
     CRM_Core_Error::deprecatedFunctionWarning('no alternative');
     $html = [];
     foreach ($rows as $row) {
       $html[] = $row->render($msgPart);
-    }
-
-    if (!empty($formValues['is_unit_test'])) {
-      return $html;
     }
 
     if (!empty($html)) {

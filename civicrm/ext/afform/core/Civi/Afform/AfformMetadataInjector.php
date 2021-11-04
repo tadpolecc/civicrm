@@ -104,7 +104,7 @@ class AfformMetadataInjector {
       $isSearchRange = !empty($fieldDefn['search_range']) && \CRM_Utils_JS::decode($fieldDefn['search_range']);
 
       // Default placeholder for select inputs
-      if ($inputType === 'Select') {
+      if ($inputType === 'Select' || $inputType === 'ChainSelect') {
         $fieldInfo['input_attrs']['placeholder'] = E::ts('Select');
       }
       elseif ($inputType === 'EntityRef') {
@@ -172,11 +172,16 @@ class AfformMetadataInjector {
       $params['values'] = ['contact_type' => $entityName];
       $entityName = 'Contact';
     }
-    $fields = civicrm_api4($entityName, 'getFields', $params);
-    $field = $originalField = $fields->first();
+    foreach (civicrm_api4($entityName, 'getFields', $params) as $field) {
+      // In the highly unlikely event of 2 fields returned, prefer the exact match
+      if ($field['name'] === $fieldName) {
+        break;
+      }
+    }
     // If this is an implicit join, get new field from fk entity
     if ($field['name'] !== $fieldName && $field['fk_entity']) {
       $params['where'] = [['name', '=', substr($fieldName, 1 + strrpos($fieldName, '.'))]];
+      $originalField = $field;
       $field = civicrm_api4($field['fk_entity'], 'getFields', $params)->first();
       if ($field) {
         $field['label'] = $originalField['label'] . ' ' . $field['label'];

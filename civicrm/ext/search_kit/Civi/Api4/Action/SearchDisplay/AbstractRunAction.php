@@ -42,6 +42,14 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
   protected $filters = [];
 
   /**
+   * Integer used as a seed when ordering by RAND().
+   * This keeps the order stable enough to use a pager with random sorting.
+   *
+   * @var int
+   */
+  protected $seed;
+
+  /**
    * Name of Afform, if this display is embedded (used for permissioning)
    * @var string
    */
@@ -121,18 +129,41 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       $select[$expr->getAlias()] = $item;
     }
     $formatted = [];
-    foreach ($result as $data) {
+    foreach ($result as $index => $data) {
       $row = [];
       foreach ($select as $key => $item) {
-        $raw = $data[$key] ?? NULL;
-        $row[$key] = [
-          'raw' => $raw,
-          'view' => $this->formatViewValue($item['dataType'], $raw),
-        ];
+        $row[$key] = $this->getValue($key, $data, $item['dataType'], $index);
       }
       $formatted[] = $row;
     }
     return $formatted;
+  }
+
+  /**
+   * @param $key
+   * @param $data
+   * @param $dataType
+   * @param $index
+   * @return array
+   */
+  private function getValue($key, $data, $dataType, $index) {
+    // Get value from api result unless this is a pseudo-field which gets a calculated value
+    switch ($key) {
+      case 'result_row_num':
+        $raw = $index + 1 + ($this->savedSearch['api_params']['offset'] ?? 0);
+        break;
+
+      case 'user_contact_id':
+        $raw = \CRM_Core_Session::getLoggedInContactID();
+        break;
+
+      default:
+        $raw = $data[$key] ?? NULL;
+    }
+    return [
+      'raw' => $raw,
+      'view' => $this->formatViewValue($dataType, $raw),
+    ];
   }
 
   /**
@@ -186,17 +217,19 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
    * Applies supplied filters to the where clause
    */
   protected function applyFilters() {
+    // Allow all filters that are included in SELECT clause or are fields on the Afform.
+    $allowedFilters = array_merge($this->getSelectAliases(), $this->getAfformFilters());
+
     // Ignore empty strings
     $filters = array_filter($this->filters, [$this, 'hasValue']);
     if (!$filters) {
       return;
     }
 
-    // Process all filters that are included in SELECT clause or are allowed by the Afform.
-    $allowedFilters = array_merge($this->getSelectAliases(), $this->getAfformFilters());
-    foreach ($filters as $fieldName => $value) {
-      if (in_array($fieldName, $allowedFilters, TRUE)) {
-        $this->applyFilter($fieldName, $value);
+    foreach ($filters as $key => $value) {
+      $fieldNames = explode(',', $key);
+      if (in_array($key, $allowedFilters, TRUE) || !array_diff($fieldNames, $allowedFilters)) {
+        $this->applyFilter($fieldNames, $value);
       }
     }
   }
@@ -221,13 +254,16 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
   }
 
   /**
-   * @param string $fieldName
+   * @param array $fieldNames
+   *   If multiple field names are given they will be combined in an OR clause
    * @param mixed $value
    */
-  private function applyFilter(string $fieldName, $value) {
+  private function applyFilter(array $fieldNames, $value) {
     // Global setting determines if % wildcard should be added to both sides (default) or only the end of a search string
     $prefixWithWildcard = \Civi::settings()->get('includeWildCardInName');
 
+    // Based on the first field, decide which clause to add this condition to
+    $fieldName = $fieldNames[0];
     $field = $this->getField($fieldName);
     // If field is not found it must be an aggregated column & belongs in the HAVING clause.
     if (!$field) {
@@ -248,44 +284,57 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       $clause =& $this->savedSearch['api_params']['where'];
     }
 
-    $dataType = $field['data_type'] ?? NULL;
+    $filterClauses = [];
 
-    // Array is either associative `OP => VAL` or sequential `IN (...)`
-    if (is_array($value)) {
-      $value = array_filter($value, [$this, 'hasValue']);
-      // If array does not contain operators as keys, assume array of values
-      if (array_diff_key($value, array_flip(CoreUtil::getOperators()))) {
-        // Use IN for regular fields
-        if (empty($field['serialize'])) {
-          $clause[] = [$fieldName, 'IN', $value];
-        }
-        // Use an OR group of CONTAINS for array fields
-        else {
-          $orGroup = [];
-          foreach ($value as $val) {
-            $orGroup[] = [$fieldName, 'CONTAINS', $val];
+    foreach ($fieldNames as $fieldName) {
+      $field = $this->getField($fieldName);
+      $dataType = $field['data_type'] ?? NULL;
+      // Array is either associative `OP => VAL` or sequential `IN (...)`
+      if (is_array($value)) {
+        $value = array_filter($value, [$this, 'hasValue']);
+        // If array does not contain operators as keys, assume array of values
+        if (array_diff_key($value, array_flip(CoreUtil::getOperators()))) {
+          // Use IN for regular fields
+          if (empty($field['serialize'])) {
+            $filterClauses[] = [$fieldName, 'IN', $value];
           }
-          $clause[] = ['OR', $orGroup];
+          // Use an OR group of CONTAINS for array fields
+          else {
+            $orGroup = [];
+            foreach ($value as $val) {
+              $orGroup[] = [$fieldName, 'CONTAINS', $val];
+            }
+            $filterClauses[] = ['OR', $orGroup];
+          }
+        }
+        // Operator => Value array
+        else {
+          $andGroup = [];
+          foreach ($value as $operator => $val) {
+            $andGroup[] = [$fieldName, $operator, $val];
+          }
+          $filterClauses[] = ['AND', $andGroup];
         }
       }
-      // Operator => Value array
+      elseif (!empty($field['serialize'])) {
+        $filterClauses[] = [$fieldName, 'CONTAINS', $value];
+      }
+      elseif (!empty($field['options']) || in_array($dataType, ['Integer', 'Boolean', 'Date', 'Timestamp'])) {
+        $filterClauses[] = [$fieldName, '=', $value];
+      }
+      elseif ($prefixWithWildcard) {
+        $filterClauses[] = [$fieldName, 'CONTAINS', $value];
+      }
       else {
-        foreach ($value as $operator => $val) {
-          $clause[] = [$fieldName, $operator, $val];
-        }
+        $filterClauses[] = [$fieldName, 'LIKE', $value . '%'];
       }
     }
-    elseif (!empty($field['serialize'])) {
-      $clause[] = [$fieldName, 'CONTAINS', $value];
-    }
-    elseif (!empty($field['options']) || in_array($dataType, ['Integer', 'Boolean', 'Date', 'Timestamp'])) {
-      $clause[] = [$fieldName, '=', $value];
-    }
-    elseif ($prefixWithWildcard) {
-      $clause[] = [$fieldName, 'CONTAINS', $value];
+    // Single field
+    if (count($filterClauses) === 1) {
+      $clause[] = $filterClauses[0];
     }
     else {
-      $clause[] = [$fieldName, 'LIKE', $value . '%'];
+      $clause[] = ['OR', $filterClauses];
     }
   }
 
@@ -308,6 +357,10 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
 
     $orderBy = [];
     foreach ($currentSort ?: $defaultSort as $item) {
+      // Apply seed to random sorting
+      if ($item[0] === 'RAND()' && isset($this->seed)) {
+        $item[0] = 'RAND(' . $this->seed . ')';
+      }
       $orderBy[$item[0]] = $item[1];
     }
     return $orderBy;
@@ -347,7 +400,34 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     preg_match_all('/\\[([^]]+)\\]/', $possibleTokens, $tokens);
     // Only add fields not already in SELECT clause
     $additions = array_diff(array_merge($additions, $tokens[1]), $existing);
+    // Tokens for aggregated columns start with 'GROUP_CONCAT_'
+    foreach ($additions as $index => $alias) {
+      if (strpos($alias, 'GROUP_CONCAT_') === 0) {
+        $additions[$index] = 'GROUP_CONCAT(' . $this->getJoinFromAlias(explode('_', $alias, 3)[2]) . ') AS ' . $alias;
+      }
+    }
     $apiParams['select'] = array_unique(array_merge($apiParams['select'], $additions));
+  }
+
+  /**
+   * Given an alias like Contact_Email_01_location_type_id
+   * this will return Contact_Email_01.location_type_id
+   * @param string $alias
+   * @return string
+   */
+  protected function getJoinFromAlias(string $alias) {
+    $result = '';
+    foreach ($this->savedSearch['api_params']['join'] ?? [] as $join) {
+      $joinName = explode(' AS ', $join[0])[1];
+      if (strpos($alias, $joinName) === 0) {
+        $parsed = $joinName . '.' . substr($alias, strlen($joinName) + 1);
+        // Ensure we are using the longest match
+        if (strlen($parsed) > strlen($result)) {
+          $result = $parsed;
+        }
+      }
+    }
+    return $result;
   }
 
   /**
@@ -384,11 +464,17 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     $filterAttr = $afform['searchDisplay']['filters'] ?? NULL;
     if ($filterAttr && is_string($filterAttr) && $filterAttr[0] === '{') {
       foreach (\CRM_Utils_JS::decode($filterAttr) as $filterKey => $filterVal) {
-        $filterKeys[] = $filterKey;
         // Automatically apply filters from the markup if they have a value
-        // (if it's a javascript variable it will have come back from decode() as NULL and we'll ignore it).
-        if ($this->hasValue($filterVal)) {
-          $this->applyFilter($filterKey, $filterVal);
+        if ($filterVal !== NULL) {
+          unset($this->filters[$filterKey]);
+          if ($this->hasValue($filterVal)) {
+            $this->applyFilter(explode(',', $filterKey), $filterVal);
+          }
+        }
+        // If it's a javascript variable it will have come back from decode() as NULL;
+        // whitelist it to allow it to be passed to this api from javascript.
+        else {
+          $filterKeys[] = $filterKey;
         }
       }
     }
@@ -421,6 +507,35 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       }
     }
     return $this->_afform;
+  }
+
+  /**
+   * Extra calculated fields provided by SearchKit
+   * @return array[]
+   */
+  public static function getPseudoFields(): array {
+    return [
+      [
+        'name' => 'result_row_num',
+        'fieldName' => 'result_row_num',
+        'title' => ts('Row Number'),
+        'label' => ts('Row Number'),
+        'description' => ts('Index of each row, starting from 1 on the first page'),
+        'type' => 'Pseudo',
+        'data_type' => 'Integer',
+        'readonly' => TRUE,
+      ],
+      [
+        'name' => 'user_contact_id',
+        'fieldName' => 'result_row_num',
+        'title' => ts('Current User ID'),
+        'label' => ts('Current User ID'),
+        'description' => ts('Contact ID of the current user if logged in'),
+        'type' => 'Pseudo',
+        'data_type' => 'Integer',
+        'readonly' => TRUE,
+      ],
+    ];
   }
 
 }

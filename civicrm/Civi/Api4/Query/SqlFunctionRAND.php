@@ -19,14 +19,26 @@ class SqlFunctionRAND extends SqlFunction {
   protected static $category = self::CATEGORY_MATH;
 
   protected static function params(): array {
-    return [];
+    return [
+      [
+        'optional' => TRUE,
+        'must_be' => ['SqlNumber'],
+      ],
+    ];
   }
 
   /**
    * @return string
    */
   public static function getTitle(): string {
-    return ts('Random Number');
+    return ts('Random number');
+  }
+
+  /**
+   * @return string
+   */
+  public static function getDescription(): string {
+    return ts('Generates a random number between 0 and 1.');
   }
 
 }
