@@ -21,7 +21,7 @@
         {name: 'table-striped', label: ts('Even/Odd Stripes')}
       ];
 
-      // Check if array conatains item
+      // Check if array contains item
       this.includes = _.includes;
 
       // Add or remove an item from an array
@@ -35,11 +35,7 @@
 
       this.$onInit = function () {
         if (!ctrl.display.settings) {
-          ctrl.display.settings = {
-            limit: CRM.crmSearchAdmin.defaultPagerSize,
-            classes: ['table'],
-            pager: {}
-          };
+          ctrl.display.settings = _.extend({}, CRM.crmSearchAdmin.defaultDisplay.settings, {columns: null});
         }
         // Displays created prior to 5.43 may not have this property
         ctrl.display.settings.classes = ctrl.display.settings.classes || [];

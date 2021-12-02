@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CiviCRM
  * Description: CiviCRM - Growing and Sustaining Relationships
- * Version: 5.43.2
+ * Version: 5.44.0
  * Requires at least: 4.9
  * Requires PHP:      7.2
  * Author: CiviCRM LLC
@@ -54,7 +54,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Set version here: when it changes, will force Javascript & CSS to reload.
-define('CIVICRM_PLUGIN_VERSION', '5.43.2');
+define('CIVICRM_PLUGIN_VERSION', '5.44.0');
 
 // Store reference to this file.
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -692,7 +692,7 @@ class CiviCRM_For_WordPress {
     // Store context.
     $this->civicrm_in_wordpress_set();
 
-    // When embedded via wpBasePage or AJAX call.
+    // When the CiviCRM query var is detected.
     if ($this->civicrm_in_wordpress()) {
 
       /*
@@ -718,19 +718,10 @@ class CiviCRM_For_WordPress {
 
       }
 
-      // Set context.
-      $this->civicrm_context_set('basepage');
-
-      // If we get here, we must be in a "wpBasePage" context.
-      $this->basepage->register_hooks();
-      return;
-
     }
 
-    // Set context.
-    $this->civicrm_context_set('shortcode');
-
-    // That leaves us with handling shortcodes, should they exist.
+    // Let the classes decide how to handle other requests.
+    $this->basepage->register_hooks();
     $this->shortcodes->register_hooks();
 
   }

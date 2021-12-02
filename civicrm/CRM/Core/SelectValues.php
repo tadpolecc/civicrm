@@ -237,10 +237,7 @@ class CRM_Core_SelectValues {
     ];
 
     if (CRM_Core_Config::singleton()->userSystem->supports_form_extensions) {
-      $ufGroupType += [
-        'User Registration' => ts('Drupal User Registration'),
-        'User Account' => ts('View/Edit Drupal User Account'),
-      ];
+      $ufGroupType += CRM_Core_Config::singleton()->userSystem->getUfGroupTypes();
     }
     return $ufGroupType;
   }
@@ -900,6 +897,7 @@ class CRM_Core_SelectValues {
     // is for recurring payments and probably not good to re-use for recurring entities.
     // If something other than a hard-coded list is desired, add a new option_group.
     return [
+      'minute' => ts('minute', ['plural' => 'minutes', 'count' => $count]),
       'hour' => ts('hour', ['plural' => 'hours', 'count' => $count]),
       'day' => ts('day', ['plural' => 'days', 'count' => $count]),
       'week' => ts('week', ['plural' => 'weeks', 'count' => $count]),
