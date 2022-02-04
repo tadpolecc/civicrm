@@ -92,17 +92,17 @@
     },
     {
         "name": "brick/money",
-        "version": "0.5.1",
-        "version_normalized": "0.5.1.0",
+        "version": "0.5.3",
+        "version_normalized": "0.5.3.0",
         "source": {
             "type": "git",
             "url": "https://github.com/brick/money.git",
-            "reference": "c6f2883c8a759bf7f77c79aaa6004af6d6c0afaf"
+            "reference": "49e6597470da74f6a9f1dd7d5286ea3b4756b7e0"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/brick/money/zipball/c6f2883c8a759bf7f77c79aaa6004af6d6c0afaf",
-            "reference": "c6f2883c8a759bf7f77c79aaa6004af6d6c0afaf",
+            "url": "https://api.github.com/repos/brick/money/zipball/49e6597470da74f6a9f1dd7d5286ea3b4756b7e0",
+            "reference": "49e6597470da74f6a9f1dd7d5286ea3b4756b7e0",
             "shasum": ""
         },
         "require": {
@@ -115,12 +115,12 @@
             "ext-pdo": "*",
             "php-coveralls/php-coveralls": "^2.2",
             "phpunit/phpunit": "^7.5.15 || ^8.0 || ^9.0",
-            "vimeo/psalm": "4.3.2"
+            "vimeo/psalm": "4.9.2"
         },
         "suggest": {
             "ext-intl": "Required to format Money objects"
         },
-        "time": "2021-02-10T14:14:29+00:00",
+        "time": "2021-10-10T11:59:43+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -137,7 +137,11 @@
             "brick",
             "currency",
             "money"
-        ]
+        ],
+        "support": {
+            "issues": "https://github.com/brick/money/issues",
+            "source": "https://github.com/brick/money/tree/0.5.3"
+        }
     },
     {
         "name": "cache/integration-tests",

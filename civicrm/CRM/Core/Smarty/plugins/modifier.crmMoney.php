@@ -18,9 +18,9 @@
 /**
  * Format the given monetary amount (and currency) for display
  *
- * @param float $amount
+ * @param string|int|float $amount
  *   The monetary amount up for display.
- * @param string $currency
+ * @param string|null $currency
  *   The (optional) currency.
  *
  * @return string
@@ -28,6 +28,6 @@
  *
  * @throws \CRM_Core_Exception
  */
-function smarty_modifier_crmMoney($amount, $currency = NULL) {
-  return CRM_Utils_Money::format($amount, $currency);
+function smarty_modifier_crmMoney($amount, ?string $currency = NULL): string {
+  return Civi::format()->money($amount, $currency);
 }

@@ -49,6 +49,14 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
   protected $filters = [];
 
   /**
+   * Filters passed directly into this display via Afform markup
+   * will have their labels appended to the Afform title.
+   *
+   * @var array
+   */
+  protected $filterLabels = [];
+
+  /**
    * Integer used as a seed when ordering by RAND().
    * This keeps the order stable enough to use a pager with random sorting.
    *
@@ -66,6 +74,14 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
    * @var array
    */
   private $_afform;
+
+  /**
+   * Override execute method to change the result object type
+   * @return \Civi\Api4\Result\SearchDisplayRunResult
+   */
+  public function execute() {
+    return parent::execute();
+  }
 
   /**
    * @param \Civi\Api4\Generic\Result $result
@@ -99,13 +115,13 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       throw new UnauthorizedException('Access denied');
     }
 
-    $this->_apiParams['checkPermissions'] = empty($this->display['acl_bypass']);
+    $this->_apiParams['checkPermissions'] = $this->savedSearch['api_params']['checkPermissions'] = empty($this->display['acl_bypass']);
     $this->display['settings']['columns'] = $this->display['settings']['columns'] ?? [];
 
     $this->processResult($result);
   }
 
-  abstract protected function processResult(\Civi\Api4\Generic\Result $result);
+  abstract protected function processResult(\Civi\Api4\Result\SearchDisplayRunResult $result);
 
   /**
    * Transforms each row into an array of raw data and an array of formatted columns
@@ -404,12 +420,13 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       }
       // Check access for edit/update links
       // (presumably if a record is shown in SearchKit the user already has view access, and the check is expensive)
-      if ($path && isset($data) && $link['action'] !== 'view') {
+      if ($path && isset($data) && !in_array($link['action'], ['view', 'preview'], TRUE)) {
         $id = $data[$prefix . $idKey] ?? NULL;
         $id = is_array($id) ? $id[$index] ?? NULL : $id;
         if ($id) {
           $access = civicrm_api4($link['entity'], 'checkAccess', [
-            'action' => $link['action'],
+            // Fudge links with funny action names to check 'update'
+            'action' => $link['action'] === 'delete' ? 'delete' : 'update',
             'values' => [
               $idField => $id,
             ],
@@ -586,7 +603,8 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
    */
   protected function applyFilters() {
     // Allow all filters that are included in SELECT clause or are fields on the Afform.
-    $allowedFilters = array_merge($this->getSelectAliases(), $this->getAfformFilters());
+    $afformFilters = $this->getAfformFilters();
+    $allowedFilters = array_merge($this->getSelectAliases(), $afformFilters);
 
     // Ignore empty strings
     $filters = array_filter($this->filters, [$this, 'hasValue']);
@@ -598,6 +616,9 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       $fieldNames = explode(',', $key);
       if (in_array($key, $allowedFilters, TRUE) || !array_diff($fieldNames, $allowedFilters)) {
         $this->applyFilter($fieldNames, $value);
+      }
+      if (in_array($key, $afformFilters, TRUE)) {
+        $this->addFilterLabel($key, $value);
       }
     }
   }
@@ -938,6 +959,47 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
         'readonly' => TRUE,
       ],
     ];
+  }
+
+  /**
+   * Sets $this->filterLabels to provide contextual titles to search Afforms
+   *
+   * @param $fieldName
+   * @param $value
+   * @throws \API_Exception
+   * @throws \Civi\API\Exception\NotImplementedException
+   */
+  private function addFilterLabel($fieldName, $value) {
+    $field = $this->getField($fieldName);
+    if (!$field || !$value) {
+      return;
+    }
+    $idField = CoreUtil::getIdFieldName($field['entity']);
+    if ($field['name'] === $idField) {
+      $field['fk_entity'] = $field['entity'];
+    }
+    if (!empty($field['options'])) {
+      $options = civicrm_api4($field['entity'], 'getFields', [
+        'loadOptions' => TRUE,
+        'where' => [['name', '=', $field['name']]],
+      ])->first()['options'] ?? [];
+      if (!empty($options[$value])) {
+        $this->filterLabels[] = $options[$value];
+      }
+    }
+    elseif (!empty($field['fk_entity'])) {
+      $idField = CoreUtil::getIdFieldName($field['fk_entity']);
+      $labelField = CoreUtil::getInfoItem($field['fk_entity'], 'label_field');
+      if ($labelField) {
+        $record = civicrm_api4($field['fk_entity'], 'get', [
+          'where' => [[$idField, '=', $value]],
+          'select' => [$labelField],
+        ])->first() ?? NULL;
+        if (isset($record[$labelField])) {
+          $this->filterLabels[] = $record[$labelField];
+        }
+      }
+    }
   }
 
 }

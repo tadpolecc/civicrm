@@ -414,7 +414,7 @@ WHERE cf.id IN (" . $customFieldIds . ") AND is_multiple = 1 LIMIT 0,1";
       }
     }
 
-    $contactTypes = ['Individual', 'Household', 'Organization'];
+    $contactTypes = CRM_Contact_BAO_ContactType::basicTypes(TRUE);
     $subTypes = CRM_Contact_BAO_ContactType::subTypes();
 
     $profileTypeComponent = array_intersect($components, $profileTypes);
@@ -672,41 +672,6 @@ WHERE cf.id IN (" . $customFieldIds . ") AND is_multiple = 1 LIMIT 0,1";
     else {
       return $profileType;
     }
-  }
-
-  /**
-   * Check for mix profiles groups (eg: individual + other contact types)
-   *
-   * @param $ctype
-   *
-   * @return bool
-   *   true for mix profile group else false
-   */
-  public static function checkProfileGroupType($ctype) {
-    $ufGroup = new CRM_Core_DAO_UFGroup();
-
-    $query = "
-SELECT ufg.id as id
-  FROM civicrm_uf_group as ufg, civicrm_uf_join as ufj
- WHERE ufg.id = ufj.uf_group_id
-   AND ufj.module = 'User Registration'
-   AND ufg.is_active = 1 ";
-
-    $ufGroup = CRM_Core_DAO::executeQuery($query);
-
-    $fields = [];
-    $validProfiles = ['Individual', 'Organization', 'Household', 'Contribution'];
-    while ($ufGroup->fetch()) {
-      $profileType = self::getProfileType($ufGroup->id);
-      if (in_array($profileType, $validProfiles)) {
-        continue;
-      }
-      elseif ($profileType) {
-        return FALSE;
-      }
-    }
-
-    return TRUE;
   }
 
   /**
