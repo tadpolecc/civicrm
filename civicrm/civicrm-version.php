@@ -1,7 +1,7 @@
 <?php
 /** @deprecated */
 function civicrmVersion( ) {
-  return array( 'version'  => '5.46.1',
+  return array( 'version'  => '5.46.2',
                 'cms'      => 'Wordpress',
                 'revision' => '' );
 }
