@@ -252,20 +252,6 @@ VALUES
 INSERT INTO civicrm_navigation
     ( domain_id, url, label, name, permission, permission_operator, parent_id, is_active, has_separator, weight, icon )
 VALUES
-    ( @domainID, NULL, 'Grants', 'Grants', 'access CiviGrant', '', NULL, '1', NULL, 90, 'crm-i fa-money' );
-
-SET @grantlastID:=LAST_INSERT_ID();
-INSERT INTO civicrm_navigation
-    ( domain_id, url, label, name, permission, permission_operator, parent_id, is_active, has_separator, weight )
-VALUES
-    ( @domainID, 'civicrm/grant?reset=1',           'Dashboard', 'Dashboard', 'access CiviGrant', '',       @grantlastID, '1', NULL, 1 ),
-    ( @domainID, 'civicrm/grant/add?reset=1&action=add&context=standalone', 'New Grant', 'New Grant', 'access CiviGrant,edit grants', 'AND', @grantlastID, '1', NULL, 2 ),
-    ( @domainID, 'civicrm/grant/search?reset=1',    'Find Grants', 'Find Grants', 'access CiviGrant', '',   @grantlastID, '1', 1, 3 ),
-    ( @domainID, 'civicrm/report/list?compid=5&reset=1', 'Grant Reports', 'Grant Reports', 'access CiviGrant', '', @grantlastID, '1', 0,    4 );
-
-INSERT INTO civicrm_navigation
-    ( domain_id, url, label, name, permission, permission_operator, parent_id, is_active, has_separator, weight, icon )
-VALUES
     ( @domainID, NULL, 'Administer', 'Administer', 'administer CiviCRM', '', NULL, '1', NULL, 100, 'crm-i fa-gears' );
 
 SET @adminlastID:=LAST_INSERT_ID();
@@ -474,18 +460,6 @@ VALUES
     ( @domainID, 'civicrm/admin/badgelayout?reset=1',                       'Event Name Badge Layouts', 'Event Name Badge Layouts', 'access CiviEvent,administer CiviCRM', 'AND', @adminEventlastID, '1', NULL, 11 ),
     ( @domainID, 'civicrm/admin/paymentProcessor?reset=1',                  'Payment Processors', 'Payment Processors',              'administer CiviCRM', '',                     @adminEventlastID, '1', NULL, 12),
     ( @domainID, 'civicrm/admin/setting/preferences/event?reset=1',         'CiviEvent Component Settings', 'CiviEvent Component Settings','access CiviEvent,administer CiviCRM', 'AND', @adminEventlastID, '1', NULL, 13 );
-
-INSERT INTO civicrm_navigation
-    ( domain_id, url, label, name, permission, permission_operator, parent_id, is_active, has_separator, weight )
-VALUES
-    ( @domainID, NULL, 'CiviGrant', 'CiviGrant', 'access CiviGrant,administer CiviCRM', 'AND', @adminlastID, '1', NULL, 13 );
-
-SET @adminGrantlastID:=LAST_INSERT_ID();
-INSERT INTO civicrm_navigation
-    ( domain_id, url, label, name, permission, permission_operator, parent_id, is_active, has_separator, weight )
-VALUES
-    ( @domainID, 'civicrm/admin/options/grant_type?reset=1', 'Grant Types', 'Grant Types', 'access CiviGrant,administer CiviCRM', 'AND', @adminGrantlastID, '1', NULL, 1 ),
-    ( @domainID, 'civicrm/admin/options/grant_status?reset=1', 'Grant Status', 'Grant Status', 'access CiviGrant,administer CiviCRM', 'AND', @adminGrantlastID, '1', NULL, 2 );
 
 INSERT INTO civicrm_navigation
     ( domain_id, url, label, name, permission, permission_operator, parent_id, is_active, has_separator, weight )

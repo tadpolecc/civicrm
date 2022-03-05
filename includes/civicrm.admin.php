@@ -90,6 +90,9 @@ class CiviCRM_For_WordPress_Admin {
     $this->include_files();
     $this->setup_objects();
 
+    // Always check setting for path to "wp-load.php".
+    add_action('civicrm_initialized', [$this, 'add_wpload_setting']);
+
     // Filter Heartbeat on CiviCRM admin pages as late as is practical.
     add_filter('heartbeat_settings', [$this, 'heartbeat'], 1000, 1);
 
@@ -149,7 +152,7 @@ class CiviCRM_For_WordPress_Admin {
     }
     else {
 
-      // Listen for changes to the basepage setting.
+      // Listen for changes to the Base Page setting.
       add_action('civicrm_postSave_civicrm_setting', [$this, 'settings_change'], 10);
 
       // Set page title.
@@ -159,6 +162,12 @@ class CiviCRM_For_WordPress_Admin {
 
     /**
      * Broadcast that this object has registered its callbacks.
+     *
+     * Used internally by:
+     *
+     * - CiviCRM_For_WordPress_Admin_Metabox_Contact_Add::register_hooks()
+     * - CiviCRM_For_WordPress_Admin_Page_Integration::register_hooks()
+     * - CiviCRM_For_WordPress_Admin_Page_Options::register_hooks()
      *
      * @since 5.34
      */
@@ -442,6 +451,9 @@ class CiviCRM_For_WordPress_Admin {
 
     }
 
+    // Success! Set static flag.
+    $initialized = TRUE;
+
     /**
      * Broadcast that CiviCRM is now initialized.
      *
@@ -449,8 +461,6 @@ class CiviCRM_For_WordPress_Admin {
      */
     do_action('civicrm_initialized');
 
-    // Success! Set and return static flag.
-    $initialized = TRUE;
     return $initialized;
 
   }
@@ -602,10 +612,10 @@ class CiviCRM_For_WordPress_Admin {
      * reduce risk of conflicts. The position is now conditionally set depending
      * on the version of WordPress.
      *
-     * @since 5.47 Conditionally set because WordPress 6.0 enforces integers. Backport to 5.45+
+     * @since 4.4
+     * @since 5.47 Conditionally set because WordPress 6.0 enforces integers.
      *
      * @param str|int $menu_position The default menu position.
-     * @return str The modified menu position expressed as a float.
      */
     $position = apply_filters('civicrm_menu_item_position', $menu_position);
 
@@ -658,10 +668,11 @@ class CiviCRM_For_WordPress_Admin {
         );
 
         /*
-        // Add scripts and styles like this.
-        add_action('admin_print_scripts-' . $this->menu_page, [$this, 'admin_installer_js']);
-        add_action('admin_print_styles-' . $this->menu_page, [$this, 'admin_installer_css']);
-        add_action('admin_head-' . $this->menu_page, [$this, 'admin_installer_head'], 50);
+         * Add scripts and styles like this if needed:
+         *
+         * add_action('admin_print_scripts-' . $this->menu_page, [$this, 'admin_installer_js']);
+         * add_action('admin_print_styles-' . $this->menu_page, [$this, 'admin_installer_css']);
+         * add_action('admin_head-' . $this->menu_page, [$this, 'admin_installer_head'], 50);
          */
 
       }
@@ -749,9 +760,6 @@ class CiviCRM_For_WordPress_Admin {
     // Add resources for back end.
     $this->civi->add_core_resources(FALSE);
 
-    // Check setting for path to wp-load.php.
-    $this->add_wpload_setting();
-
   }
 
   /**
@@ -771,20 +779,23 @@ class CiviCRM_For_WordPress_Admin {
    * Multisite, because the path to wp-load.php is common to all sites on the
    * network.
    *
-   * My final concern is that the value will only be set *after* someone visits
-   * CiviCRM in the back end. I have restricted it to this so as not to add
-   * overhead to the front end, but there remains the possibility that the value
-   * could be missing. To repeat: this would be better in civicrm.settings.php.
-   *
    * To get the path to wp-load.php, use:
-   * $path = CRM_Core_BAO_Setting::getItem('CiviCRM Preferences', 'wpLoadPhp');
+   * $path = Civi::settings()->get('wpLoadPhp');
    *
    * @since 4.6.3
    * @since 5.33 Moved to this class.
    */
   public function add_wpload_setting() {
 
-    if (!$this->civi->initialize()) {
+    if (!CIVICRM_INSTALLED) {
+      return;
+    }
+
+    if (!$this->initialize()) {
+      return;
+    }
+
+    if (version_compare(CRM_Core_BAO_Domain::getDomain()->version, '4.7.0', '<')) {
       return;
     }
 
@@ -792,17 +803,14 @@ class CiviCRM_For_WordPress_Admin {
     $path = ABSPATH . 'wp-load.php';
 
     // Get the setting, if it exists.
-    $setting = CRM_Core_BAO_Setting::getItem('CiviCRM Preferences', 'wpLoadPhp');
+    $setting = Civi::settings()->get('wpLoadPhp');
 
-    // If we don't have one, create it.
-    if (is_null($setting)) {
-      CRM_Core_BAO_Setting::setItem($path, 'CiviCRM Preferences', 'wpLoadPhp');
-    }
-
-    // Is it different to the one we've stored?
-    if ($setting !== $path) {
-      // Yes - set new path (this could be because we've changed server or location)
-      CRM_Core_BAO_Setting::setItem($path, 'CiviCRM Preferences', 'wpLoadPhp');
+    /*
+     * If we don't have a setting, create it. Also set it if it's different to
+     * what's stored. This could be because we've changed server or location.
+     */
+    if (empty($setting) || $setting !== $path) {
+      Civi::settings()->set('wpLoadPhp', $path);
     }
 
   }
@@ -821,7 +829,7 @@ class CiviCRM_For_WordPress_Admin {
     // Init link.
     $link = '';
 
-    if (!$this->civi->initialize()) {
+    if (!$this->initialize()) {
       return $link;
     }
 
@@ -851,7 +859,7 @@ class CiviCRM_For_WordPress_Admin {
    */
   public function clear_caches() {
 
-    if (!$this->civi->initialize()) {
+    if (!$this->initialize()) {
       return;
     }
 
@@ -888,7 +896,7 @@ class CiviCRM_For_WordPress_Admin {
       return FALSE;
     }
 
-    if (!$this->civi->initialize()) {
+    if (!$this->initialize()) {
       return FALSE;
     }
 
