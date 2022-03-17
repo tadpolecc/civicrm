@@ -33,6 +33,14 @@ class CRM_Upgrade_Incremental_php_FiveFortySeven extends CRM_Upgrade_Incremental
    * @param null $currentVer
    */
   public function setPreUpgradeMessage(&$preUpgradeMessage, $rev, $currentVer = NULL): void {
+    if ($rev === '5.47.alpha1' && version_compare($currentVer, '5.47', '<')) {
+      // Note: This warning should only exist within a few patch releases of 5.47. Do not merge-forward.
+      $prose = ts('<strong>CiviEvent users may have migration problems with v%1.</strong> CiviEvent users should consider v5.46 instead. <a %2>(Learn more...)</a>', [
+        1 => CRM_Utils_System::version(),
+        2 => 'target="_blank" href="https://civicrm.org/redirect/event-timezone-5.47"',
+      ]);
+      $preUpgradeMessage = '<p>' . $prose . '</p>' . $preUpgradeMessage;
+    }
     if ($rev === '5.47.alpha1') {
       $count = CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_contact WHERE preferred_mail_format != "Both"');
       if ($count) {
@@ -126,6 +134,9 @@ class CRM_Upgrade_Incremental_php_FiveFortySeven extends CRM_Upgrade_Incremental
       }
       CRM_Core_DAO::executeQuery("DELETE FROM civicrm_component WHERE name = 'CiviGrant'", [], TRUE, NULL, FALSE, FALSE);
     }
+    // Reload the civi cache here as 'table_name' may not be in the cached entities
+    // array generated in an earlier version retrieved via $cache->get('api4.entities.info', []);
+    Civi::cache('metadata')->flush();
 
     // There are existing records which should be managed by `civigrant`. To assign ownership, we need
     // placeholders in `civicrm_extension` and `civicrm_managed`.
