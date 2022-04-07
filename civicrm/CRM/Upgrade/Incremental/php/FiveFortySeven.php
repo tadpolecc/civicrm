@@ -21,8 +21,6 @@
  */
 class CRM_Upgrade_Incremental_php_FiveFortySeven extends CRM_Upgrade_Incremental_Base {
 
-  use CRM_Upgrade_Incremental_php_TimezoneRevertTrait;
-
   /**
    * Compute any messages which should be displayed before upgrade.
    *
@@ -48,26 +46,6 @@ class CRM_Upgrade_Incremental_php_FiveFortySeven extends CRM_Upgrade_Incremental
           ts('Your system has custom field groups with duplicate internal names. To ensure data integrity, the internal names will be automatically changed; user-facing titles will not be affected. Please review any custom code you may be using which relies on custom field group names.') .
           '</p>';
       }
-    }
-    if ($rev === '5.47.3') {
-      $preUpgradeMessage .= $this->createEventTzPreUpgradeMessage();
-    }
-  }
-
-  /**
-   * Compute any messages which should be displayed after upgrade.
-   *
-   * Note: This function is called iteratively for each incremental upgrade step.
-   * There must be a concrete step (eg 'X.Y.Z.mysql.tpl' or 'upgrade_X_Y_Z()').
-   *
-   * @param string $postUpgradeMessage
-   *   alterable.
-   * @param string $rev
-   *   an intermediate version; note that setPostUpgradeMessage is called repeatedly with different $revs.
-   */
-  public function setPostUpgradeMessage(&$postUpgradeMessage, $rev): void {
-    if ($rev === '5.47.3') {
-      $postUpgradeMessage .= $this->createEventTzPostUpgradeMessage();
     }
   }
 
@@ -99,20 +77,6 @@ class CRM_Upgrade_Incremental_php_FiveFortySeven extends CRM_Upgrade_Incremental
         "tinyint DEFAULT 0 COMMENT 'Skip permission checks and ACLs when running this display.'"
       );
     }
-  }
-
-  /**
-   * Upgrade step; adds tasks including 'runSql'.
-   *
-   * @param string $rev
-   *   The version number matching this function name
-   */
-  public function upgrade_5_47_1($rev): void {
-    $this->addTask(ts('Upgrade DB to %1: SQL', [1 => $rev]), 'runSql', $rev);
-  }
-
-  public function upgrade_5_47_3($rev): void {
-    $this->addEventTzTasks();
   }
 
   /**
@@ -170,13 +134,6 @@ class CRM_Upgrade_Incremental_php_FiveFortySeven extends CRM_Upgrade_Incremental
           'entity' => 'OptionValue',
           'values' => [
             'option_group_id:name' => 'advanced_search_options',
-            'name' => 'CiviGrant',
-          ],
-        ],
-        'OptionGroup_contact_view_options_OptionValue_CiviGrant' => [
-          'entity' => 'OptionValue',
-          'values' => [
-            'option_group_id:name' => 'contact_view_options',
             'name' => 'CiviGrant',
           ],
         ],

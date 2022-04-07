@@ -688,12 +688,13 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     $field = $this->getField($fieldName);
     // If field is not found it must be an aggregated column & belongs in the HAVING clause.
     if (!$field) {
+      $this->_apiParams += ['having' => []];
       $clause =& $this->_apiParams['having'];
     }
     // If field belongs to an EXCLUDE join, it should be added as a join condition
     else {
       $prefix = strpos($fieldName, '.') ? explode('.', $fieldName)[0] : NULL;
-      foreach ($this->_apiParams['join'] as $idx => $join) {
+      foreach ($this->_apiParams['join'] ?? [] as $idx => $join) {
         if (($join[1] ?? 'LEFT') === 'EXCLUDE' && (explode(' AS ', $join[0])[1] ?? '') === $prefix) {
           $clause =& $this->_apiParams['join'][$idx];
         }
@@ -803,7 +804,10 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     }, $apiParams['select']);
     $additions = [];
     // Add primary key field if actions are enabled
-    if (!empty($this->display['settings']['actions']) || !empty($this->display['settings']['draggable'])) {
+    // (only needed for non-dao entities, as Api4SelectQuery will auto-add the id)
+    if (!in_array('DAOEntity', CoreUtil::getInfoItem($this->savedSearch['api_entity'], 'type')) &&
+      (!empty($this->display['settings']['actions']) || !empty($this->display['settings']['draggable']))
+    ) {
       $additions = CoreUtil::getInfoItem($this->savedSearch['api_entity'], 'primary_key');
     }
     // Add draggable column (typically "weight")
@@ -872,7 +876,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
    */
   protected function getJoinFromAlias(string $alias) {
     $result = '';
-    foreach ($this->_apiParams['join'] as $join) {
+    foreach ($this->_apiParams['join'] ?? [] as $join) {
       $joinName = explode(' AS ', $join[0])[1];
       if (strpos($alias, $joinName) === 0) {
         $parsed = $joinName . '.' . substr($alias, strlen($joinName) + 1);
