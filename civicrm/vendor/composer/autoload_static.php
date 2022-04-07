@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInite6a22e23c7f9263a26fb613baf89d4c3
+class ComposerStaticInit58a6da2a8ea86ba17fc670924948d537
 {
     public static $files = array (
         '320cde22f66dd4f5d3fd621d3e88b98f' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
@@ -127,6 +127,7 @@ class ComposerStaticInite6a22e23c7f9263a26fb613baf89d4c3
             'Symfony\\Component\\Config\\' => 25,
             'Svg\\' => 4,
             'ScssPhp\\ScssPhp\\' => 16,
+            'Sabberworm\\CSS\\' => 15,
         ),
         'P' => 
         array (
@@ -272,6 +273,10 @@ class ComposerStaticInite6a22e23c7f9263a26fb613baf89d4c3
         'ScssPhp\\ScssPhp\\' => 
         array (
             0 => __DIR__ . '/..' . '/scssphp/scssphp/src',
+        ),
+        'Sabberworm\\CSS\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/sabberworm/php-css-parser/src',
         ),
         'Psr\\SimpleCache\\' => 
         array (
@@ -428,13 +433,6 @@ class ComposerStaticInite6a22e23c7f9263a26fb613baf89d4c3
             'TOGoS_GitIgnore_' => 
             array (
                 0 => __DIR__ . '/..' . '/togos/gitignore/src/main/php',
-            ),
-        ),
-        'S' => 
-        array (
-            'Sabberworm\\CSS' => 
-            array (
-                0 => __DIR__ . '/..' . '/sabberworm/php-css-parser/lib',
             ),
         ),
         'P' => 
@@ -672,11 +670,11 @@ class ComposerStaticInite6a22e23c7f9263a26fb613baf89d4c3
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInite6a22e23c7f9263a26fb613baf89d4c3::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInite6a22e23c7f9263a26fb613baf89d4c3::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInite6a22e23c7f9263a26fb613baf89d4c3::$prefixesPsr0;
-            $loader->fallbackDirsPsr0 = ComposerStaticInite6a22e23c7f9263a26fb613baf89d4c3::$fallbackDirsPsr0;
-            $loader->classMap = ComposerStaticInite6a22e23c7f9263a26fb613baf89d4c3::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit58a6da2a8ea86ba17fc670924948d537::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit58a6da2a8ea86ba17fc670924948d537::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInit58a6da2a8ea86ba17fc670924948d537::$prefixesPsr0;
+            $loader->fallbackDirsPsr0 = ComposerStaticInit58a6da2a8ea86ba17fc670924948d537::$fallbackDirsPsr0;
+            $loader->classMap = ComposerStaticInit58a6da2a8ea86ba17fc670924948d537::$classMap;
 
         }, null, ClassLoader::class);
     }
