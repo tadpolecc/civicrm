@@ -1136,6 +1136,7 @@ class CRM_Core_SelectValues {
    */
   public static function fieldSerialization() {
     return [
+      CRM_Core_DAO::SERIALIZE_NONE => 'none',
       CRM_Core_DAO::SERIALIZE_SEPARATOR_BOOKEND => 'separator_bookend',
       CRM_Core_DAO::SERIALIZE_SEPARATOR_TRIMMED => 'separator_trimmed',
       CRM_Core_DAO::SERIALIZE_JSON => 'json',
@@ -1172,6 +1173,23 @@ class CRM_Core_SelectValues {
     return [
       'AND' => ts('And'),
       'OR' => ts('Or'),
+    ];
+  }
+
+  /**
+   * Columns from the option_value table which may or may not be used by each option_group.
+   *
+   * Note: Value is not listed here as it is not optional.
+   *
+   * @return string[]
+   */
+  public static function optionValueFields() {
+    return [
+      'name' => 'name',
+      'label' => 'label',
+      'description' => 'description',
+      'icon' => 'icon',
+      'color' => 'color',
     ];
   }
 

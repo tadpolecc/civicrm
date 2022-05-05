@@ -261,6 +261,9 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     if ($cssClass) {
       $out['cssClass'] = implode(' ', $cssClass);
     }
+    if (!empty($column['icons'])) {
+      $out['icons'] = $this->getColumnIcons($column['icons'], $data);
+    }
     return $out;
   }
 
@@ -295,7 +298,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     foreach ($styleRules as $clause) {
       $cssClass = $clause[0] ?? '';
       if ($cssClass) {
-        $condition = $this->getCssRuleCondition($clause);
+        $condition = $this->getRuleCondition(array_slice($clause, 1));
         if (is_null($condition[0]) || (ArrayQueryActionTrait::filterCompare($data, $condition))) {
           $classes[] = $cssClass;
         }
@@ -305,20 +308,45 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
   }
 
   /**
+   * Evaluates conditional style rules
+   *
+   * @param array{icon: string, field: string, if: array, side: string}[] $icons
+   * @param array $data
+   * @return array
+   */
+  protected function getColumnIcons(array $icons, array $data) {
+    $result = [];
+    foreach ($icons as $icon) {
+      $iconClass = $icon['icon'] ?? NULL;
+      if (!$iconClass && !empty($icon['field'])) {
+        $iconClass = $data[$icon['field']] ?? NULL;
+      }
+      if ($iconClass) {
+        $condition = $this->getRuleCondition($icon['if'] ?? []);
+        if (!is_null($condition[0]) && !(ArrayQueryActionTrait::filterCompare($data, $condition))) {
+          continue;
+        }
+        $result[] = ['class' => $iconClass, 'side' => $icon['side'] ?? 'left'];
+      }
+    }
+    return $result;
+  }
+
+  /**
    * Returns the condition of a cssRules
    *
    * @param array $clause
    * @return array
    */
-  protected function getCssRuleCondition($clause) {
-    $fieldKey = $clause[1] ?? NULL;
+  protected function getRuleCondition($clause) {
+    $fieldKey = $clause[0] ?? NULL;
     // For fields used in group by, add aggregation and change operator to CONTAINS
     // NOTE: This doesn't support any other operators for aggregated fields.
     if ($fieldKey && $this->canAggregate($fieldKey)) {
-      $clause[2] = 'CONTAINS';
-      $fieldKey = 'GROUP_CONCAT_' . str_replace(['.', ':'], '_', $clause[1]);
+      $clause[1] = 'CONTAINS';
+      $fieldKey = 'GROUP_CONCAT_' . str_replace(['.', ':'], '_', $clause[0]);
     }
-    return [$fieldKey, $clause[2] ?? 'IS NOT EMPTY', $clause[3] ?? NULL];
+    return [$fieldKey, $clause[1] ?? 'IS NOT EMPTY', $clause[2] ?? NULL];
   }
 
   /**
@@ -331,6 +359,27 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     $select = [];
     foreach ($cssRules as $clause) {
       $fieldKey = $clause[1] ?? NULL;
+      if ($fieldKey) {
+        // For fields used in group by, add aggregation
+        $select[] = $this->canAggregate($fieldKey) ? "GROUP_CONCAT($fieldKey) AS GROUP_CONCAT_" . str_replace(['.', ':'], '_', $fieldKey) : $fieldKey;
+      }
+    }
+    return $select;
+  }
+
+  /**
+   * Return fields needed for calculating a column's icons
+   *
+   * @param array $icons
+   * @return array
+   */
+  protected function getIconsSelect($icons) {
+    $select = [];
+    foreach ($icons as $icon) {
+      if (!empty($icon['field'])) {
+        $select[] = $icon['field'];
+      }
+      $fieldKey = $icon['if'][0] ?? NULL;
       if ($fieldKey) {
         // For fields used in group by, add aggregation
         $select[] = $this->canAggregate($fieldKey) ? "GROUP_CONCAT($fieldKey) AS GROUP_CONCAT_" . str_replace(['.', ':'], '_', $fieldKey) : $fieldKey;
@@ -488,35 +537,67 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
   /**
    * @param $column
    * @param $data
-   * @return array{entity: string, input_type: string, data_type: string, options: bool, serialize: bool, fk_entity: string, value_key: string, record: array, value: mixed}|null
+   * @return array{entity: string, action: string, input_type: string, data_type: string, options: bool, serialize: bool, nullable: bool, fk_entity: string, value_key: string, record: array, value: mixed}|null
    */
   private function formatEditableColumn($column, $data) {
     $editable = $this->getEditableInfo($column['key']);
+    $editable['record'] = [];
+    // Generate params to edit existing record
     if (!empty($data[$editable['id_path']])) {
-      $access = civicrm_api4($editable['entity'], 'checkAccess', [
-        'action' => 'update',
-        'values' => [
-          $editable['id_key'] => $data[$editable['id_path']],
-        ],
-      ], 0)['access'];
-      if (!$access) {
-        return NULL;
-      }
-      $editable['record'] = [
-        $editable['id_key'] => $data[$editable['id_path']],
-      ];
+      $editable['action'] = 'update';
+      $editable['record'][$editable['id_key']] = $data[$editable['id_path']];
       $editable['value'] = $data[$editable['value_path']];
-      \CRM_Utils_Array::remove($editable, 'id_key', 'id_path', 'value_path');
-      return $editable;
+    }
+    // Generate params to create new record, if applicable
+    elseif ($editable['explicit_join']) {
+      $editable['action'] = 'create';
+      $editable['value'] = NULL;
+      $editable['nullable'] = FALSE;
+      // Get values for creation from the join clause
+      $join = $this->getQuery()->getExplicitJoin($editable['explicit_join']);
+      foreach ($join['on'] ?? [] as $clause) {
+        if (is_array($clause) && count($clause) === 3 && $clause[1] === '=') {
+          // Because clauses are reversible, check both directions to see which side has a fieldName belonging to this join
+          foreach ([0 => 2, 2 => 0] as $field => $value) {
+            if (strpos($clause[$field], $editable['explicit_join'] . '.') === 0) {
+              $fieldName = substr($clause[$field], strlen($editable['explicit_join']) + 1);
+              // If the value is a field, get it from the data
+              if (isset($data[$clause[$value]])) {
+                $editable['record'][$fieldName] = $data[$clause[$value]];
+              }
+              // If it's a literal bool or number
+              elseif (is_bool($clause[$value]) || is_numeric($clause[$value])) {
+                $editable['record'][$fieldName] = $clause[$value];
+              }
+              // If it's a literal string it will be quoted
+              elseif (is_string($clause[$value]) && in_array($clause[$value][0], ['"', "'"], TRUE) && substr($clause[$value], -1) === $clause[$value][0]) {
+                $editable['record'][$fieldName] = substr($clause[$value], 1, -1);
+              }
+            }
+          }
+        }
+      }
+    }
+    // Ensure current user has access
+    if ($editable['record']) {
+      $access = civicrm_api4($editable['entity'], 'checkAccess', [
+        'action' => $editable['action'],
+        'values' => $editable['record'],
+      ], 0)['access'];
+      if ($access) {
+        \CRM_Utils_Array::remove($editable, 'id_key', 'id_path', 'value_path', 'explicit_join');
+        return $editable;
+      }
     }
     return NULL;
   }
 
   /**
    * @param $key
-   * @return array{entity: string, input_type: string, data_type: string, options: bool, serialize: bool, nullable: bool, fk_entity: string, value_key: string, value_path: string, id_key: string, id_path: string}|null
+   * @return array{entity: string, input_type: string, data_type: string, options: bool, serialize: bool, nullable: bool, fk_entity: string, value_key: string, value_path: string, id_key: string, id_path: string, explicit_join: string}|null
    */
   private function getEditableInfo($key) {
+    // Strip pseudoconstant suffix
     [$key] = explode(':', $key);
     $field = $this->getField($key);
     // If field is an implicit join to another entity (not a custom group), use the original fk field
@@ -543,6 +624,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
         'value_path' => $key,
         'id_key' => $idKey,
         'id_path' => $idPath,
+        'explicit_join' => $field['explicit_join'],
       ];
     }
     return NULL;
@@ -844,10 +926,11 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
           $additions[] = $editable['id_path'];
         }
       }
-      // Add style conditions for the column
-      foreach ($this->getCssRulesSelect($column['cssRules'] ?? []) as $addition) {
-        $additions[] = $addition;
-      }
+      // Add style & icon conditions for the column
+      $additions = array_merge($additions,
+        $this->getCssRulesSelect($column['cssRules'] ?? []),
+        $this->getIconsSelect($column['icons'] ?? [])
+      );
     }
     // Add fields referenced via token
     $tokens = $this->getTokens($possibleTokens);
@@ -920,7 +1003,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     }
     // Get afform field filters
     $filterKeys = array_column(\CRM_Utils_Array::findAll(
-      $afform['layout'] ?? [],
+      $afform['searchDisplay']['fieldset'],
       ['#tag' => 'af-field']
     ), 'name');
     // Get filters passed into search display directive from Afform markup
@@ -949,24 +1032,35 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
    *
    * Verifies the searchDisplay is embedded in the afform and the user has permission to view it.
    *
-   * @return array|false|null
+   * @return array|false
    */
   private function loadAfform() {
     // Only attempt to load afform once.
     if ($this->afform && !isset($this->_afform)) {
       $this->_afform = FALSE;
       // Permission checks are enabled in this api call to ensure the user has permission to view the form
-      $afform = \Civi\Api4\Afform::get()
+      $afform = \Civi\Api4\Afform::get($this->getCheckPermissions())
         ->addWhere('name', '=', $this->afform)
-        ->setLayoutFormat('shallow')
+        ->setLayoutFormat('deep')
         ->execute()->first();
+      if (empty($afform['layout'])) {
+        return FALSE;
+      }
+      // Get all search display fieldsets (which will have an empty value for the af-fieldset attribute)
+      $fieldsets = \CRM_Utils_Array::findAll($afform['layout'], ['af-fieldset' => '']);
+      // As a fallback, search the entire afform in case the search display is not in a fieldset
+      $fieldsets['form'] = $afform['layout'];
       // Validate that the afform contains this search display
-      $afform['searchDisplay'] = \CRM_Utils_Array::findAll(
-          $afform['layout'] ?? [],
-          ['#tag' => "{$this->display['type:name']}", 'display-name' => $this->display['name']]
-        )[0] ?? NULL;
-      if ($afform['searchDisplay']) {
-        $this->_afform = $afform;
+      foreach ($fieldsets as $key => $fieldset) {
+        $afform['searchDisplay'] = \CRM_Utils_Array::findAll(
+            $fieldset,
+            ['#tag' => $this->display['type:name'], 'search-name' => $this->savedSearch['name'], 'display-name' => $this->display['name']]
+          )[0] ?? NULL;
+        if ($afform['searchDisplay']) {
+          // Set the fieldset for this display (if it is in one and we haven't fallen back to the whole form)
+          $afform['searchDisplay']['fieldset'] = $key === 'form' ? [] : $fieldset;
+          return $this->_afform = $afform;
+        }
       }
     }
     return $this->_afform;
