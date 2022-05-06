@@ -4351,23 +4351,23 @@
     },
     {
         "name": "totten/ca-config",
-        "version": "v17.05.0",
-        "version_normalized": "17.05.0.0",
+        "version": "v22.05.0",
+        "version_normalized": "22.05.0.0",
         "source": {
             "type": "git",
             "url": "https://github.com/totten/ca_config.git",
-            "reference": "461cf05f932897c37ca87e9a85283d4963b49f09"
+            "reference": "5d71e1587ea6b18532f0b72b06fab103c1dcf8db"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/totten/ca_config/zipball/461cf05f932897c37ca87e9a85283d4963b49f09",
-            "reference": "461cf05f932897c37ca87e9a85283d4963b49f09",
+            "url": "https://api.github.com/repos/totten/ca_config/zipball/5d71e1587ea6b18532f0b72b06fab103c1dcf8db",
+            "reference": "5d71e1587ea6b18532f0b72b06fab103c1dcf8db",
             "shasum": ""
         },
         "require": {
             "php": ">=5.2"
         },
-        "time": "2017-05-10T20:08:17+00:00",
+        "time": "2022-05-05T05:35:59+00:00",
         "type": "library",
         "installation-source": "dist",
         "autoload": {
@@ -4389,7 +4389,7 @@
         "homepage": "https://github.com/totten/ca_config",
         "support": {
             "issues": "https://github.com/totten/ca_config/issues",
-            "source": "https://github.com/totten/ca_config/tree/master"
+            "source": "https://github.com/totten/ca_config/tree/v22.05.0"
         }
     },
     {
