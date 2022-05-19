@@ -2877,7 +2877,7 @@ CREATE TABLE `civicrm_action_schedule` (
   `name` varchar(64) COMMENT 'Name of the action(reminder)',
   `title` varchar(64) COMMENT 'Title of the action(reminder)',
   `recipient` varchar(64) COMMENT 'Recipient',
-  `limit_to` tinyint NOT NULL DEFAULT 1 COMMENT 'Is this the recipient criteria limited to OR in addition to?',
+  `limit_to` tinyint COMMENT 'Is this the recipient criteria limited to OR in addition to?',
   `entity_value` varchar(255) COMMENT 'Entity value',
   `entity_status` varchar(64) COMMENT 'Entity status',
   `start_action_offset` int unsigned DEFAULT 0 COMMENT 'Reminder Interval.',
