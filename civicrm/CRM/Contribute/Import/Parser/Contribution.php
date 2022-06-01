@@ -42,7 +42,7 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
    * @param null $mapperPhoneType
    * @param array $mapperSoftCreditType
    */
-  public function __construct(&$mapperKeys, $mapperSoftCredit = [], $mapperPhoneType = NULL, $mapperSoftCreditType = []) {
+  public function __construct(&$mapperKeys = [], $mapperSoftCredit = [], $mapperPhoneType = NULL, $mapperSoftCreditType = []) {
     parent::__construct();
     $this->_mapperKeys = &$mapperKeys;
     $this->_mapperSoftCredit = &$mapperSoftCredit;
@@ -189,13 +189,12 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
       return FALSE;
     }
 
-    $this->_lineCount = $this->_warningCount = $this->_validSoftCreditRowCount = $this->_validPledgePaymentRowCount = 0;
+    $this->_lineCount = $this->_validSoftCreditRowCount = $this->_validPledgePaymentRowCount = 0;
     $this->_invalidRowCount = $this->_validCount = $this->_invalidSoftCreditRowCount = $this->_invalidPledgePaymentRowCount = 0;
-    $this->_totalCount = $this->_conflictCount = 0;
+    $this->_totalCount = 0;
 
     $this->_errors = [];
     $this->_warnings = [];
-    $this->_conflicts = [];
     $this->_pledgePaymentErrors = [];
     $this->_softCreditErrors = [];
     if ($statusID) {
@@ -242,7 +241,7 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
       $this->_totalCount++;
 
       if ($mode == self::MODE_MAPFIELD) {
-        $returnCode = $this->mapField($values);
+        $returnCode = CRM_Import_Parser::VALID;
       }
       elseif ($mode == self::MODE_PREVIEW) {
         $returnCode = $this->preview($values);
@@ -287,13 +286,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
         }
       }
 
-      if ($returnCode == self::WARNING) {
-        $this->_warningCount++;
-        if ($this->_warningCount < $this->_maxWarningCount) {
-          $this->_warningCount[] = $line;
-        }
-      }
-
       if ($returnCode == self::ERROR) {
         $this->_invalidRowCount++;
         $recordNumber = $this->_lineCount;
@@ -324,16 +316,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
         $this->_softCreditErrors[] = $values;
       }
 
-      if ($returnCode == self::CONFLICT) {
-        $this->_conflictCount++;
-        $recordNumber = $this->_lineCount;
-        if ($this->_haveColumnHeader) {
-          $recordNumber--;
-        }
-        array_unshift($values, $recordNumber);
-        $this->_conflicts[] = $values;
-      }
-
       if ($returnCode == self::DUPLICATE) {
         $this->_duplicateCount++;
         $recordNumber = $this->_lineCount;
@@ -345,12 +327,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
         if ($onDuplicate != self::DUPLICATE_SKIP) {
           $this->_validCount++;
         }
-      }
-
-      // we give the derived class a way of aborting the process
-      // note that the return code could be multiple code or'ed together
-      if ($returnCode == self::STOP) {
-        break;
       }
 
       // if we are done processing the maxNumber of lines, break
@@ -400,14 +376,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
         self::exportCSV($this->_softCreditErrorsFileName, $headers, $this->_softCreditErrors);
       }
 
-      if ($this->_conflictCount) {
-        $headers = array_merge([
-          ts('Line Number'),
-          ts('Reason'),
-        ], $customHeaders);
-        $this->_conflictFileName = self::errorFileName(self::CONFLICT);
-        self::exportCSV($this->_conflictFileName, $headers, $this->_conflicts);
-      }
       if ($this->_duplicateCount) {
         $headers = array_merge([
           ts('Line Number'),
@@ -418,7 +386,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
         self::exportCSV($this->_duplicateFileName, $headers, $this->_duplicates);
       }
     }
-    return $this->fini();
   }
 
   /**
@@ -550,7 +517,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
     $store->set('validSoftCreditRowCount', $this->_validSoftCreditRowCount);
     $store->set('invalidPledgePaymentRowCount', $this->_invalidPledgePaymentRowCount);
     $store->set('validPledgePaymentRowCount', $this->_validPledgePaymentRowCount);
-    $store->set('conflictRowCount', $this->_conflictCount);
 
     switch ($this->_contactType) {
       case 'Individual':
@@ -567,9 +533,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
 
     if ($this->_invalidRowCount) {
       $store->set('errorsFileName', $this->_errorFileName);
-    }
-    if ($this->_conflictCount) {
-      $store->set('conflictsFileName', $this->_conflictFileName);
     }
     if (isset($this->_rows) && !empty($this->_rows)) {
       $store->set('dataValues', $this->_rows);
@@ -753,18 +716,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
   }
 
   /**
-   * Handle the values in mapField mode.
-   *
-   * @param array $values
-   *   The array of values belonging to this line.
-   *
-   * @return bool
-   */
-  public function mapField(&$values) {
-    return CRM_Import_Parser::VALID;
-  }
-
-  /**
    * Handle the values in preview mode.
    *
    * @param array $values
@@ -886,13 +837,7 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
       return CRM_Import_Parser::ERROR;
     }
 
-    if ($onDuplicate != CRM_Import_Parser::DUPLICATE_UPDATE) {
-      $formatted['custom'] = CRM_Core_BAO_CustomField::postProcess($formatted,
-        NULL,
-        'Contribution'
-      );
-    }
-    else {
+    if ($onDuplicate == CRM_Import_Parser::DUPLICATE_UPDATE) {
       //fix for CRM-2219 - Update Contribution
       // onDuplicate == CRM_Import_Parser::DUPLICATE_UPDATE
       if (!empty($paramValues['invoice_id']) || !empty($paramValues['trxn_id']) || !empty($paramValues['contribution_id'])) {
@@ -901,15 +846,10 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
           'trxn_id' => $paramValues['trxn_id'] ?? NULL,
           'invoice_id' => $paramValues['invoice_id'] ?? NULL,
         ];
-
         $ids['contribution'] = CRM_Contribute_BAO_Contribution::checkDuplicateIds($dupeIds);
 
         if ($ids['contribution']) {
           $formatted['id'] = $ids['contribution'];
-          $formatted['custom'] = CRM_Core_BAO_CustomField::postProcess($formatted,
-            $formatted['id'],
-            'Contribution'
-          );
           //process note
           if (!empty($paramValues['note'])) {
             $noteID = [];
@@ -953,8 +893,9 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
           }
 
           $formatted['id'] = $ids['contribution'];
-          $newContribution = CRM_Contribute_BAO_Contribution::create($formatted);
-          $this->_newContributions[] = $newContribution->id;
+
+          $newContribution = civicrm_api3('contribution', 'create', $formatted);
+          $this->_newContributions[] = $newContribution['id'];
 
           //return soft valid since we need to show how soft credits were added
           if (!empty($formatted['soft_credit'])) {
@@ -1121,12 +1062,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
    */
   public function &getImportedContributions() {
     return $this->_newContributions;
-  }
-
-  /**
-   * The initializer code, called before the processing.
-   */
-  public function fini() {
   }
 
   /**

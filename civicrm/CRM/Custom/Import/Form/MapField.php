@@ -35,8 +35,6 @@ class CRM_Custom_Import_Form_MapField extends CRM_Contact_Import_Form_MapField {
     $skipColumnHeader = $this->controller->exportValue('DataSource', 'skipColumnHeader');
     $this->_onDuplicate = $this->get('onDuplicate');
     if ($skipColumnHeader) {
-      //showColNames needs to be true to show "Column Names" column
-      $this->assign('showColNames', $skipColumnHeader);
       $this->assign('columnNames', $columnNames);
       /* if we had a column header to skip, stash it for later */
       $this->_columnHeaders = $this->_dataValues[0];
@@ -144,9 +142,6 @@ class CRM_Custom_Import_Form_MapField extends CRM_Contact_Import_Form_MapField {
       return;
     }
 
-    $fileName = $this->controller->exportValue('DataSource', 'uploadFile');
-    $separator = $this->controller->exportValue('DataSource', 'fieldSeparator');
-    $skipColumnHeader = $this->controller->exportValue('DataSource', 'skipColumnHeader');
     $this->_entity = $this->controller->exportValue('DataSource', 'entity');
 
     $mapper = [];
@@ -211,7 +206,7 @@ class CRM_Custom_Import_Form_MapField extends CRM_Contact_Import_Form_MapField {
 
     $parser = new $this->_parser($mapperKeysMain);
     $parser->setEntity($this->_multipleCustomData);
-    $parser->run($fileName, $separator, $mapper, $skipColumnHeader,
+    $parser->run($this->getSubmittedValue('uploadFile'), $this->getSubmittedValue('fieldSeparator'), $mapper, $this->getSubmittedValue('skipColumnHeader'),
       CRM_Import_Parser::MODE_PREVIEW, $this->get('contactType')
     );
     // add all the necessary variables to the form

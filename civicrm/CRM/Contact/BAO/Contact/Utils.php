@@ -249,7 +249,7 @@ WHERE  id IN ( $idString )
    * @throws \CRM_Core_Exception
    * @throws \CiviCRM_API3_Exception
    */
-  public static function createCurrentEmployerRelationship($contactID, $employerID, $previousEmployerID = NULL, $newContact = FALSE) {
+  public static function createCurrentEmployerRelationship($contactID, $employerID, $previousEmployerID = NULL, $newContact = FALSE): void {
     if (!$employerID) {
       // This function is not called in core with no organization & should not be
       // Refs CRM-15368,CRM-15547
@@ -258,11 +258,11 @@ WHERE  id IN ( $idString )
     }
     if (!is_numeric($employerID)) {
       $dupeIDs = CRM_Contact_BAO_Contact::getDuplicateContacts(['organization_name' => $employerID], 'Organization', 'Unsupervised', [], FALSE);
-      $employerID = reset($dupeIDs) ?: Contact::create(FALSE)
+      $employerID = (int) (reset($dupeIDs) ?: Contact::create(FALSE)
         ->setValues([
           'contact_type' => 'Organization',
           'organization_name' => $employerID,
-        ])->execute()->first()['id'];
+        ])->execute()->first()['id']);
     }
 
     $relationshipTypeID = CRM_Contact_BAO_RelationshipType::getEmployeeRelationshipTypeID();
@@ -272,9 +272,28 @@ WHERE  id IN ( $idString )
       CRM_Core_Error::deprecatedWarning('attempting to create an employer with invalid contact types is deprecated');
       return;
     }
-    // create employee of relationship
-    [$duplicate, $relationshipIds]
-      = self::legacyCreateMultiple($relationshipTypeID, $employerID, $contactID);
+    $relationshipIds = [];
+    $duplicate = CRM_Contact_BAO_Relationship::checkDuplicateRelationship(
+      [
+        'contact_id_a' => $contactID,
+        'contact_id_b' => $employerID,
+        'relationship_type_id' => $relationshipTypeID,
+      ],
+      $contactID,
+      $employerID
+    );
+    if (!$duplicate) {
+      $params = [
+        'is_active' => TRUE,
+        'contact_check' => [$employerID => TRUE],
+        'contact_id_a' => $contactID,
+        'contact_id_b' => $employerID,
+        'relationship_type_id' => $relationshipTypeID,
+      ];
+      $relationship = CRM_Contact_BAO_Relationship::add($params);
+      CRM_Contact_BAO_Relationship::addRecent($params, $relationship);
+      $relationshipIds = [$relationship->id];
+    }
 
     // In case we change employer, clean previous employer related records.
     if (!$previousEmployerID && !$newContact) {
@@ -316,64 +335,6 @@ WHERE  id IN ( $idString )
         'relationship_type_id' => $relationshipTypeID . '_a_b',
       ], $ids, $action);
     }
-  }
-
-  /**
-   * Previously shared function in need of cleanup.
-   *
-   * Takes an associative array and creates a relationship object.
-   *
-   * @deprecated For single creates use the api instead (it's tested).
-   * For multiple a new variant of this function needs to be written and migrated to as this is a bit
-   * nasty
-   *
-   * @param int $relationshipTypeID
-   * @param int $organizationID
-   * @param int $contactID
-   *
-   * @return array
-   * @throws \CRM_Core_Exception
-   * @throws \CiviCRM_API3_Exception
-   */
-  private static function legacyCreateMultiple(int $relationshipTypeID, int $organizationID, int $contactID): array {
-    $params = [
-      'is_active' => TRUE,
-      'relationship_type_id' => $relationshipTypeID . '_a_b',
-      'contact_check' => [$organizationID => TRUE],
-    ];
-    $ids = ['contact' => $contactID];
-
-    $relationshipIds = [];
-    // check if the relationship is valid between contacts.
-    // step 1: check if the relationship is valid if not valid skip and keep the count
-    // step 2: check the if two contacts already have a relationship if yes skip and keep the count
-    // step 3: if valid relationship then add the relation and keep the count
-
-    // step 1
-    $contactFields = [
-      'contact_id_a' => $contactID,
-      'contact_id_b' => $organizationID,
-      'relationship_type_id' => $relationshipTypeID,
-    ];
-
-    if (
-      CRM_Contact_BAO_Relationship::checkDuplicateRelationship(
-        $contactFields,
-        $contactID,
-        // step 2
-        $organizationID
-      )
-    ) {
-      return [1, []];
-    }
-
-    $singleInstanceParams = array_merge($params, $contactFields);
-    $relationship = CRM_Contact_BAO_Relationship::add($singleInstanceParams);
-    $relationshipIds[] = $relationship->id;
-
-    CRM_Contact_BAO_Relationship::addRecent($params, $relationship);
-
-    return [0, $relationshipIds];
   }
 
   /**

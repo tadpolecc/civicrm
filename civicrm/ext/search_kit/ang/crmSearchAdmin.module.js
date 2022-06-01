@@ -72,19 +72,20 @@
       if (!this.tab) {
         this.tab = this.tabs[0].name;
       }
+      this.searchSegmentCount = null;
     })
 
     // Controller for creating a new search
     .controller('searchCreate', function($scope, $routeParams, $location) {
       searchEntity = $routeParams.entity;
-      $scope.$ctrl = this;
+      var ctrl = $scope.$ctrl = this;
       this.savedSearch = {
         api_entity: searchEntity
       };
       // Changing entity will refresh the angular page
       $scope.$watch('$ctrl.savedSearch.api_entity', function(newEntity, oldEntity) {
         if (newEntity && oldEntity && newEntity !== oldEntity) {
-          $location.url('/create/' + newEntity);
+          $location.url('/create/' + newEntity + (ctrl.savedSearch.label ? '?label=' + ctrl.savedSearch.label : ''));
         }
       });
     })
@@ -96,7 +97,7 @@
       $scope.$ctrl = this;
     })
 
-    .factory('searchMeta', function($q, formatForSelect2) {
+    .factory('searchMeta', function($q, crmApi4, formatForSelect2) {
       function getEntity(entityName) {
         if (entityName) {
           return _.find(CRM.crmSearchAdmin.schema, {name: entityName});
@@ -275,7 +276,7 @@
         var splitAs = expr.split(' AS '),
           info = {fn: null, args: [], alias: _.last(splitAs)},
           bracketPos = expr.indexOf('(');
-        if (bracketPos >= 0) {
+        if (bracketPos >= 0 && !_.findWhere(CRM.crmSearchAdmin.pseudoFields, {name: expr})) {
           parseFnArgs(info, splitAs[0]);
         } else {
           var arg = parseArg(splitAs[0]);
@@ -347,6 +348,32 @@
               }
             });
           });
+        },
+        // Ensure option lists are loaded for all fields with options
+        // Sets an optionsLoaded property on each entity to avoid duplicate requests
+        loadFieldOptions: function(entities) {
+          var entitiesToLoad = _.transform(entities, function(entitiesToLoad, entityName) {
+            var entity = getEntity(entityName);
+            if (!('optionsLoaded' in entity)) {
+              entity.optionsLoaded = false;
+              entitiesToLoad[entityName] = [entityName, 'getFields', {
+                loadOptions: ['id', 'name', 'label', 'description', 'color', 'icon'],
+                where: [['options', '!=', false]],
+                select: ['options']
+              }, {name: 'options'}];
+            }
+          }, {});
+          if (!_.isEmpty(entitiesToLoad)) {
+            crmApi4(entitiesToLoad).then(function(results) {
+              _.each(results, function(fields, entityName) {
+                var entity = getEntity(entityName);
+                _.each(fields, function(options, fieldName) {
+                  _.find(entity.fields, {name: fieldName}).options = options;
+                });
+                entity.optionsLoaded = true;
+              });
+            });
+          }
         },
         pickIcon: function() {
           var deferred = $q.defer();

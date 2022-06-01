@@ -9,6 +9,8 @@
  +--------------------------------------------------------------------+
  */
 
+use Civi\Api4\UserJob;
+
 /**
  *
  * @package CRM
@@ -42,6 +44,92 @@ abstract class CRM_Import_Parser {
 
 
   /**
+   * User job id.
+   *
+   * This is the primary key of the civicrm_user_job table which is used to
+   * track the import.
+   *
+   * @var int
+   */
+  protected $userJobID;
+
+  /**
+   * @return int|null
+   */
+  public function getUserJobID(): ?int {
+    return $this->userJobID;
+  }
+
+  /**
+   * Set user job ID.
+   *
+   * @param int $userJobID
+   */
+  public function setUserJobID(int $userJobID): void {
+    $this->userJobID = $userJobID;
+  }
+
+  /**
+   * Get User Job.
+   *
+   * API call to retrieve the userJob row.
+   *
+   * @return array
+   *
+   * @throws \API_Exception
+   */
+  protected function getUserJob(): array {
+    return UserJob::get()
+      ->addWhere('id', '=', $this->getUserJobID())
+      ->execute()
+      ->first();
+  }
+
+  /**
+   * Get the submitted value, as stored on the user job.
+   *
+   * @param string $fieldName
+   *
+   * @return mixed
+   *
+   * @throws \API_Exception
+   */
+  protected function getSubmittedValue(string $fieldName) {
+    return $this->getUserJob()['metadata']['submitted_values'][$fieldName];
+  }
+
+  /**
+   * Get configured contact type.
+   *
+   * @throws \API_Exception
+   */
+  protected function getContactType() {
+    if (!$this->_contactType) {
+      $contactTypeMapping = [
+        CRM_Import_Parser::CONTACT_INDIVIDUAL => 'Individual',
+        CRM_Import_Parser::CONTACT_HOUSEHOLD => 'Household',
+        CRM_Import_Parser::CONTACT_ORGANIZATION => 'Organization',
+      ];
+      $this->_contactType = $contactTypeMapping[$this->getSubmittedValue('contactType')];
+    }
+    return $this->_contactType;
+  }
+
+  /**
+   * Get configured contact type.
+   *
+   * @return string|null
+   *
+   * @throws \API_Exception
+   */
+  public function getContactSubType() {
+    if (!$this->_contactSubType) {
+      $this->_contactSubType = $this->getSubmittedValue('contactSubType');
+    }
+    return $this->_contactSubType;
+  }
+
+  /**
    * Total number of non empty lines
    * @var int
    */
@@ -73,18 +161,6 @@ abstract class CRM_Import_Parser {
   protected $_errors;
 
   /**
-   * Total number of conflict lines
-   * @var int
-   */
-  protected $_conflictCount;
-
-  /**
-   * Array of conflict lines
-   * @var array
-   */
-  protected $_conflicts;
-
-  /**
    * Total number of duplicate (from database) lines
    * @var int
    */
@@ -95,12 +171,6 @@ abstract class CRM_Import_Parser {
    * @var array
    */
   protected $_duplicates;
-
-  /**
-   * Running total number of warnings
-   * @var int
-   */
-  protected $_warningCount;
 
   /**
    * Maximum number of warnings to store
@@ -179,13 +249,6 @@ abstract class CRM_Import_Parser {
   protected $_errorFileName;
 
   /**
-   * Filename of conflict data
-   *
-   * @var string
-   */
-  protected $_conflictFileName;
-
-  /**
    * Filename of duplicate data
    *
    * @var string
@@ -195,15 +258,36 @@ abstract class CRM_Import_Parser {
   /**
    * Contact type
    *
-   * @var int
+   * @var string
    */
   public $_contactType;
+
+  /**
+   * @param string $contactType
+   *
+   * @return CRM_Import_Parser
+   */
+  public function setContactType(string $contactType): CRM_Import_Parser {
+    $this->_contactType = $contactType;
+    return $this;
+  }
+
   /**
    * Contact sub-type
    *
-   * @var int
+   * @var int|null
    */
   public $_contactSubType;
+
+  /**
+   * @param int|null $contactSubType
+   *
+   * @return self
+   */
+  public function setContactSubType(?int $contactSubType): self {
+    $this->_contactSubType = $contactSubType;
+    return $this;
+  }
 
   /**
    * Class constructor.
@@ -213,59 +297,12 @@ abstract class CRM_Import_Parser {
   }
 
   /**
-   * Abstract function definitions.
-   */
-  abstract protected function init();
-
-  /**
-   * @return mixed
-   */
-  abstract protected function fini();
-
-  /**
-   * Map field.
-   *
-   * @param array $values
-   *
-   * @return mixed
-   */
-  abstract protected function mapField(&$values);
-
-  /**
-   * Preview.
-   *
-   * @param array $values
-   *
-   * @return mixed
-   */
-  abstract protected function preview(&$values);
-
-  /**
-   * @param $values
-   *
-   * @return mixed
-   */
-  abstract protected function summary(&$values);
-
-  /**
-   * @param $onDuplicate
-   * @param $values
-   *
-   * @return mixed
-   */
-  abstract protected function import($onDuplicate, &$values);
-
-  /**
    * Set and validate field values.
    *
    * @param array $elements
    *   array.
-   * @param $erroneousField
-   *   reference.
-   *
-   * @return int
    */
-  public function setActiveFieldValues($elements, &$erroneousField = NULL) {
+  public function setActiveFieldValues($elements): void {
     $maxCount = count($elements) < $this->_activeFieldCount ? count($elements) : $this->_activeFieldCount;
     for ($i = 0; $i < $maxCount; $i++) {
       $this->_activeFields[$i]->setValue($elements[$i]);
@@ -275,18 +312,6 @@ abstract class CRM_Import_Parser {
     for (; $i < $this->_activeFieldCount; $i++) {
       $this->_activeFields[$i]->resetValue();
     }
-
-    // now validate the fields and return false if error
-    $valid = self::VALID;
-    for ($i = 0; $i < $this->_activeFieldCount; $i++) {
-      if (!$this->_activeFields[$i]->validate()) {
-        // no need to do any more validation
-        $erroneousField = $i;
-        $valid = self::ERROR;
-        break;
-      }
-    }
-    return $valid;
   }
 
   /**
@@ -458,10 +483,6 @@ abstract class CRM_Import_Parser {
         $fileName .= '.errors';
         break;
 
-      case self::CONFLICT:
-        $fileName .= '.conflicts';
-        break;
-
       case self::DUPLICATE:
         $fileName .= '.duplicates';
         break;
@@ -492,10 +513,6 @@ abstract class CRM_Import_Parser {
     switch ($type) {
       case self::ERROR:
         $fileName = 'Import_Errors.csv';
-        break;
-
-      case self::CONFLICT:
-        $fileName = 'Import_Conflicts.csv';
         break;
 
       case self::DUPLICATE:
@@ -993,12 +1010,7 @@ abstract class CRM_Import_Parser {
         if ((strtolower(trim($customLabel['label'])) == strtolower(trim($v1))) ||
           (strtolower(trim($customValue)) == strtolower(trim($v1)))
         ) {
-          if ($fieldType == 'CheckBox') {
-            $values[$customValue] = 1;
-          }
-          else {
-            $values[] = $customValue;
-          }
+          $values[] = $customValue;
         }
       }
     }

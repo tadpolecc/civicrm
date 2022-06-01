@@ -72,7 +72,7 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
    *
    * @param $mapperKeys
    */
-  public function __construct($mapperKeys) {
+  public function __construct($mapperKeys = []) {
     parent::__construct();
     $this->_mapperKeys = $mapperKeys;
   }
@@ -131,13 +131,12 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
       return FALSE;
     }
 
-    $this->_lineCount = $this->_warningCount = 0;
+    $this->_lineCount = 0;
     $this->_invalidRowCount = $this->_validCount = 0;
-    $this->_totalCount = $this->_conflictCount = 0;
+    $this->_totalCount = 0;
 
     $this->_errors = [];
     $this->_warnings = [];
-    $this->_conflicts = [];
 
     $this->_fileSize = number_format(filesize($fileName) / 1024.0, 2);
 
@@ -180,7 +179,7 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
       $this->_totalCount++;
 
       if ($mode == self::MODE_MAPFIELD) {
-        $returnCode = $this->mapField($values);
+        $returnCode = CRM_Import_Parser::VALID;
       }
       elseif ($mode == self::MODE_PREVIEW) {
         $returnCode = $this->preview($values);
@@ -207,25 +206,11 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
         }
       }
 
-      if ($returnCode & self::WARNING) {
-        $this->_warningCount++;
-        if ($this->_warningCount < $this->_maxWarningCount) {
-          $this->_warningCount[] = $line;
-        }
-      }
-
       if ($returnCode & self::ERROR) {
         $this->_invalidRowCount++;
         $recordNumber = $this->_lineCount;
         array_unshift($values, $recordNumber);
         $this->_errors[] = $values;
-      }
-
-      if ($returnCode & self::CONFLICT) {
-        $this->_conflictCount++;
-        $recordNumber = $this->_lineCount;
-        array_unshift($values, $recordNumber);
-        $this->_conflicts[] = $values;
       }
 
       if ($returnCode & self::DUPLICATE) {
@@ -236,12 +221,6 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
         if ($onDuplicate != self::DUPLICATE_SKIP) {
           $this->_validCount++;
         }
-      }
-
-      // we give the derived class a way of aborting the process
-      // note that the return code could be multiple code or'ed together
-      if ($returnCode & self::STOP) {
-        break;
       }
 
       // if we are done processing the maxNumber of lines, break
@@ -271,14 +250,6 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
 
         self::exportCSV($this->_errorFileName, $headers, $this->_errors);
       }
-      if ($this->_conflictCount) {
-        $headers = array_merge([
-          ts('Line Number'),
-          ts('Reason'),
-        ], $customHeaders);
-        $this->_conflictFileName = self::errorFileName(self::CONFLICT);
-        self::exportCSV($this->_conflictFileName, $headers, $this->_conflicts);
-      }
       if ($this->_duplicateCount) {
         $headers = array_merge([
           ts('Line Number'),
@@ -289,7 +260,6 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
         self::exportCSV($this->_duplicateFileName, $headers, $this->_duplicates);
       }
     }
-    return $this->fini();
   }
 
   /**
@@ -381,7 +351,6 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
     $store->set('totalRowCount', $this->_totalCount);
     $store->set('validRowCount', $this->_validCount);
     $store->set('invalidRowCount', $this->_invalidRowCount);
-    $store->set('conflictRowCount', $this->_conflictCount);
 
     switch ($this->_contactType) {
       case 'Individual':
@@ -398,9 +367,6 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
 
     if ($this->_invalidRowCount) {
       $store->set('errorsFileName', $this->_errorFileName);
-    }
-    if ($this->_conflictCount) {
-      $store->set('conflictsFileName', $this->_conflictFileName);
     }
     if (isset($this->_rows) && !empty($this->_rows)) {
       $store->set('dataValues', $this->_rows);
@@ -494,18 +460,6 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
   }
 
   /**
-   * Handle the values in mapField mode.
-   *
-   * @param array $values
-   *   The array of values belonging to this line.
-   *
-   * @return bool
-   */
-  public function mapField(&$values) {
-    return CRM_Import_Parser::VALID;
-  }
-
-  /**
    * Handle the values in preview mode.
    *
    * @param array $values
@@ -528,8 +482,8 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
    *   the result of this processing
    */
   public function summary(&$values) {
-    $erroneousField = NULL;
-    $this->setActiveFieldValues($values, $erroneousField);
+
+    $this->setActiveFieldValues($values);
 
     $errorRequired = FALSE;
 
@@ -948,14 +902,6 @@ class CRM_Member_Import_Parser_Membership extends CRM_Import_Parser {
    */
   public function &getImportedMemberships() {
     return $this->_newMemberships;
-  }
-
-  /**
-   * The initializer code, called before the processing
-   *
-   * @return void
-   */
-  public function fini() {
   }
 
   /**

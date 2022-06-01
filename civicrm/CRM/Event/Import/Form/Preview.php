@@ -27,13 +27,12 @@ class CRM_Event_Import_Form_Preview extends CRM_Import_Form_Preview {
    * @return void
    */
   public function preProcess() {
-    $skipColumnHeader = $this->controller->exportValue('DataSource', 'skipColumnHeader');
+    parent::preProcess();
 
     //get the data from the session
     $dataValues = $this->get('dataValues');
     $mapper = $this->get('mapper');
     $invalidRowCount = $this->get('invalidRowCount');
-    $conflictRowCount = $this->get('conflictRowCount');
     $mismatchCount = $this->get('unMatchCount');
 
     //get the mapping name displayed if the mappingId is set
@@ -45,26 +44,13 @@ class CRM_Event_Import_Form_Preview extends CRM_Import_Form_Preview {
     }
     $this->assign('savedMappingName', $mappingId ? $mapDAO->name : NULL);
 
-    if ($skipColumnHeader) {
-      $this->assign('skipColumnHeader', $skipColumnHeader);
-      $this->assign('rowDisplayCount', 3);
-    }
-    else {
-      $this->assign('rowDisplayCount', 2);
-    }
-
     if ($invalidRowCount) {
-      $urlParams = 'type=' . CRM_Import_Parser::ERROR . '&parser=CRM_Event_Import_Parser';
+      $urlParams = 'type=' . CRM_Import_Parser::ERROR . '&parser=CRM_Event_Import_Parser_Participant';
       $this->set('downloadErrorRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
     }
 
-    if ($conflictRowCount) {
-      $urlParams = 'type=' . CRM_Import_Parser::CONFLICT . '&parser=CRM_Event_Import_Parser';
-      $this->set('downloadConflictRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
-    }
-
     if ($mismatchCount) {
-      $urlParams = 'type=' . CRM_Import_Parser::NO_MATCH . '&parser=CRM_Event_Import_Parser';
+      $urlParams = 'type=' . CRM_Import_Parser::NO_MATCH . '&parser=CRM_Event_Import_Parser_Participant';
       $this->set('downloadMismatchRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
     }
 
@@ -75,9 +61,7 @@ class CRM_Event_Import_Form_Preview extends CRM_Import_Form_Preview {
       'totalRowCount',
       'validRowCount',
       'invalidRowCount',
-      'conflictRowCount',
       'downloadErrorRecordsUrl',
-      'downloadConflictRecordsUrl',
       'downloadMismatchRecordsUrl',
     ];
 
@@ -95,9 +79,7 @@ class CRM_Event_Import_Form_Preview extends CRM_Import_Form_Preview {
   public function postProcess() {
     $fileName = $this->controller->exportValue('DataSource', 'uploadFile');
     $separator = $this->controller->exportValue('DataSource', 'fieldSeparator');
-    $skipColumnHeader = $this->controller->exportValue('DataSource', 'skipColumnHeader');
     $invalidRowCount = $this->get('invalidRowCount');
-    $conflictRowCount = $this->get('conflictRowCount');
     $onDuplicate = $this->get('onDuplicate');
 
     $mapper = $this->controller->exportValue('MapField', 'mapper');
@@ -120,7 +102,7 @@ class CRM_Event_Import_Form_Preview extends CRM_Import_Form_Preview {
     }
     $parser->run($fileName, $separator,
       $mapperFields,
-      $skipColumnHeader,
+      $this->getSubmittedValue('skipColumnHeader'),
       CRM_Import_Parser::MODE_IMPORT,
       $this->get('contactType'),
       $onDuplicate
@@ -148,11 +130,9 @@ class CRM_Event_Import_Form_Preview extends CRM_Import_Form_Preview {
       fclose($fd);
 
       $this->set('errorFile', $errorFile);
-      $urlParams = 'type=' . CRM_Import_Parser::ERROR . '&parser=CRM_Event_Import_Parser';
+      $urlParams = 'type=' . CRM_Import_Parser::ERROR . '&parser=CRM_Event_Import_Parser_Participant';
       $this->set('downloadErrorRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
-      $urlParams = 'type=' . CRM_Import_Parser::CONFLICT . '&parser=CRM_Event_Import_Parser';
-      $this->set('downloadConflictRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
-      $urlParams = 'type=' . CRM_Import_Parser::NO_MATCH . '&parser=CRM_Event_Import_Parser';
+      $urlParams = 'type=' . CRM_Import_Parser::NO_MATCH . '&parser=CRM_Event_Import_Parser_Participant';
       $this->set('downloadMismatchRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
     }
   }

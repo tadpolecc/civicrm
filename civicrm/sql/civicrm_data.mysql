@@ -4427,7 +4427,23 @@ INSERT INTO civicrm_state_province (id, country_id, abbreviation, name) VALUES
 (NULL, 1170, "DIN", "Dinagat Islands"),
 
 -- Add missing state for Colombia
-(NULL, 1048, "HUI", "Huila");
+(NULL, 1048, "HUI", "Huila"),
+
+-- Add missing parishes for Bermuda
+ (NULL, 1023, 'DEV', 'Devonshire'),
+ (NULL, 1023, 'HAM', 'Hamilton Parish'),
+ (NULL, 1023, 'HA', 'City of Hamilton'),
+ (NULL, 1023, 'PAG', 'Paget'),
+ (NULL, 1023, 'PEM', 'Pembroke'),
+ (NULL, 1023, 'SG', 'Town of St. George'),
+ (NULL, 1023, 'SGE', 'Saint George\'s'),
+ (NULL, 1023, 'SAN', 'Sandys'),
+ (NULL, 1023, 'SMI', 'Smiths'),
+ (NULL, 1023, 'SOU', 'Southampton'),
+ (NULL, 1023, 'WAR', 'Warwick')
+ 
+ -- end of statement:
+ ;
 -- +--------------------------------------------------------------------+
 -- | Copyright CiviCRM LLC. All rights reserved.                        |
 -- |                                                                    |
@@ -4495,7 +4511,6 @@ INSERT INTO civicrm_currency (id, name, symbol, numeric_code, full_name) VALUES
 ( 52, "RSD", "Дин.","941", "Serbian Dinar"),
 ( 53, "CUP",  "₱", "192", "Cuban Peso"),
 ( 54, "CVE", NULL, "132", "Cape Verde Escudo"),
-( 55, "CYP",  "£", "196", "Cyprus Pound"),
 ( 56, "CZK", "Kč", "203", "Czech Koruna"),
 ( 57, "DJF", NULL, "262", "Djibouti Franc"),
 ( 58, "DKK", "kr", "208", "Danish Krone"),
@@ -4512,7 +4527,6 @@ INSERT INTO civicrm_currency (id, name, symbol, numeric_code, full_name) VALUES
 ( 70, "GMD", NULL, "270", "Gambian Dalasi"),
 ( 71, "GNF", NULL, "324", "Guinea Franc"),
 ( 72, "GTQ",  "Q", "320", "Guatemalan Quetzal"),
-( 73, "GWP", NULL, "624", "Guinea-Bissau Peso"),
 ( 74, "GYD",  "$", "328", "Guyana Dollar"),
 ( 75, "HKD","HK$", "344", "Hong Kong Dollar"),
 ( 76, "HNL",  "L", "340", "Honduran Lempira"),
@@ -4537,8 +4551,6 @@ INSERT INTO civicrm_currency (id, name, symbol, numeric_code, full_name) VALUES
 ( 95, "LKR",  "₨", "144", "Sri Lanka Rupee"),
 ( 96, "LRD",  "$", "430", "Liberian Dollar"),
 ( 97, "LSL", NULL, "426", "Lesotho Loti"),
-( 98, "LTL", "Lt", "440", "Lithuanian Litas"),
-( 99, "LVL", "Ls", "428", "Latvian Lats"),
 (100, "LYD", NULL, "434", "Libyan Dinar"),
 (101, "MAD", NULL, "504", "Moroccan Dirham"),
 (102, "MDL", NULL, "498", "Moldovan Leu"),
@@ -4547,7 +4559,6 @@ INSERT INTO civicrm_currency (id, name, symbol, numeric_code, full_name) VALUES
 (105, "MMK", NULL, "104", "Myanmar Kyat"),
 (106, "MOP", NULL, "446", "Macao Pataca"),
 (107, "MRO", NULL, "478", "Mauritanian Ouguiya"),
-(108, "MTL", "Lm", "470", "Maltese Lira"),
 (109, "MUR",  "₨", "480", "Mauritius Rupee"),
 (110, "MVR", NULL, "462", "Maldive Rufiyaa"),
 (111, "MWK", NULL, "454", "Malawi Kwacha"),
@@ -4568,19 +4579,15 @@ INSERT INTO civicrm_currency (id, name, symbol, numeric_code, full_name) VALUES
 (126, "PKR",  "₨", "586", "Pakistan Rupee"),
 (127, "PYG", "Gs", "600", "Paraguay Guarani"),
 (128, "QAR",  "﷼", "634", "Qatari Rial"),
-(129, "ROL", NULL, "642", "Romanian Old Leu"),
 (130, "RON","lei", "946", "Romanian New Leu"),
 (131, "RUB","руб", "643", "Russian Rouble"),
 (132, "RWF", NULL, "646", "Rwanda Franc"),
 (133, "SAR",  "﷼", "682", "Saudi Riyal"),
 (134, "SBD",  "$", "090", "Solomon Islands Dollar"),
 (135, "SCR",  "₨", "690", "Seychelles Rupee"),
-(136, "SDD", NULL, "736", "Sudanese Dinar"),
 (137, "SEK", "kr", "752", "Swedish Krona"),
 (138, "SGD",  "$", "702", "Singapore Dollar"),
 (139, "SHP",  "£", "654", "Saint Helena Pound"),
-(140, "SIT", NULL, "705", "Slovenian Tolar"),
-(141, "SKK","SIT", "703", "Slovak Koruna"),
 (142, "SLL", NULL, "694", "Leone"),
 (143, "SOS",  "S", "706", "Somali Shilling"),
 (144, "SRD",  "$", "968", "Surinam Dollar"),
@@ -4589,7 +4596,6 @@ INSERT INTO civicrm_currency (id, name, symbol, numeric_code, full_name) VALUES
 (147, "SYP",  "£", "760", "Syrian Pound"),
 (148, "SZL", NULL, "748", "Eswatini Lilangeni"),
 (149, "TJS", NULL, "972", "Tajik Somoni"),
-(150, "TMM", NULL, "795", "Turkmenistan Manat"),
 (151, "TND", NULL, "788", "Tunisian Dinar"),
 (152, "TOP", NULL, "776", "Tongan Pa'anga"),
 (153, "TRY","YTL", "949", "New Turkish Lira"),
@@ -5301,9 +5307,9 @@ VALUES
   (@option_group_id_pht, 'Voicemail' ,    5, 'Voicemail'  , NULL, 0, 0, 5, NULL, 0, 0, 1, NULL, NULL, NULL),
 
 -- custom data types.
-  (@option_group_id_cdt, 'Participant Role',       '1', 'ParticipantRole',      NULL, 0, 0, 1, NULL, 0, 0, 1, NULL, NULL , NULL),
-  (@option_group_id_cdt, 'Participant Event Name', '2', 'ParticipantEventName', NULL, 0, 0, 2, NULL, 0, 0, 1, NULL, NULL , NULL),
-  (@option_group_id_cdt, 'Participant Event Type', '3', 'ParticipantEventType', NULL, 0, 0, 3, NULL, 0, 0, 1, NULL, NULL , NULL),
+  (@option_group_id_cdt, 'Participants (Role)',       '1', 'ParticipantRole',      'role_id',                0, 0, 1, NULL, 0, 0, 1, NULL, NULL , NULL),
+  (@option_group_id_cdt, 'Participants (Event Name)', '2', 'ParticipantEventName', 'event_id',               0, 0, 2, NULL, 0, 0, 1, NULL, NULL , NULL),
+  (@option_group_id_cdt, 'Participants (Event Type)', '3', 'ParticipantEventType', 'event_id.event_type_id', 0, 0, 3, NULL, 0, 0, 1, NULL, NULL , NULL),
 
 -- visibility.
   (@option_group_id_vis, 'Public', 1, 'public', NULL, 0, 0, 1, NULL, 0, 0, 1, NULL, NULL , NULL),
@@ -5713,7 +5719,7 @@ VALUES
 
 -- custom group objects
   (@option_group_id_cgeo, 'Survey', 'Survey', 'civicrm_survey', NULL, 0, 0, 1, NULL, 0, 0, 1, NULL, NULL, NULL),
-  (@option_group_id_cgeo, 'Cases',  'Case', 'civicrm_case',     NULL, 0, 0, 2, 'CRM_Case_PseudoConstant::caseType;', 0, 0, 1, NULL, NULL, NULL);
+  (@option_group_id_cgeo, 'Cases',  'Case',   'civicrm_case',  'case_type_id', 0, 0, 2, NULL, 0, 0, 1, NULL, NULL, NULL);
 
 -- CRM-6138
 --
@@ -23787,4 +23793,4 @@ INSERT INTO `civicrm_report_instance`
     ( `domain_id`, `title`, `report_id`, `description`, `permission`, `form_values`)
 VALUES
     (  @domainID, 'Survey Details', 'survey/detail', 'Detailed report for canvassing, phone-banking, walk lists or other surveys.', 'access CiviReport', 'a:39:{s:6:"fields";a:2:{s:9:"sort_name";s:1:"1";s:6:"result";s:1:"1";}s:22:"assignee_contact_id_op";s:2:"eq";s:25:"assignee_contact_id_value";s:0:"";s:12:"sort_name_op";s:3:"has";s:15:"sort_name_value";s:0:"";s:17:"street_number_min";s:0:"";s:17:"street_number_max";s:0:"";s:16:"street_number_op";s:3:"lte";s:19:"street_number_value";s:0:"";s:14:"street_name_op";s:3:"has";s:17:"street_name_value";s:0:"";s:15:"postal_code_min";s:0:"";s:15:"postal_code_max";s:0:"";s:14:"postal_code_op";s:3:"lte";s:17:"postal_code_value";s:0:"";s:7:"city_op";s:3:"has";s:10:"city_value";s:0:"";s:20:"state_province_id_op";s:2:"in";s:23:"state_province_id_value";a:0:{}s:13:"country_id_op";s:2:"in";s:16:"country_id_value";a:0:{}s:12:"survey_id_op";s:2:"in";s:15:"survey_id_value";a:0:{}s:12:"status_id_op";s:2:"eq";s:15:"status_id_value";s:1:"1";s:11:"custom_1_op";s:2:"in";s:14:"custom_1_value";a:0:{}s:11:"custom_2_op";s:2:"in";s:14:"custom_2_value";a:0:{}s:17:"custom_3_relative";s:1:"0";s:13:"custom_3_from";s:0:"";s:11:"custom_3_to";s:0:"";s:11:"description";s:75:"Detailed report for canvassing, phone-banking, walk lists or other surveys.";s:13:"email_subject";s:0:"";s:8:"email_to";s:0:"";s:8:"email_cc";s:0:"";s:10:"permission";s:17:"access CiviReport";s:6:"groups";s:0:"";s:9:"domain_id";i:1;}');
-UPDATE civicrm_domain SET version = '5.49.4';
+UPDATE civicrm_domain SET version = '5.50.0';

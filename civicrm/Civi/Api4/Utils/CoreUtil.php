@@ -14,7 +14,6 @@ namespace Civi\Api4\Utils;
 
 use Civi\API\Exception\NotImplementedException;
 use Civi\API\Request;
-use Civi\Api4\Event\CreateApi4RequestEvent;
 use CRM_Core_DAO_AllCoreTables as AllCoreTables;
 
 class CoreUtil {
@@ -39,9 +38,11 @@ class CoreUtil {
    * @return string|\Civi\Api4\Generic\AbstractEntity
    */
   public static function getApiClass($entityName) {
-    $e = new CreateApi4RequestEvent($entityName);
-    \Civi::dispatcher()->dispatch('civi.api4.createRequest', $e);
-    return $e->className;
+    $className = 'Civi\Api4\\' . $entityName;
+    if (class_exists($className)) {
+      return $className;
+    }
+    return self::getInfoItem($entityName, 'class');
   }
 
   /**
@@ -114,17 +115,11 @@ class CoreUtil {
    * @throws \Civi\API\Exception\UnauthorizedException
    */
   public static function getCustomGroupExtends(string $entityName) {
-    // Custom_group.extends pretty much maps 1-1 with entity names, except for a couple oddballs (Contact, Participant).
+    // Custom_group.extends pretty much maps 1-1 with entity names, except for Contact.
     switch ($entityName) {
       case 'Contact':
         return [
           'extends' => array_merge(['Contact'], array_keys(\CRM_Core_SelectValues::contactType())),
-          'column' => 'id',
-        ];
-
-      case 'Participant':
-        return [
-          'extends' => ['Participant', 'ParticipantRole', 'ParticipantEventName', 'ParticipantEventType'],
           'column' => 'id',
         ];
 

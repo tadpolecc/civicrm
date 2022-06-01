@@ -27,22 +27,21 @@ class CRM_Contact_Import_Form_Summary extends CRM_Import_Form_Summary {
     // set the error message path to display
     $this->assign('errorFile', $this->get('errorFile'));
 
-    $totalRowCount = $this->get('totalRowCount');
+    $totalRowCount = $this->getRowCount();
     $relatedCount = $this->get('relatedCount');
     $totalRowCount += $relatedCount;
 
     $invalidRowCount = $this->get('invalidRowCount');
-    $conflictRowCount = $this->get('conflictRowCount');
     $duplicateRowCount = $this->get('duplicateRowCount');
     $onDuplicate = $this->get('onDuplicate');
     $mismatchCount = $this->get('unMatchCount');
     $unparsedAddressCount = $this->get('unparsedAddressCount');
     if ($duplicateRowCount > 0) {
-      $urlParams = 'type=' . CRM_Import_Parser::DUPLICATE . '&parser=CRM_Contact_Import_Parser';
+      $urlParams = 'type=' . CRM_Import_Parser::DUPLICATE . '&parser=CRM_Contact_Import_Parser_Contact';
       $this->set('downloadDuplicateRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
     }
     elseif ($mismatchCount) {
-      $urlParams = 'type=' . CRM_Import_Parser::NO_MATCH . '&parser=CRM_Contact_Import_Parser';
+      $urlParams = 'type=' . CRM_Import_Parser::NO_MATCH . '&parser=CRM_Contact_Import_Parser_Contact';
       $this->set('downloadMismatchRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
     }
     else {
@@ -50,7 +49,7 @@ class CRM_Contact_Import_Form_Summary extends CRM_Import_Form_Summary {
       $this->set('duplicateRowCount', $duplicateRowCount);
     }
     if ($unparsedAddressCount) {
-      $urlParams = 'type=' . CRM_Import_Parser::UNPARSED_ADDRESS_WARNING . '&parser=CRM_Contact_Import_Parser';
+      $urlParams = 'type=' . CRM_Import_Parser::UNPARSED_ADDRESS_WARNING . '&parser=CRM_Contact_Import_Parser_Contact';
       $this->assign('downloadAddressRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
       $unparsedStreetAddressString = ts('Records imported successfully but unable to parse some of the street addresses');
       $this->assign('unparsedStreetAddressString', $unparsedStreetAddressString);
@@ -75,20 +74,12 @@ class CRM_Contact_Import_Form_Summary extends CRM_Import_Form_Summary {
     }
     //now we also create relative contact in update and fill mode
     $this->set('validRowCount', $totalRowCount - $invalidRowCount -
-      $conflictRowCount - $duplicateRowCount - $mismatchCount
+       $duplicateRowCount - $mismatchCount
     );
 
     $this->assign('dupeActionString', $dupeActionString);
 
     $properties = [
-      'totalRowCount',
-      'validRowCount',
-      'invalidRowCount',
-      'conflictRowCount',
-      'downloadConflictRecordsUrl',
-      'downloadErrorRecordsUrl',
-      'duplicateRowCount',
-      'downloadDuplicateRecordsUrl',
       'downloadMismatchRecordsUrl',
       'groupAdditions',
       'tagAdditions',
@@ -98,7 +89,12 @@ class CRM_Contact_Import_Form_Summary extends CRM_Import_Form_Summary {
     foreach ($properties as $property) {
       $this->assign($property, $this->get($property));
     }
-
+    $this->assign('totalRowCount', $this->getRowCount());
+    $this->assign('validRowCount', $this->getRowCount(CRM_Import_Parser::VALID));
+    $this->assign('invalidRowCount', $this->getRowCount(CRM_Import_Parser::ERROR));
+    $this->assign('duplicateRowCount', $this->getRowCount(CRM_Import_Parser::DUPLICATE));
+    $this->assign('downloadDuplicateRecordsUrl', $this->getDownloadURL(CRM_Import_Parser::DUPLICATE));
+    $this->assign('downloadErrorRecordsUrl', $this->getDownloadURL(CRM_Import_Parser::ERROR));
     $session = CRM_Core_Session::singleton();
     $session->pushUserContext(CRM_Utils_System::url('civicrm/import/contact', 'reset=1'));
   }
@@ -107,15 +103,6 @@ class CRM_Contact_Import_Form_Summary extends CRM_Import_Form_Summary {
    * Clean up the import table we used.
    */
   public function postProcess() {
-    $dao = new CRM_Core_DAO();
-    $db = $dao->getDatabaseConnection();
-
-    $importTableName = $this->get('importTableName');
-    // do a basic sanity check here
-    if (strpos($importTableName, 'civicrm_import_job_') === 0) {
-      $query = "DROP TABLE IF EXISTS $importTableName";
-      $db->query($query);
-    }
   }
 
 }

@@ -392,10 +392,6 @@ class CRM_Member_Import_Form_MapField extends CRM_Import_Form_MapField {
       return;
     }
 
-    $fileName = $this->controller->exportValue('DataSource', 'uploadFile');
-    $separator = $this->controller->exportValue('DataSource', 'fieldSeparator');
-    $skipColumnHeader = $this->controller->exportValue('DataSource', 'skipColumnHeader');
-
     $mapperKeys = [];
     $mapper = [];
     $mapperKeys = $this->controller->exportValue($this->_name, 'mapper');
@@ -446,11 +442,6 @@ class CRM_Member_Import_Form_MapField extends CRM_Import_Form_MapField {
         $updateMappingFields->id = $mappingFieldsId[$i];
         $updateMappingFields->mapping_id = $params['mappingId'];
         $updateMappingFields->column_number = $i;
-
-        $mapperKeyParts = explode('_', $mapperKeys[$i][0], 3);
-        $id = $mapperKeyParts[0] ?? NULL;
-        $first = $mapperKeyParts[1] ?? NULL;
-        $second = $mapperKeyParts[2] ?? NULL;
         $updateMappingFields->name = $mapper[$i];
         $updateMappingFields->save();
       }
@@ -470,11 +461,6 @@ class CRM_Member_Import_Form_MapField extends CRM_Import_Form_MapField {
         $saveMappingFields = new CRM_Core_DAO_MappingField();
         $saveMappingFields->mapping_id = $saveMapping->id;
         $saveMappingFields->column_number = $i;
-
-        $mapperKeyParts = explode('_', $mapperKeys[$i][0], 3);
-        $id = $mapperKeyParts[0] ?? NULL;
-        $first = $mapperKeyParts[1] ?? NULL;
-        $second = $mapperKeyParts[2] ?? NULL;
         $saveMappingFields->name = $mapper[$i];
         $saveMappingFields->save();
       }
@@ -482,7 +468,7 @@ class CRM_Member_Import_Form_MapField extends CRM_Import_Form_MapField {
     }
 
     $parser = new CRM_Member_Import_Parser_Membership($mapperKeysMain, $mapperLocType, $mapperPhoneType);
-    $parser->run($fileName, $separator, $mapper, $skipColumnHeader,
+    $parser->run($this->getSubmittedValue('uploadFile'), $this->getSubmittedValue('fieldSeparator'), $mapper, $this->getSubmittedValue('skipColumnHeader'),
       CRM_Import_Parser::MODE_PREVIEW, $this->get('contactType')
     );
     // add all the necessary variables to the form

@@ -1,5 +1,4 @@
-<?php
-/*
+{*
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC. All rights reserved.                        |
  |                                                                    |
@@ -7,12 +6,5 @@
  | permitted exceptions and without any warranty. For full license    |
  | and copyright information, see https://civicrm.org/licensing       |
  +--------------------------------------------------------------------+
- */
-
-/**
- *
- * @package CiviCRM_Hook
- * @copyright CiviCRM LLC https://civicrm.org/licensing
- */
-class CRM_Utils_Hook_Drupal6 extends CRM_Utils_Hook_DrupalBase {
-}
+*}
+{include file=$dataSourceFormTemplateFile}

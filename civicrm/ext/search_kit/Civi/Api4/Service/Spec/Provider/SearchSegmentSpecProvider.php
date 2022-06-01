@@ -1,5 +1,4 @@
 <?php
-
 /*
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC. All rights reserved.                        |
@@ -10,24 +9,25 @@
  +--------------------------------------------------------------------+
  */
 
+
 namespace Civi\Api4\Service\Spec\Provider;
 
 use Civi\Api4\Service\Spec\RequestSpec;
 
-class CustomGroupCreationSpecProvider implements Generic\SpecProviderInterface {
+class SearchSegmentSpecProvider implements Generic\SpecProviderInterface {
 
   /**
    * @inheritDoc
    */
   public function modifySpec(RequestSpec $spec) {
-    $spec->getFieldByName('extends')->setRequired(TRUE);
+    $spec->getFieldByName('name')->setRequired(FALSE);
   }
 
   /**
    * @inheritDoc
    */
   public function applies($entity, $action) {
-    return $entity === 'CustomGroup' && $action === 'create';
+    return $entity === 'SearchSegment';
   }
 
 }
