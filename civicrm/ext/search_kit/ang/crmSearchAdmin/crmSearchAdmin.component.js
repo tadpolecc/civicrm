@@ -12,9 +12,9 @@
         afformLoad,
         fieldsForJoinGetters = {};
 
-      this.DEFAULT_AGGREGATE_FN = 'GROUP_CONCAT';
       this.afformEnabled = 'org.civicrm.afform' in CRM.crmSearchAdmin.modules;
-      this.afformAdminEnabled = 'org.civicrm.afform_admin' in CRM.crmSearchAdmin.modules;
+      this.afformAdminEnabled = (CRM.checkPerm('administer CiviCRM') || CRM.checkPerm('administer afform')) &&
+        'org.civicrm.afform_admin' in CRM.crmSearchAdmin.modules;
       this.displayTypes = _.indexBy(CRM.crmSearchAdmin.displayTypes, 'id');
       this.searchDisplayPath = CRM.url('civicrm/search');
       this.afformPath = CRM.url('civicrm/admin/afform');
@@ -51,6 +51,10 @@
               defaults[param] = [];
             }
           });
+          // Default to Individuals
+          if (this.savedSearch.api_entity === 'Contact' && CRM.crmSearchAdmin.defaultContactType) {
+            defaults.where.push(['contact_type:name', '=', CRM.crmSearchAdmin.defaultContactType]);
+          }
 
           $scope.$bindToRoute({
             param: 'params',
@@ -139,6 +143,10 @@
 
       this.paramExists = function(param) {
         return _.includes(searchMeta.getEntity(ctrl.savedSearch.api_entity).params, param);
+      };
+
+      this.hasFunction = function(expr) {
+        return expr.indexOf('(') > -1;
       };
 
       this.addDisplay = function(type) {
@@ -232,8 +240,12 @@
         function addEntityJoins(entity, stack, baseEntity) {
           return _.transform(CRM.crmSearchAdmin.joins[entity], function(joinEntities, join) {
             var num = 0;
-            // Add all joins that don't just point directly back to the original entity
-            if (!(baseEntity === join.entity && !join.multi)) {
+            if (
+              // Exclude joins that singly point back to the original entity
+              !(baseEntity === join.entity && !join.multi) &&
+              // Exclude joins to bridge tables
+              !searchMeta.getEntity(join.entity).bridge
+            ) {
               do {
                 appendJoin(joinEntities, join, ++num, stack, entity);
               } while (addNum((stack ? stack + '_' : '') + join.alias, num) in existingJoins);
@@ -323,7 +335,9 @@
           if (ctrl.canAggregate(col)) {
             // Ensure all non-grouped columns are aggregated if using GROUP BY
             if (!info.fn || info.fn.category !== 'aggregate') {
-              ctrl.savedSearch.api_params.select[pos] = ctrl.DEFAULT_AGGREGATE_FN + '(DISTINCT ' + fieldExpr + ') AS ' + ctrl.DEFAULT_AGGREGATE_FN + '_' + fieldExpr.replace(/[.:]/g, '_');
+              var dflFn = searchMeta.getDefaultAggregateFn(info) || 'GROUP_CONCAT',
+                flagBefore = dflFn === 'GROUP_CONCAT' ? 'DISTINCT ' : '';
+              ctrl.savedSearch.api_params.select[pos] = dflFn + '(' + flagBefore + fieldExpr + ') AS ' + dflFn + '_' + fieldExpr.replace(/[.:]/g, '_');
             }
           } else {
             // Remove aggregate functions when no grouping

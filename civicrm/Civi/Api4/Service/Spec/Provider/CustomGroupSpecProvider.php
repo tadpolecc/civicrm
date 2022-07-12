@@ -23,7 +23,6 @@ class CustomGroupSpecProvider implements Generic\SpecProviderInterface {
     $action = $spec->getAction();
 
     $spec->getFieldByName('extends')
-      ->setRequired($action === 'create')
       ->setSuffixes(['name', 'label', 'grouping']);
   }
 

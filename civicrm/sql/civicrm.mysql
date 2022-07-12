@@ -1277,6 +1277,9 @@ CREATE TABLE `civicrm_queue` (
   `lease_time` int unsigned NOT NULL DEFAULT 3600 COMMENT 'When claiming an item (or batch of items) for work, how long should the item(s) be reserved. (Seconds)',
   `retry_limit` int NOT NULL DEFAULT 0 COMMENT 'Number of permitted retries. Set to zero (0) to disable.',
   `retry_interval` int NULL COMMENT 'Number of seconds to wait before retrying a failed execution.',
+  `status` varchar(16) NULL DEFAULT 'active' COMMENT 'Execution status',
+  `error` varchar(16) NULL COMMENT 'Fallback behavior for unhandled errors',
+  `is_template` tinyint NOT NULL DEFAULT 0 COMMENT 'Is this a template configuration (for use by other/future queues)?',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `UI_name`(name)
 )
@@ -1930,9 +1933,10 @@ CREATE TABLE `civicrm_user_job` (
   `end_date` timestamp NULL COMMENT 'Date and time this import job ended.',
   `expires_date` timestamp NULL COMMENT 'Date and time to clean up after this import job (temp table deletion date).',
   `status_id` int unsigned NOT NULL,
-  `type_id` int unsigned NOT NULL,
+  `job_type` varchar(64) NOT NULL COMMENT 'Name of the job type, which will allow finding the correct class',
   `queue_id` int unsigned COMMENT 'FK to Queue',
   `metadata` text COMMENT 'Data pertaining to job configuration',
+  `is_template` tinyint NOT NULL DEFAULT 0 COMMENT 'Is this a template configuration (for use by other/future jobs)?',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `UI_name`(name),
   CONSTRAINT FK_civicrm_user_job_created_id FOREIGN KEY (`created_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL,

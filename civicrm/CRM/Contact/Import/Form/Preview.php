@@ -15,67 +15,13 @@
  * @copyright CiviCRM LLC https://civicrm.org/licensing
  */
 
+use Civi\Api4\Group;
+use Civi\Api4\Tag;
+
 /**
  * This class previews the uploaded file and returns summary statistics.
  */
 class CRM_Contact_Import_Form_Preview extends CRM_Import_Form_Preview {
-
-  /**
-   * Whether USPS validation should be disabled during import.
-   *
-   * @var bool
-   */
-  protected $_disableUSPS;
-
-  /**
-   * Set variables up before form is built.
-   *
-   * @throws \API_Exception
-   * @throws \CRM_Core_Exception
-   */
-  public function preProcess() {
-    $mismatchCount = $this->get('unMatchCount');
-    $columnNames = $this->get('columnNames');
-    $this->_disableUSPS = $this->get('disableUSPS');
-
-    //assign column names
-    $this->assign('columnNames', $columnNames);
-
-    //get the mapping name displayed if the mappingId is set
-    $mappingId = $this->get('loadMappingId');
-    if ($mappingId) {
-      $mapDAO = new CRM_Core_DAO_Mapping();
-      $mapDAO->id = $mappingId;
-      $mapDAO->find(TRUE);
-    }
-    $this->assign('savedMappingName', $mappingId ? $mapDAO->name : NULL);
-
-    $this->assign('rowDisplayCount', 2);
-
-    $groups = CRM_Core_PseudoConstant::nestedGroup();
-    $this->set('groups', $groups);
-
-    $tag = CRM_Core_PseudoConstant::get('CRM_Core_DAO_EntityTag', 'tag_id', array('onlyActive' => FALSE));
-    if ($tag) {
-      $this->set('tag', $tag);
-    }
-
-    $this->assign('downloadErrorRecordsUrl', $this->getDownloadURL(CRM_Import_Parser::ERROR));
-    $this->assign('invalidRowCount', $this->getRowCount(CRM_Import_Parser::ERROR));
-    $this->assign('validRowCount', $this->getRowCount(CRM_Import_Parser::VALID));
-    $this->assign('totalRowCount', $this->getRowCount([]));
-
-    if ($mismatchCount) {
-      $urlParams = 'type=' . CRM_Import_Parser::NO_MATCH . '&parser=CRM_Contact_Import_Parser_Contact';
-      $this->set('downloadMismatchRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
-    }
-
-    $this->assign('mapper', $this->getMappedFieldLabels());
-
-    $this->assign('dataValues', $this->getDataRows([], 2));
-
-    $this->setStatusUrl();
-  }
 
   /**
    * Build the form object.
@@ -92,24 +38,25 @@ class CRM_Contact_Import_Form_Preview extends CRM_Import_Form_Preview {
       );
     }
 
-    $groups = $this->get('groups');
+    $groups = CRM_Core_PseudoConstant::nestedGroup();;
 
     if (!empty($groups)) {
-      $this->addElement('select', 'groups', ts('Add imported records to existing group(s)'), $groups, array(
+      $this->addElement('select', 'groups', ts('Add imported records to existing group(s)'), $groups, [
         'multiple' => "multiple",
         'class' => 'crm-select2',
-      ));
+      ]);
     }
 
     //display new tag
     $this->addElement('text', 'newTagName', ts('Tag'), CRM_Core_DAO::getAttribute('CRM_Core_DAO_Tag', 'name'));
     $this->addElement('text', 'newTagDesc', ts('Description'), CRM_Core_DAO::getAttribute('CRM_Core_DAO_Tag', 'description'));
 
-    $tag = $this->get('tag');
+    $tag = CRM_Core_PseudoConstant::get('CRM_Core_DAO_EntityTag', 'tag_id', ['onlyActive' => FALSE]);
     if (!empty($tag)) {
-      foreach ($tag as $tagID => $tagName) {
-        $this->addElement('checkbox', "tag[$tagID]", NULL, $tagName);
-      }
+      $this->addElement('select', 'tag', ts(' Tag imported records'), $tag, [
+        'multiple' => 'multiple',
+        'class' => 'crm-select2',
+      ]);
     }
 
     $this->addFormRule(array('CRM_Contact_Import_Form_Preview', 'formRule'), $this);
@@ -126,7 +73,7 @@ class CRM_Contact_Import_Form_Preview extends CRM_Import_Form_Preview {
    * @param $files
    * @param self $self
    *
-   * @return array
+   * @return array|bool
    *   list of errors to be posted back to the form
    */
   public static function formRule($fields, $files, $self) {
@@ -171,37 +118,71 @@ class CRM_Contact_Import_Form_Preview extends CRM_Import_Form_Preview {
   /**
    * Process the mapped fields and map it into the uploaded file.
    *
-   * @throws \API_Exception
+   * @throws \API_Exception|\CRM_Core_Exception
    */
-  public function postProcess() {
+  public function postProcess(): void {
+    $groupsToAddTo = (array) $this->getSubmittedValue('groups');
+    $summaryInfo = ['groups' => [], 'tags' => []];
+    foreach ($groupsToAddTo as $groupID) {
+      // This is a convenience for now - really url & name should be determined at
+      // presentation stage - ie the summary screen. The only info we are really
+      // preserving is which groups were created vs already existed.
+      $summaryInfo['groups'][$groupID] = [
+        'url' => CRM_Utils_System::url('civicrm/group/search', 'reset=1&force=1&context=smog&gid=' . $groupID),
+        'name' => Group::get(FALSE)->addWhere('id', '=', $groupID)->addSelect('name')->execute()->first()['name'],
+        'new' => FALSE,
+        'added' => 0,
+        'notAdded' => 0,
+      ];
+    }
 
-    $importJobParams = array(
-      'doGeocodeAddress' => $this->controller->exportValue('DataSource', 'doGeocodeAddress'),
-      'invalidRowCount' => $this->get('invalidRowCount'),
-      'onDuplicate' => $this->get('onDuplicate'),
-      'dedupe' => $this->getSubmittedValue('dedupe_rule_id'),
-      'newGroupName' => $this->controller->exportValue($this->_name, 'newGroupName'),
-      'newGroupDesc' => $this->controller->exportValue($this->_name, 'newGroupDesc'),
-      'newGroupType' => $this->controller->exportValue($this->_name, 'newGroupType'),
-      'groups' => $this->controller->exportValue($this->_name, 'groups'),
-      'allGroups' => $this->get('groups'),
-      'newTagName' => $this->controller->exportValue($this->_name, 'newTagName'),
-      'newTagDesc' => $this->controller->exportValue($this->_name, 'newTagDesc'),
-      'tag' => $this->controller->exportValue($this->_name, 'tag'),
-      'allTags' => $this->get('tag'),
-      'mapper' => $this->controller->exportValue('MapField', 'mapper'),
-      'mapFields' => $this->getAvailableFields(),
-      'contactType' => $this->get('contactType'),
-      'contactSubType' => $this->getSubmittedValue('contactSubType'),
-      'primaryKeyName' => '_id',
-      'statusFieldName' => '_status',
-      'statusID' => $this->get('statusID'),
-      'totalRowCount' => $this->get('totalRowCount'),
-      'userJobID' => $this->getUserJobID(),
-    );
-
-    $importJob = new CRM_Contact_Import_ImportJob();
-    $importJob->setJobParams($importJobParams);
+    if ($this->getSubmittedValue('newGroupName')) {
+      /* Create a new group */
+      $groupsToAddTo[] = $groupID = Group::create(FALSE)->setValues([
+        'title' => $this->getSubmittedValue('newGroupName'),
+        'description' => $this->getSubmittedValue('newGroupDesc'),
+        'group_type' => $this->getSubmittedValue('newGroupType') ?? [],
+        'is_active' => TRUE,
+      ])->execute()->first()['id'];
+      $summaryInfo['groups'][$groupID] = [
+        'url' => CRM_Utils_System::url('civicrm/group/search', 'reset=1&force=1&context=smog&gid=' . $groupID),
+        'name' => $this->getSubmittedValue('newGroupName'),
+        'new' => TRUE,
+        'added' => 0,
+        'notAdded' => 0,
+      ];
+    }
+    $tagsToAdd = (array) $this->getSubmittedValue('tag');
+    foreach ($tagsToAdd as $tagID) {
+      // This is a convenience for now - really url & name should be determined at
+      // presentation stage - ie the summary screen. The only info we are really
+      // preserving is which tags were created vs already existed.
+      $summaryInfo['tags'][$tagID] = [
+        'url' => CRM_Utils_System::url('civicrm/contact/search', 'reset=1&force=1&context=smog&id=' . $tagID),
+        'name' => Tag::get(FALSE)->addWhere('id', '=', $tagID)->addSelect('name')->execute()->first()['name'],
+        'new' => TRUE,
+        'added' => 0,
+        'notAdded' => 0,
+      ];
+    }
+    if ($this->getSubmittedValue('newTagName')) {
+      $tagsToAdd[] = $tagID = Tag::create(FALSE)->setValues([
+        'name' => $this->getSubmittedValue('newTagName'),
+        'description' => $this->getSubmittedValue('newTagDesc'),
+        'is_selectable' => TRUE,
+        'used_for' => 'civicrm_contact',
+      ])->execute()->first()['id'];
+      $summaryInfo['tags'][$tagID] = [
+        'url' => CRM_Utils_System::url('civicrm/contact/search', 'reset=1&force=1&context=smog&id=' . $tagID),
+        'name' => $this->getSubmittedValue('newTagName'),
+        'new' => FALSE,
+        'added' => 0,
+        'notAdded' => 0,
+      ];
+    }
+    // Store the actions to take on each row & the data to present at the end to the userJob.
+    $this->updateUserJobMetadata('post_actions', ['group' => $groupsToAddTo, 'tag' => $tagsToAdd]);
+    $this->updateUserJobMetadata('summary_info', $summaryInfo);
 
     // If ACL applies to the current user, update cache before running the import.
     if (!CRM_Core_Permission::check('view all contacts')) {
@@ -210,66 +191,18 @@ class CRM_Contact_Import_Form_Preview extends CRM_Import_Form_Preview {
       CRM_ACL_BAO_Cache::deleteContactCacheEntry($userID);
     }
 
-    CRM_Utils_Address_USPS::disable($this->_disableUSPS);
-
-    // run the import
-    $importJob->runImport($this);
-
-    // Clear all caches, forcing any searches to recheck the ACLs or group membership as the import
-    // may have changed it.
-    CRM_Contact_BAO_Contact_Utils::clearContactCaches(TRUE);
-
-    // add all the necessary variables to the form
-    $importJob->setFormVariables($this);
-
-    // check if there is any error occurred
-    $errorStack = CRM_Core_Error::singleton();
-    $errors = $errorStack->getErrors();
-    $errorMessage = [];
-
-    if (is_array($errors)) {
-      foreach ($errors as $key => $value) {
-        $errorMessage[] = $value['message'];
-      }
-
-      // there is no fileName since this is a sql import
-      // so fudge it
-      $config = CRM_Core_Config::singleton();
-      $errorFile = $config->uploadDir . "sqlImport.error.log";
-      if ($fd = fopen($errorFile, 'w')) {
-        fwrite($fd, implode('\n', $errorMessage));
-      }
-      fclose($fd);
-
-      $this->set('errorFile', $errorFile);
-
-      $urlParams = 'type=' . CRM_Import_Parser::NO_MATCH . '&parser=CRM_Contact_Import_Parser_Contact';
-      $this->set('downloadMismatchRecordsUrl', CRM_Utils_System::url('civicrm/export', $urlParams));
-    }
-
-    //hack to clean db
-    //if job complete drop table.
-    $importJob->isComplete();
+    $this->runTheImport();
   }
 
   /**
-   * Get the mapped fields as an array of labels.
-   *
-   * e.g
-   * ['First Name', 'Employee Of - First Name', 'Home - Street Address']
-   *
-   * @return array
-   * @throws \API_Exception
-   * @throws \CRM_Core_Exception
+   * @return \CRM_Contact_Import_Parser_Contact
    */
-  protected function getMappedFieldLabels(): array {
-    $mapper = [];
-    $parser = new CRM_Contact_Import_Parser_Contact();
-    $parser->setUserJobID($this->getUserJobID());
-    foreach ($this->getSubmittedValue('mapper') as $columnNumber => $mappedField) {
-      $mapper[$columnNumber] = $parser->getMappedFieldLabel($parser->getMappingFieldFromMapperInput($mappedField, 0, $columnNumber));
+  protected function getParser(): CRM_Contact_Import_Parser_Contact {
+    if (!$this->parser) {
+      $this->parser = new CRM_Contact_Import_Parser_Contact();
+      $this->parser->setUserJobID($this->getUserJobID());
     }
-    return $mapper;
+    return $this->parser;
   }
 
 }

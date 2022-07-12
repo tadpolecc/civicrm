@@ -8,6 +8,7 @@
       var schema = {},
         data = {},
         status,
+        args,
         ctrl = this;
 
       this.$onInit = function() {
@@ -36,8 +37,8 @@
         return $scope.$parent.meta;
       };
       this.loadData = function() {
-        var toLoad = 0,
-          args = $scope.$parent.routeParams || {};
+        var toLoad = 0;
+        args = _.assign({}, $scope.$parent.routeParams || {}, $scope.$parent.options || {});
         _.each(schema, function(entity, entityName) {
           if (args[entityName] || entity.autofill) {
             toLoad++;
@@ -69,6 +70,11 @@
       function postProcess() {
         var metaData = ctrl.getFormMeta();
 
+        $element.trigger('crmFormSuccess', {
+          afform: metaData,
+          data: data
+        });
+
         if (metaData.redirect) {
           var url = metaData.redirect;
           if (url.indexOf('civicrm/') === 0) {
@@ -88,7 +94,7 @@
 
         crmApi4('Afform', 'submit', {
           name: ctrl.getFormMeta().name,
-          args: $scope.$parent.routeParams || {},
+          args: args,
           values: data}
         ).then(function(response) {
           if (ctrl.fileUploader.getNotUploadedItems().length) {

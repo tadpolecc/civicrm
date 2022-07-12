@@ -27,7 +27,6 @@
     <p>{ts}Click 'Import Now' if you are ready to proceed.{/ts}</p>
 </div>
 <div class="crm-submit-buttons">{include file="CRM/common/formButtons.tpl" location="top"}</div>
-{include file="CRM/common/importProgress.tpl"}
 
 <div id="preview-info">
  {* Summary Preview (record counts) *}
@@ -38,14 +37,12 @@
     </tr>
 
     {if $invalidRowCount}
-    <tr class="error"><td class="label crm-grid-cell">{ts}Rows with Errors{/ts}</td>
+      <tr class="error"><td class="label crm-grid-cell">{ts}Rows with Errors{/ts}</td>
         <td class="data">{$invalidRowCount}</td>
         <td class="explanation">{ts}Rows with invalid data in one or more fields (for example, invalid email address formatting). These rows will be skipped (not imported).{/ts}
-            {if $invalidRowCount}
-                <div class="action-link"><a href="{$downloadErrorRecordsUrl|smarty:nodefaults}"><i class="crm-i fa-download" aria-hidden="true"></i> {ts}Download Errors{/ts}</a></div>
-            {/if}
+          <div class="action-link"><a href="{$downloadErrorRecordsUrl|smarty:nodefaults}"><i class="crm-i fa-download" aria-hidden="true"></i> {ts}Download Errors{/ts}</a></div>
         </td>
-    </tr>
+      </tr>
     {/if}
 
     <tr>
@@ -130,9 +127,7 @@
         <table class="form-layout-compressed">
             <tr><td style="width: 14em;"></td>
              <td class="listing-box" style="margin-bottom: 0em; width: 15em;">
-        {foreach from=$form.tag item="tag_val"}
-          <div>{$tag_val.html}</div>
-        {/foreach}
+               {$form.tag.html}
             </td>
           </tr>
         </table>

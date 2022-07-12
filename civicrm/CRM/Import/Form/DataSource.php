@@ -23,13 +23,6 @@ abstract class CRM_Import_Form_DataSource extends CRM_Import_Forms {
    * Set variables up before form is built.
    */
   public function preProcess() {
-    $this->_id = CRM_Utils_Request::retrieve('id', 'Positive', $this, FALSE);
-    $params = "reset=1";
-    if ($this->_id) {
-      $params .= "&id={$this->_id}";
-    }
-    CRM_Core_Session::singleton()->pushUserContext(CRM_Utils_System::url(static::PATH, $params));
-
     // check for post max size
     CRM_Utils_Number::formatUnitSize(ini_get('post_max_size'), TRUE);
     $this->assign('importEntity', $this->getTranslatedEntity());
@@ -63,7 +56,10 @@ abstract class CRM_Import_Form_DataSource extends CRM_Import_Forms {
    */
   public function buildQuickForm() {
     $config = CRM_Core_Config::singleton();
-
+    // When we switch to using the DataSource.tpl used by Contact we can remove this in
+    // favour of the one used by Contact - I was trying to consolidate
+    // first & got stuck on https://github.com/civicrm/civicrm-core/pull/23458
+    $this->add('hidden', 'hidden_dataSource', 'CRM_Import_DataSource_CSV');
     $uploadFileSize = CRM_Utils_Number::formatUnitSize($config->maxFileSize . 'm', TRUE);
 
     //Fetch uploadFileSize from php_ini when $config->maxFileSize is set to "no limit".
@@ -147,16 +143,25 @@ abstract class CRM_Import_Form_DataSource extends CRM_Import_Forms {
   }
 
   /**
+   * Common postProcessing.
+   */
+  public function postProcess() {
+    $this->processDatasource();
+    $this->controller->resetPage('MapField');
+    parent::postProcess();
+  }
+
+  /**
    * Common form postProcess.
+   * @deprecated - just use postProcess.
    *
    * @param string $parserClassName
-   *
    * @param string|null $entity
    *   Entity to set for paraser currently only for custom import
    */
   protected function submitFileForMapping($parserClassName, $entity = NULL) {
-    $this->controller->resetPage('MapField');
     CRM_Core_Session::singleton()->set('dateTypes', $this->getSubmittedValue('dateFormats'));
+    $this->processDatasource();
 
     $mapper = [];
 
@@ -165,6 +170,7 @@ abstract class CRM_Import_Form_DataSource extends CRM_Import_Forms {
       $parser->setEntity($this->get($entity));
     }
     $parser->setMaxLinesToProcess(100);
+    $parser->setUserJobID($this->getUserJobID());
     $parser->run(
       $this->getSubmittedValue('uploadFile'),
       $this->getSubmittedValue('fieldSeparator'),
@@ -176,6 +182,7 @@ abstract class CRM_Import_Form_DataSource extends CRM_Import_Forms {
 
     // add all the necessary variables to the form
     $parser->set($this);
+    $this->controller->resetPage('MapField');
   }
 
   /**
@@ -185,6 +192,35 @@ abstract class CRM_Import_Form_DataSource extends CRM_Import_Forms {
    */
   public function getTitle() {
     return ts('Upload Data');
+  }
+
+  /**
+   * Process the datasource submission - setting up the job and data source.
+   *
+   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
+   */
+  protected function processDatasource(): void {
+    if (!$this->getUserJobID()) {
+      $this->createUserJob();
+    }
+    else {
+      $this->flushDataSource();
+      $this->updateUserJobMetadata('submitted_values', $this->getSubmittedValues());
+    }
+    $this->instantiateDataSource();
+  }
+
+  /**
+   * Instantiate the datasource.
+   *
+   * This gives the datasource a chance to do any table creation etc.
+   *
+   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
+   */
+  private function instantiateDataSource(): void {
+    $this->getDataSourceObject()->initialize();
   }
 
 }

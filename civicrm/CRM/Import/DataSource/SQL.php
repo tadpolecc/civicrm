@@ -74,30 +74,33 @@ class CRM_Import_DataSource_SQL extends CRM_Import_DataSource {
   }
 
   /**
-   * Process the form submission.
-   *
-   * @param array $params
-   * @param string $db
-   * @param \CRM_Core_Form $form
+   * Initialize the datasource, based on the submitted values stored in the user job.
    *
    * @throws \API_Exception
    * @throws \CRM_Core_Exception
-   * @throws \Civi\API\Exception\UnauthorizedException
    */
-  public function postProcess(&$params, &$db, &$form) {
+  public function initialize(): void {
     $table = CRM_Utils_SQL_TempTable::build()->setDurable();
     $tableName = $table->getName();
     $table->createWithQuery($this->getSubmittedValue('sqlQuery'));
 
-    // Get the names of the fields to be imported. Any fields starting with an
-    // underscore are considered to be internal to the import process)
+    // Get the names of the fields to be imported.
     $columnsResult = CRM_Core_DAO::executeQuery(
-      'SHOW FIELDS FROM ' . $tableName . "
-      WHERE Field NOT LIKE '\_%'");
+      'SHOW FIELDS FROM ' . $tableName);
 
     $columnNames = [];
     while ($columnsResult->fetch()) {
-      $columnNames[] = $columnsResult->Field;
+      if (strpos($columnsResult->Field, ' ') !== FALSE) {
+        // Remove spaces as the Database object does this
+        // $keys = str_replace(array(".", " "), "_", array_keys($array));
+        // https://lab.civicrm.org/dev/core/-/issues/1337
+        $usableColumnName = str_replace(' ', '_', $columnsResult->Field);
+        CRM_Core_DAO::executeQuery('ALTER TABLE ' . $tableName . ' CHANGE `' . $columnsResult->Field . '` ' . $usableColumnName . ' ' . $columnsResult->Type);
+        $columnNames[] = $usableColumnName;
+      }
+      else {
+        $columnNames[] = $columnsResult->Field;
+      }
     }
 
     $this->addTrackingFieldsToTable($tableName);

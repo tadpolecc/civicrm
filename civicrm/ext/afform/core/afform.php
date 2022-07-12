@@ -51,9 +51,11 @@ function afform_civicrm_config(&$config) {
   $dispatcher = Civi::dispatcher();
   $dispatcher->addListener('civi.afform.submit', ['\Civi\Api4\Action\Afform\Submit', 'processGenericEntity'], 0);
   $dispatcher->addListener('civi.afform.submit', ['\Civi\Api4\Action\Afform\Submit', 'preprocessContact'], 10);
+  $dispatcher->addListener('civi.afform.submit', ['\Civi\Api4\Action\Afform\Submit', 'processRelationships'], 1);
   $dispatcher->addListener('hook_civicrm_angularModules', ['\Civi\Afform\AngularDependencyMapper', 'autoReq'], -1000);
   $dispatcher->addListener('hook_civicrm_alterAngular', ['\Civi\Afform\AfformMetadataInjector', 'preprocess']);
   $dispatcher->addListener('hook_civicrm_check', ['\Civi\Afform\StatusChecks', 'hook_civicrm_check']);
+  $dispatcher->addListener('civi.afform.get', ['\Civi\Api4\Action\Afform\Get', 'getCustomGroupBlocks']);
 
   // Register support for email tokens
   if (CRM_Extension_System::singleton()->getMapper()->isActiveModule('authx')) {
@@ -357,14 +359,18 @@ function afform_civicrm_buildAsset($asset, $params, &$mimeType, &$content) {
  * Implements hook_civicrm_alterMenu().
  */
 function afform_civicrm_alterMenu(&$items) {
-  if (Civi::container()->has('afform_scanner')) {
-    $scanner = Civi::service('afform_scanner');
+  try {
+    $afforms = \Civi\Api4\Afform::get(FALSE)
+      ->addWhere('server_route', 'IS NOT EMPTY')
+      ->addSelect('name', 'server_route', 'is_public')
+      ->execute()->indexBy('name');
   }
-  else {
+  catch (Exception $e) {
     // During installation...
     $scanner = new CRM_Afform_AfformScanner();
+    $afforms = $scanner->getMetas();
   }
-  foreach ($scanner->getMetas() as $name => $meta) {
+  foreach ($afforms as $name => $meta) {
     if (!empty($meta['server_route'])) {
       $items[$meta['server_route']] = [
         'page_callback' => 'CRM_Afform_Page_AfformBase',
@@ -374,6 +380,18 @@ function afform_civicrm_alterMenu(&$items) {
       ];
     }
   }
+}
+
+/**
+ * Implements hook_civicrm_permission().
+ *
+ * Define Afform permissions.
+ */
+function afform_civicrm_permission(&$permissions) {
+  $permissions['administer afform'] = [
+    E::ts('Form Builder: edit and delete forms'),
+    E::ts('Allows non-admin users to create, update and delete forms'),
+  ];
 }
 
 /**

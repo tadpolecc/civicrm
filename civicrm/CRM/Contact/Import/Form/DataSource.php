@@ -18,7 +18,16 @@
 /**
  * This class delegates to the chosen DataSource to grab the data to be imported.
  */
-class CRM_Contact_Import_Form_DataSource extends CRM_Import_Forms {
+class CRM_Contact_Import_Form_DataSource extends CRM_Import_Form_DataSource {
+
+  /**
+   * Get the name of the type to be stored in civicrm_user_job.type_id.
+   *
+   * @return string
+   */
+  public function getUserJobType(): string {
+    return 'contact_import';
+  }
 
   /**
    * Get any smarty elements that may not be present in the form.
@@ -155,6 +164,7 @@ class CRM_Contact_Import_Form_DataSource extends CRM_Import_Forms {
       'onDuplicate' => CRM_Import_Parser::DUPLICATE_SKIP,
       'contactType' => CRM_Import_Parser::CONTACT_INDIVIDUAL,
       'fieldSeparator' => CRM_Core_Config::singleton()->fieldSeparator,
+      'disableUSPS' => TRUE,
     ];
 
     if ($this->get('loadedMapping')) {
@@ -172,16 +182,7 @@ class CRM_Contact_Import_Form_DataSource extends CRM_Import_Forms {
    */
   public function postProcess() {
     $this->controller->resetPage('MapField');
-    if (!$this->getUserJobID()) {
-      $this->createUserJob();
-    }
-    else {
-      $this->flushDataSource();
-      $this->updateUserJobMetadata('submitted_values', $this->getSubmittedValues());
-    }
-    // Setup the params array
-    $this->_params = $this->controller->exportValues($this->_name);
-
+    $this->processDatasource();
     // @todo - this params are being set here because they were / possibly still
     // are in some places being accessed by forms later in the flow
     // ie CRM_Contact_Import_Form_MapField, CRM_Contact_Import_Form_Preview
@@ -194,9 +195,6 @@ class CRM_Contact_Import_Form_DataSource extends CRM_Import_Forms {
     // Once the mentioned forms no longer call $this->get() all this 'setting'
     // is obsolete.
     $storeParams = [
-      'onDuplicate' => $this->getSubmittedValue('onDuplicate'),
-      'dedupe' => $this->getSubmittedValue('dedupe_rule_id'),
-      'contactType' => $this->getSubmittedValue('contactType'),
       'dateFormats' => $this->getSubmittedValue('dateFormats'),
       'savedMapping' => $this->getSubmittedValue('savedMapping'),
     ];
@@ -204,50 +202,8 @@ class CRM_Contact_Import_Form_DataSource extends CRM_Import_Forms {
     foreach ($storeParams as $storeName => $value) {
       $this->set($storeName, $value);
     }
-    $this->set('disableUSPS', $this->getSubmittedValue('disableUSPS'));
-    $this->set('dataSource', $this->getSubmittedValue('dataSource'));
-    $this->set('skipColumnHeader', CRM_Utils_Array::value('skipColumnHeader', $this->_params));
-
     CRM_Core_Session::singleton()->set('dateTypes', $storeParams['dateFormats']);
 
-    $this->instantiateDataSource();
-
-    $mapper = [];
-
-    $parser = new CRM_Contact_Import_Parser_Contact($mapper);
-    $parser->setMaxLinesToProcess(100);
-    $parser->setUserJobID($this->getUserJobID());
-    $parser->run(NULL,
-      [],
-      CRM_Import_Parser::MODE_MAPFIELD,
-      $this->getSubmittedValue('contactType'),
-      '_id',
-      '_status',
-      CRM_Import_Parser::DUPLICATE_SKIP,
-      NULL, NULL, FALSE,
-      CRM_Contact_Import_Parser_Contact::DEFAULT_TIMEOUT,
-      $this->getSubmittedValue('contactSubType'),
-      $this->getSubmittedValue('dedupe_rule_id')
-    );
-
-    // add all the necessary variables to the form
-    $parser->set($this);
-
-  }
-
-  /**
-   * Instantiate the datasource.
-   *
-   * This gives the datasource a chance to do any table creation etc.
-   *
-   * @throws \CRM_Core_Exception
-   */
-  private function instantiateDataSource(): void {
-    $dataSource = $this->getDataSourceObject();
-    // Get the PEAR::DB object
-    $dao = new CRM_Core_DAO();
-    $db = $dao->getDatabaseConnection();
-    $dataSource->postProcess($this->_params, $db, $this);
   }
 
   /**

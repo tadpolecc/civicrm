@@ -21,6 +21,11 @@
         this.limit = this.settings.limit;
         this.sort = this.settings.sort ? _.cloneDeep(this.settings.sort) : [];
         this.seed = Date.now();
+        this.placeholders = [];
+        var placeholderCount = 'placeholder' in this.settings ? this.settings.placeholder : 5;
+        for (var p=0; p < placeholderCount; ++p) {
+          this.placeholders.push({});
+        }
 
         this.getResults = _.debounce(function() {
           $scope.$apply(function() {
@@ -46,7 +51,10 @@
         }
 
         // Popup forms in this display or surrounding Afform trigger a refresh
-        $element.closest('form').on('crmPopupFormSuccess', this.getResults);
+        $element.closest('form').on('crmPopupFormSuccess', function() {
+          ctrl.rowCount = null;
+          ctrl.getResults();
+        });
 
         function onChangeFilters() {
           ctrl.page = 1;
@@ -80,6 +88,10 @@
           $scope.$watch('$ctrl.limit', onChangePageSize);
         }
         $scope.$watch('$ctrl.filters', onChangeFilters, true);
+      },
+
+      hasExtraFirstColumn: function() {
+        return this.settings.actions || this.settings.draggable || (this.settings.tally && this.settings.tally.label);
       },
 
       getAfformFilters: function() {

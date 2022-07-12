@@ -23,12 +23,6 @@ require_once 'CRM/Utils/DeprecatedUtils.php';
 class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
   protected $_mapperKeys;
 
-  private $_contactIdIndex;
-  private $_eventIndex;
-  private $_participantStatusIndex;
-  private $_participantRoleIndex;
-  private $_eventTitleIndex;
-
   /**
    * Array of successfully imported participants id's
    *
@@ -78,57 +72,35 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
   }
 
   /**
+   * Get information about the provided job.
+   *
+   *  - name
+   *  - id (generally the same as name)
+   *  - label
+   *
+   * @return array
+   */
+  public static function getUserJobInfo(): array {
+    return [
+      'participant_import' => [
+        'id' => 'participant_import',
+        'name' => 'participant_import',
+        'label' => ts('Participant Import'),
+      ],
+    ];
+  }
+
+  /**
    * The initializer code, called before the processing.
    */
   public function init() {
-    $fields = CRM_Event_BAO_Participant::importableFields($this->_contactType, FALSE);
-    $fields['event_id']['title'] = 'Event ID';
-    $eventfields = &CRM_Event_BAO_Event::fields();
-    $fields['event_title'] = $eventfields['event_title'];
-
-    foreach ($fields as $name => $field) {
+    unset($this->userJob);
+    $this->setFieldMetadata();
+    foreach ($this->importableFieldsMetadata as $name => $field) {
       $field['type'] = CRM_Utils_Array::value('type', $field, CRM_Utils_Type::T_INT);
       $field['dataPattern'] = CRM_Utils_Array::value('dataPattern', $field, '//');
       $field['headerPattern'] = CRM_Utils_Array::value('headerPattern', $field, '//');
       $this->addField($name, $field['title'], $field['type'], $field['headerPattern'], $field['dataPattern']);
-    }
-
-    $this->_newParticipants = [];
-    $this->setActiveFields($this->_mapperKeys);
-
-    // FIXME: we should do this in one place together with Form/MapField.php
-    $this->_contactIdIndex = -1;
-    $this->_eventIndex = -1;
-    $this->_participantStatusIndex = -1;
-    $this->_participantRoleIndex = -1;
-    $this->_eventTitleIndex = -1;
-
-    $index = 0;
-    foreach ($this->_mapperKeys as $key) {
-
-      switch ($key) {
-        case 'participant_contact_id':
-          $this->_contactIdIndex = $index;
-          break;
-
-        case 'event_id':
-          $this->_eventIndex = $index;
-          break;
-
-        case 'participant_status':
-        case 'participant_status_id':
-          $this->_participantStatusIndex = $index;
-          break;
-
-        case 'participant_role_id':
-          $this->_participantRoleIndex = $index;
-          break;
-
-        case 'event_title':
-          $this->_eventTitleIndex = $index;
-          break;
-      }
-      $index++;
     }
   }
 
@@ -155,105 +127,18 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
    *   the result of this processing
    */
   public function summary(&$values) {
-    $this->setActiveFieldValues($values);
-    $index = -1;
-
-    if ($this->_eventIndex > -1 && $this->_eventTitleIndex > -1) {
-      array_unshift($values, ts('Select either EventID OR Event Title'));
-      return CRM_Import_Parser::ERROR;
+    $params = $this->getMappedRow($values);
+    $errors = [];
+    try {
+      $this->validateParams($params);
     }
-    elseif ($this->_eventTitleIndex > -1) {
-      $index = $this->_eventTitleIndex;
-    }
-    elseif ($this->_eventIndex > -1) {
-      $index = $this->_eventIndex;
-    }
-    $params = &$this->getActiveFieldParams();
-
-    if (!(($index < 0) || ($this->_participantStatusIndex < 0))) {
-      $errorRequired = !CRM_Utils_Array::value($this->_participantStatusIndex, $values);
-      if (empty($params['event_id']) && empty($params['event_title'])) {
-        CRM_Contact_Import_Parser_Contact::addToErrorMsg('Event', $missingField);
-      }
-      if (empty($params['participant_status_id'])) {
-        CRM_Contact_Import_Parser_Contact::addToErrorMsg('Participant Status', $missingField);
-      }
-    }
-    else {
-      $errorRequired = TRUE;
-      $missingField = NULL;
-      if ($index < 0) {
-        CRM_Contact_Import_Parser_Contact::addToErrorMsg('Event', $missingField);
-      }
-      if ($this->_participantStatusIndex < 0) {
-        CRM_Contact_Import_Parser_Contact::addToErrorMsg('Participant Status', $missingField);
-      }
+    catch (CRM_Core_Exception $e) {
+      $errors[] = $e->getMessage();
     }
 
-    if ($errorRequired) {
-      array_unshift($values, ts('Missing required field(s) :') . $missingField);
-      return CRM_Import_Parser::ERROR;
-    }
-
-    $errorMessage = NULL;
-
-    //for date-Formats
-    $session = CRM_Core_Session::singleton();
-    $dateType = $session->get('dateTypes');
-
-    foreach ($params as $key => $val) {
-      if ($val && ($key == 'participant_register_date')) {
-        if ($dateValue = CRM_Utils_Date::formatDate($params[$key], $dateType)) {
-          $params[$key] = $dateValue;
-        }
-        else {
-          CRM_Contact_Import_Parser_Contact::addToErrorMsg('Register Date', $errorMessage);
-        }
-      }
-      elseif ($val && ($key == 'participant_role_id' || $key == 'participant_role')) {
-        $roleIDs = CRM_Event_PseudoConstant::participantRole();
-        $val = explode(',', $val);
-        if ($key == 'participant_role_id') {
-          foreach ($val as $role) {
-            if (!array_key_exists(trim($role), $roleIDs)) {
-              CRM_Contact_Import_Parser_Contact::addToErrorMsg('Participant Role Id', $errorMessage);
-              break;
-            }
-          }
-        }
-        else {
-          foreach ($val as $role) {
-            if (!CRM_Contact_Import_Parser_Contact::in_value(trim($role), $roleIDs)) {
-              CRM_Contact_Import_Parser_Contact::addToErrorMsg('Participant Role', $errorMessage);
-              break;
-            }
-          }
-        }
-      }
-      elseif ($val && (($key == 'participant_status_id') || ($key == 'participant_status'))) {
-        $statusIDs = CRM_Event_PseudoConstant::participantStatus();
-        if ($key == 'participant_status_id') {
-          if (!array_key_exists(trim($val), $statusIDs)) {
-            CRM_Contact_Import_Parser_Contact::addToErrorMsg('Participant Status Id', $errorMessage);
-            break;
-          }
-        }
-        elseif (!CRM_Contact_Import_Parser_Contact::in_value($val, $statusIDs)) {
-          CRM_Contact_Import_Parser_Contact::addToErrorMsg('Participant Status', $errorMessage);
-          break;
-        }
-      }
-    }
-    //date-Format part ends
-
-    $params['contact_type'] = 'Participant';
-    //checking error in custom data
-    CRM_Contact_Import_Parser_Contact::isErrorInCustomData($params, $errorMessage);
-
-    if ($errorMessage) {
-      $tempMsg = "Invalid value for field(s) : $errorMessage";
+    if ($errors) {
+      $tempMsg = "Invalid value for field(s) : " . implode(',', $errors);
       array_unshift($values, $tempMsg);
-      $errorMessage = NULL;
       return CRM_Import_Parser::ERROR;
     }
     return CRM_Import_Parser::VALID;
@@ -262,221 +147,185 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
   /**
    * Handle the values in import mode.
    *
-   * @param int $onDuplicate
-   *   The code for what action to take on duplicates.
    * @param array $values
    *   The array of values belonging to this line.
    *
    * @return bool
    *   the result of this processing
    */
-  public function import($onDuplicate, &$values) {
+  public function import(&$values) {
+    $rowNumber = (int) ($values[array_key_last($values)]);
+    try {
+      $params = $this->getMappedRow($values);
+      $session = CRM_Core_Session::singleton();
+      $formatted = $params;
+      // don't add to recent items, CRM-4399
+      $formatted['skipRecentView'] = TRUE;
 
-    // first make sure this is a valid line
-    $response = $this->summary($values);
-    if ($response != CRM_Import_Parser::VALID) {
-      return $response;
-    }
-    $params = &$this->getActiveFieldParams();
-    $session = CRM_Core_Session::singleton();
-    $dateType = $session->get('dateTypes');
-    $formatted = ['version' => 3];
-    $customFields = CRM_Core_BAO_CustomField::getFields('Participant');
-
-    // don't add to recent items, CRM-4399
-    $formatted['skipRecentView'] = TRUE;
-
-    foreach ($params as $key => $val) {
-      if ($val) {
-        if ($customFieldID = CRM_Core_BAO_CustomField::getKeyID($key)) {
-          if ($customFields[$customFieldID]['data_type'] == 'Date') {
-            CRM_Contact_Import_Parser_Contact::formatCustomDate($params, $formatted, $dateType, $key);
-            unset($params[$key]);
-          }
-          elseif ($customFields[$customFieldID]['data_type'] == 'Boolean') {
-            $params[$key] = CRM_Utils_String::strtoboolstr($val);
-          }
-        }
-        if ($key == 'participant_register_date') {
-          CRM_Utils_Date::convertToDefaultDate($params, $dateType, 'participant_register_date');
-          $formatted['participant_register_date'] = CRM_Utils_Date::processDate($params['participant_register_date']);
-        }
-      }
-    }
-
-    if (!(!empty($params['participant_role_id']) || !empty($params['participant_role']))) {
-      if (!empty($params['event_id'])) {
-        $params['participant_role_id'] = CRM_Core_DAO::getFieldValue('CRM_Event_DAO_Event', $params['event_id'], 'default_role_id');
-      }
-      else {
-        $eventTitle = $params['event_title'];
-        $params['participant_role_id'] = CRM_Core_DAO::singleValueQuery('SELECT default_role_id FROM civicrm_event WHERE title = %1', [
-          1 => [$eventTitle, 'String'],
-        ]);
-      }
-    }
-
-    //date-Format part ends
-    static $indieFields = NULL;
-    if ($indieFields == NULL) {
-      $indieFields = CRM_Event_BAO_Participant::import();
-    }
-
-    $formatValues = [];
-    foreach ($params as $key => $field) {
-      if ($field == NULL || $field === '') {
-        continue;
-      }
-
-      $formatValues[$key] = $field;
-    }
-
-    $formatError = $this->formatValues($formatted, $formatValues);
-
-    if ($formatError) {
-      array_unshift($values, $formatError['error_message']);
-      return CRM_Import_Parser::ERROR;
-    }
-
-    if (!CRM_Utils_Rule::integer($formatted['event_id'])) {
-      array_unshift($values, ts('Invalid value for Event ID'));
-      return CRM_Import_Parser::ERROR;
-    }
-
-    if ($onDuplicate != CRM_Import_Parser::DUPLICATE_UPDATE) {
-      $formatted['custom'] = CRM_Core_BAO_CustomField::postProcess($formatted,
-        NULL,
-        'Participant'
-      );
-    }
-    else {
-      if ($formatValues['participant_id']) {
-        $dao = new CRM_Event_BAO_Participant();
-        $dao->id = $formatValues['participant_id'];
-
-        $formatted['custom'] = CRM_Core_BAO_CustomField::postProcess($formatted,
-          $formatValues['participant_id'],
-          'Participant'
-        );
-        if ($dao->find(TRUE)) {
-          $ids = [
-            'participant' => $formatValues['participant_id'],
-            'userId' => $session->get('userID'),
-          ];
-          $participantValues = [];
-          //@todo calling api functions directly is not supported
-          $newParticipant = $this->deprecated_participant_check_params($formatted, $participantValues, FALSE);
-          if ($newParticipant['error_message']) {
-            array_unshift($values, $newParticipant['error_message']);
-            return CRM_Import_Parser::ERROR;
-          }
-          $newParticipant = CRM_Event_BAO_Participant::create($formatted, $ids);
-          if (!empty($formatted['fee_level'])) {
-            $otherParams = [
-              'fee_label' => $formatted['fee_level'],
-              'event_id' => $newParticipant->event_id,
-            ];
-            CRM_Price_BAO_LineItem::syncLineItems($newParticipant->id, 'civicrm_participant', $newParticipant->fee_amount, $otherParams);
-          }
-
-          $this->_newParticipant[] = $newParticipant->id;
-          return CRM_Import_Parser::VALID;
+      if (!(!empty($params['participant_role_id']) || !empty($params['participant_role']))) {
+        if (!empty($params['event_id'])) {
+          $params['participant_role_id'] = CRM_Core_DAO::getFieldValue('CRM_Event_DAO_Event', $params['event_id'], 'default_role_id');
         }
         else {
-          array_unshift($values, 'Matching Participant record not found for Participant ID ' . $formatValues['participant_id'] . '. Row was skipped.');
-          return CRM_Import_Parser::ERROR;
+          $eventTitle = $params['event_title'];
+          $params['participant_role_id'] = CRM_Core_DAO::singleValueQuery('SELECT default_role_id FROM civicrm_event WHERE title = %1', [
+            1 => [$eventTitle, 'String'],
+          ]);
         }
       }
-    }
 
-    if ($this->_contactIdIndex < 0) {
-      $error = $this->checkContactDuplicate($formatValues);
+      $formatValues = [];
+      foreach ($params as $key => $field) {
+        if ($field == NULL || $field === '') {
+          continue;
+        }
 
-      if (CRM_Core_Error::isAPIError($error, CRM_Core_ERROR::DUPLICATE_CONTACT)) {
-        $matchedIDs = explode(',', $error['error_message']['params'][0]);
-        if (count($matchedIDs) >= 1) {
-          foreach ($matchedIDs as $contactId) {
-            $formatted['contact_id'] = $contactId;
-            $formatted['version'] = 3;
-            $newParticipant = $this->deprecated_create_participant_formatted($formatted, $onDuplicate);
+        $formatValues[$key] = $field;
+      }
+
+      $formatError = $this->formatValues($formatted, $formatValues);
+
+      if ($formatError) {
+        throw new CRM_Core_Exception($formatError['error_message']);
+      }
+
+      if (!$this->isUpdateExisting()) {
+        $formatted['custom'] = CRM_Core_BAO_CustomField::postProcess($formatted,
+          NULL,
+          'Participant'
+        );
+      }
+      else {
+        if (!empty($formatValues['participant_id'])) {
+          $dao = new CRM_Event_BAO_Participant();
+          $dao->id = $formatValues['participant_id'];
+
+          $formatted['custom'] = CRM_Core_BAO_CustomField::postProcess($formatted,
+            $formatValues['participant_id'],
+            'Participant'
+          );
+          if ($dao->find(TRUE)) {
+            $ids = [
+              'participant' => $formatValues['participant_id'],
+              'userId' => $session->get('userID'),
+            ];
+            $participantValues = [];
+            //@todo calling api functions directly is not supported
+            $newParticipant = $this->deprecated_participant_check_params($formatted, $participantValues, FALSE);
+            if ($newParticipant['error_message']) {
+              throw new CRM_Core_Exception($newParticipant['error_message']);
+            }
+            $newParticipant = CRM_Event_BAO_Participant::create($formatted, $ids);
+            if (!empty($formatted['fee_level'])) {
+              $otherParams = [
+                'fee_label' => $formatted['fee_level'],
+                'event_id' => $newParticipant->event_id,
+              ];
+              CRM_Price_BAO_LineItem::syncLineItems($newParticipant->id, 'civicrm_participant', $newParticipant->fee_amount, $otherParams);
+            }
+
+            $this->_newParticipant[] = $newParticipant->id;
+            $this->setImportStatus($rowNumber, 'IMPORTED', '', $newParticipant->id);
+            return CRM_Import_Parser::VALID;
           }
+          throw new CRM_Core_Exception('Matching Participant record not found for Participant ID ' . $formatValues['participant_id'] . '. Row was skipped.');
+        }
+      }
+
+      if (empty($params['contact_id'])) {
+        $error = $this->checkContactDuplicate($formatValues);
+
+        if (CRM_Core_Error::isAPIError($error, CRM_Core_ERROR::DUPLICATE_CONTACT)) {
+          $matchedIDs = explode(',', $error['error_message']['params'][0]);
+          if (count($matchedIDs) >= 1) {
+            foreach ($matchedIDs as $contactId) {
+              $formatted['contact_id'] = $contactId;
+              $formatted['version'] = 3;
+              $newParticipant = $this->deprecated_create_participant_formatted($formatted);
+            }
+          }
+        }
+        else {
+          // Using new Dedupe rule.
+          $ruleParams = [
+            'contact_type' => $this->_contactType,
+            'used' => 'Unsupervised',
+          ];
+          $fieldsArray = CRM_Dedupe_BAO_DedupeRule::dedupeRuleFields($ruleParams);
+
+          $disp = '';
+          foreach ($fieldsArray as $value) {
+            if (array_key_exists(trim($value), $params)) {
+              $paramValue = $params[trim($value)];
+              if (is_array($paramValue)) {
+                $disp .= $params[trim($value)][0][trim($value)] . " ";
+              }
+              else {
+                $disp .= $params[trim($value)] . " ";
+              }
+            }
+          }
+
+          if (!empty($params['external_identifier'])) {
+            if ($disp) {
+              $disp .= "AND {$params['external_identifier']}";
+            }
+            else {
+              $disp = $params['external_identifier'];
+            }
+          }
+          throw new CRM_Core_Exception('No matching Contact found for (' . $disp . ')');
         }
       }
       else {
-        // Using new Dedupe rule.
-        $ruleParams = [
-          'contact_type' => $this->_contactType,
-          'used' => 'Unsupervised',
-        ];
-        $fieldsArray = CRM_Dedupe_BAO_DedupeRule::dedupeRuleFields($ruleParams);
-
-        $disp = '';
-        foreach ($fieldsArray as $value) {
-          if (array_key_exists(trim($value), $params)) {
-            $paramValue = $params[trim($value)];
-            if (is_array($paramValue)) {
-              $disp .= $params[trim($value)][0][trim($value)] . " ";
-            }
-            else {
-              $disp .= $params[trim($value)] . " ";
-            }
+        if (!empty($formatValues['external_identifier'])) {
+          $checkCid = new CRM_Contact_DAO_Contact();
+          $checkCid->external_identifier = $formatValues['external_identifier'];
+          $checkCid->find(TRUE);
+          if ($checkCid->id != $formatted['contact_id']) {
+            throw new CRM_Core_Exception('Mismatch of External ID:' . $formatValues['external_identifier'] . ' and Contact Id:' . $formatted['contact_id']);
           }
         }
-
-        if (!empty($params['external_identifier'])) {
-          if ($disp) {
-            $disp .= "AND {$params['external_identifier']}";
-          }
-          else {
-            $disp = $params['external_identifier'];
-          }
-        }
-
-        array_unshift($values, 'No matching Contact found for (' . $disp . ')');
-        return CRM_Import_Parser::ERROR;
+        $newParticipant = $this->deprecated_create_participant_formatted($formatted);
       }
-    }
-    else {
-      if (!empty($formatValues['external_identifier'])) {
-        $checkCid = new CRM_Contact_DAO_Contact();
-        $checkCid->external_identifier = $formatValues['external_identifier'];
-        $checkCid->find(TRUE);
-        if ($checkCid->id != $formatted['contact_id']) {
-          array_unshift($values, 'Mismatch of External ID:' . $formatValues['external_identifier'] . ' and Contact Id:' . $formatted['contact_id']);
-          return CRM_Import_Parser::ERROR;
+
+      if (is_array($newParticipant) && civicrm_error($newParticipant)) {
+        if ($this->isSkipDuplicates()) {
+
+          $contactID = $newParticipant['contactID'] ?? NULL;
+          $participantID = $newParticipant['participantID'] ?? NULL;
+          $url = CRM_Utils_System::url('civicrm/contact/view/participant',
+            "reset=1&id={$participantID}&cid={$contactID}&action=view", TRUE
+          );
+          if (is_array($newParticipant['error_message']) &&
+            ($participantID == $newParticipant['error_message']['params'][0])
+          ) {
+            array_unshift($values, $url);
+            $this->setImportStatus($rowNumber, 'DUPLICATE', '');
+            return CRM_Import_Parser::DUPLICATE;
+          }
+          if ($newParticipant['error_message']) {
+            throw new CRM_Core_Exception($newParticipant['error_message']);
+          }
+          throw new CRM_Core_Exception(ts('Unknown error'));
         }
       }
 
-      $newParticipant = $this->deprecated_create_participant_formatted($formatted, $onDuplicate);
-    }
-
-    if (is_array($newParticipant) && civicrm_error($newParticipant)) {
-      if ($onDuplicate == CRM_Import_Parser::DUPLICATE_SKIP) {
-
-        $contactID = $newParticipant['contactID'] ?? NULL;
-        $participantID = $newParticipant['participantID'] ?? NULL;
-        $url = CRM_Utils_System::url('civicrm/contact/view/participant',
-          "reset=1&id={$participantID}&cid={$contactID}&action=view", TRUE
-        );
-        if (is_array($newParticipant['error_message']) &&
-          ($participantID == $newParticipant['error_message']['params'][0])
-        ) {
-          array_unshift($values, $url);
-          return CRM_Import_Parser::DUPLICATE;
-        }
-        elseif ($newParticipant['error_message']) {
-          array_unshift($values, $newParticipant['error_message']);
-          return CRM_Import_Parser::ERROR;
-        }
-        return CRM_Import_Parser::ERROR;
+      if (!(is_array($newParticipant) && civicrm_error($newParticipant))) {
+        $this->_newParticipants[] = $newParticipant['id'] ?? NULL;
       }
     }
-
-    if (!(is_array($newParticipant) && civicrm_error($newParticipant))) {
-      $this->_newParticipants[] = $newParticipant['id'] ?? NULL;
+    catch (CRM_Core_Exception $e) {
+      array_unshift($values, $e->getMessage());
+      $this->setImportStatus($rowNumber, 'ERROR', $e->getMessage());
+      return CRM_Import_Parser::ERROR;
     }
-
-    return CRM_Import_Parser::VALID;
+    catch (CiviCRM_API3_Exception $e) {
+      array_unshift($values, $e->getMessage());
+      $this->setImportStatus($rowNumber, 'ERROR', $e->getMessage());
+      return CRM_Import_Parser::ERROR;
+    }
+    $this->setImportStatus($rowNumber, 'IMPORTED', '');
   }
 
   /**
@@ -549,23 +398,6 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
           }
           break;
 
-        case 'event_title':
-          $id = CRM_Core_DAO::getFieldValue("CRM_Event_DAO_Event", $value, 'id', 'title');
-          $values['event_id'] = $id;
-          break;
-
-        case 'event_id':
-          if (!CRM_Utils_Rule::integer($value)) {
-            return civicrm_api3_create_error("Event ID is not valid: $value");
-          }
-          $svq = CRM_Core_DAO::singleValueQuery('SELECT id FROM civicrm_event WHERE id = %1', [
-            1 => [$value, 'Integer'],
-          ]);
-          if (!$svq) {
-            return civicrm_api3_create_error("Invalid Event ID: There is no event record with event_id = $value.");
-          }
-          break;
-
         case 'participant_status_id':
           if (!CRM_Utils_Rule::integer($value)) {
             return civicrm_api3_create_error("Event Status ID is not valid: $value");
@@ -629,7 +461,6 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
 
   /**
    * @param array $params
-   * @param $onDuplicate
    *
    * @return array|bool
    *   <type>
@@ -638,8 +469,8 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
    *   moved on out
    *
    */
-  protected function deprecated_create_participant_formatted($params, $onDuplicate) {
-    if ($onDuplicate != CRM_Import_Parser::DUPLICATE_NOCHECK) {
+  protected function deprecated_create_participant_formatted($params) {
+    if ($this->isIgnoreDuplicates()) {
       CRM_Core_Error::reset();
       $error = $this->deprecated_participant_check_params($params, TRUE);
       if (civicrm_error($error)) {
@@ -708,188 +539,6 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
   }
 
   /**
-   * @param string $fileName
-   * @param string $separator
-   * @param $mapper
-   * @param bool $skipColumnHeader
-   * @param int $mode
-   * @param int $contactType
-   * @param int $onDuplicate
-   *
-   * @return mixed
-   * @throws Exception
-   */
-  public function run(
-    $fileName,
-    $separator,
-    $mapper,
-    $skipColumnHeader = FALSE,
-    $mode = self::MODE_PREVIEW,
-    $contactType = self::CONTACT_INDIVIDUAL,
-    $onDuplicate = self::DUPLICATE_SKIP
-  ) {
-    if (!is_array($fileName)) {
-      throw new CRM_Core_Exception('Unable to determine import file');
-    }
-    $fileName = $fileName['name'];
-
-    switch ($contactType) {
-      case self::CONTACT_INDIVIDUAL:
-        $this->_contactType = 'Individual';
-        break;
-
-      case self::CONTACT_HOUSEHOLD:
-        $this->_contactType = 'Household';
-        break;
-
-      case self::CONTACT_ORGANIZATION:
-        $this->_contactType = 'Organization';
-    }
-
-    $this->init();
-
-    $this->_haveColumnHeader = $skipColumnHeader;
-
-    $this->_separator = $separator;
-
-    $fd = fopen($fileName, "r");
-    if (!$fd) {
-      return FALSE;
-    }
-
-    $this->_lineCount = 0;
-    $this->_invalidRowCount = $this->_validCount = 0;
-    $this->_totalCount = 0;
-
-    $this->_errors = [];
-    $this->_warnings = [];
-
-    $this->_fileSize = number_format(filesize($fileName) / 1024.0, 2);
-
-    if ($mode == self::MODE_MAPFIELD) {
-      $this->_rows = [];
-    }
-    else {
-      $this->_activeFieldCount = count($this->_activeFields);
-    }
-
-    while (!feof($fd)) {
-      $this->_lineCount++;
-
-      $values = fgetcsv($fd, 8192, $separator);
-      if (!$values) {
-        continue;
-      }
-
-      self::encloseScrub($values);
-
-      // skip column header if we're not in mapfield mode
-      if ($mode != self::MODE_MAPFIELD && $skipColumnHeader) {
-        $skipColumnHeader = FALSE;
-        continue;
-      }
-
-      /* trim whitespace around the values */
-
-      $empty = TRUE;
-      foreach ($values as $k => $v) {
-        $values[$k] = trim($v, " \t\r\n");
-      }
-
-      if (CRM_Utils_System::isNull($values)) {
-        continue;
-      }
-
-      $this->_totalCount++;
-
-      if ($mode == self::MODE_MAPFIELD) {
-        $returnCode = CRM_Import_Parser::VALID;
-      }
-      elseif ($mode == self::MODE_PREVIEW) {
-        $returnCode = $this->preview($values);
-      }
-      elseif ($mode == self::MODE_SUMMARY) {
-        $returnCode = $this->summary($values);
-      }
-      elseif ($mode == self::MODE_IMPORT) {
-        $returnCode = $this->import($onDuplicate, $values);
-      }
-      else {
-        $returnCode = self::ERROR;
-      }
-
-      // note that a line could be valid but still produce a warning
-      if ($returnCode & self::VALID) {
-        $this->_validCount++;
-        if ($mode == self::MODE_MAPFIELD) {
-          $this->_rows[] = $values;
-          $this->_activeFieldCount = max($this->_activeFieldCount, count($values));
-        }
-      }
-
-      if ($returnCode & self::ERROR) {
-        $this->_invalidRowCount++;
-        $recordNumber = $this->_lineCount;
-        if ($this->_haveColumnHeader) {
-          $recordNumber--;
-        }
-        array_unshift($values, $recordNumber);
-        $this->_errors[] = $values;
-      }
-
-      if ($returnCode & self::DUPLICATE) {
-        $this->_duplicateCount++;
-        $recordNumber = $this->_lineCount;
-        if ($this->_haveColumnHeader) {
-          $recordNumber--;
-        }
-        array_unshift($values, $recordNumber);
-        $this->_duplicates[] = $values;
-        if ($onDuplicate != self::DUPLICATE_SKIP) {
-          $this->_validCount++;
-        }
-      }
-
-      // if we are done processing the maxNumber of lines, break
-      if ($this->_maxLinesToProcess > 0 && $this->_validCount >= $this->_maxLinesToProcess) {
-        break;
-      }
-    }
-
-    fclose($fd);
-
-    if ($mode == self::MODE_PREVIEW || $mode == self::MODE_IMPORT) {
-      $customHeaders = $mapper;
-
-      $customfields = CRM_Core_BAO_CustomField::getFields('Participant');
-      foreach ($customHeaders as $key => $value) {
-        if ($id = CRM_Core_BAO_CustomField::getKeyID($value)) {
-          $customHeaders[$key] = $customfields[$id][0];
-        }
-      }
-
-      if ($this->_invalidRowCount) {
-        // removed view url for invlaid contacts
-        $headers = array_merge([
-          ts('Line Number'),
-          ts('Reason'),
-        ], $customHeaders);
-        $this->_errorFileName = self::errorFileName(self::ERROR);
-        self::exportCSV($this->_errorFileName, $headers, $this->_errors);
-      }
-      if ($this->_duplicateCount) {
-        $headers = array_merge([
-          ts('Line Number'),
-          ts('View Participant URL'),
-        ], $customHeaders);
-
-        $this->_duplicateFileName = self::errorFileName(self::DUPLICATE);
-        self::exportCSV($this->_duplicateFileName, $headers, $this->_duplicates);
-      }
-    }
-  }
-
-  /**
    * Given a list of the importable field keys that the user has selected
    * set the active fields array to this list
    *
@@ -936,94 +585,48 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
   }
 
   /**
-   * Store parser values.
-   *
-   * @param CRM_Core_Session $store
-   *
-   * @param int $mode
+   * Set up field metadata.
    *
    * @return void
    */
-  public function set($store, $mode = self::MODE_SUMMARY) {
-    $store->set('fileSize', $this->_fileSize);
-    $store->set('lineCount', $this->_lineCount);
-    $store->set('separator', $this->_separator);
-    $store->set('fields', $this->getSelectValues());
-    $store->set('fieldTypes', $this->getSelectTypes());
+  protected function setFieldMetadata(): void {
+    if (empty($this->importableFieldsMetadata)) {
+      $fields = array_merge(
+        [
+          '' => ['title' => ts('- do not import -')],
+          'participant_note' => [
+            'title' => ts('Participant Note'),
+            'name' => 'participant_note',
+            'headerPattern' => '/(participant.)?note$/i',
+            'data_type' => CRM_Utils_Type::T_TEXT,
+            'options' => FALSE,
+          ],
+        ],
+        CRM_Event_DAO_Participant::import(),
+        CRM_Core_BAO_CustomField::getFieldsForImport('Participant'),
+        $this->getContactMatchingFields()
+      );
 
-    $store->set('headerPatterns', $this->getHeaderPatterns());
-    $store->set('dataPatterns', $this->getDataPatterns());
-    $store->set('columnCount', $this->_activeFieldCount);
-
-    $store->set('totalRowCount', $this->_totalCount);
-    $store->set('validRowCount', $this->_validCount);
-    $store->set('invalidRowCount', $this->_invalidRowCount);
-
-    switch ($this->_contactType) {
-      case 'Individual':
-        $store->set('contactType', CRM_Import_Parser::CONTACT_INDIVIDUAL);
-        break;
-
-      case 'Household':
-        $store->set('contactType', CRM_Import_Parser::CONTACT_HOUSEHOLD);
-        break;
-
-      case 'Organization':
-        $store->set('contactType', CRM_Import_Parser::CONTACT_ORGANIZATION);
-    }
-
-    if ($this->_invalidRowCount) {
-      $store->set('errorsFileName', $this->_errorFileName);
-    }
-    if (isset($this->_rows) && !empty($this->_rows)) {
-      $store->set('dataValues', $this->_rows);
-    }
-
-    if ($mode == self::MODE_IMPORT) {
-      $store->set('duplicateRowCount', $this->_duplicateCount);
-      if ($this->_duplicateCount) {
-        $store->set('duplicatesFileName', $this->_duplicateFileName);
+      $fields['participant_contact_id']['title'] .= ' (match to contact)';
+      $fields['participant_contact_id']['html']['label'] = $fields['participant_contact_id']['title'];
+      foreach ($fields as $index => $field) {
+        if (isset($field['name']) && $field['name'] !== $index) {
+          // undo unique names - participant is the primary
+          // entity and no others have conflicting unique names
+          // if we ever added them the should have unique names - v4api style
+          $fields[$field['name']] = $field;
+          unset($fields[$index]);
+        }
       }
+      $this->importableFieldsMetadata = $fields;
     }
   }
 
   /**
-   * Export data to a CSV file.
-   *
-   * @param string $fileName
-   * @param array $header
-   * @param array $data
-   *
-   * @return void
+   * @return array
    */
-  public static function exportCSV($fileName, $header, $data) {
-    $output = [];
-    $fd = fopen($fileName, 'w');
-
-    foreach ($header as $key => $value) {
-      $header[$key] = "\"$value\"";
-    }
-    $config = CRM_Core_Config::singleton();
-    $output[] = implode($config->fieldSeparator, $header);
-
-    foreach ($data as $datum) {
-      foreach ($datum as $key => $value) {
-        if (is_array($value)) {
-          foreach ($value[0] as $k1 => $v1) {
-            if ($k1 == 'location_type_id') {
-              continue;
-            }
-            $datum[$k1] = $v1;
-          }
-        }
-        else {
-          $datum[$key] = "\"$value\"";
-        }
-      }
-      $output[] = implode($config->fieldSeparator, $datum);
-    }
-    fwrite($fd, implode("\n", $output));
-    fclose($fd);
+  protected function getRequiredFields(): array {
+    return [['event_id' => ts('Event'), 'status_id' => ts('Status')]];
   }
 
 }

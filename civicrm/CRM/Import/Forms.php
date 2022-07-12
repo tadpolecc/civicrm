@@ -64,6 +64,11 @@ class CRM_Import_Forms extends CRM_Core_Form {
   protected $userJob;
 
   /**
+   * @var \CRM_Import_Parser
+   */
+  protected $parser;
+
+  /**
    * Get User Job.
    *
    * API call to retrieve the userJob row.
@@ -113,6 +118,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
     'onDuplicate' => 'DataSource',
     'disableUSPS' => 'DataSource',
     'doGeocodeAddress' => 'DataSource',
+    'multipleCustomData' => 'DataSource',
     // Note we don't add the save mapping instructions for MapField here
     // (eg 'updateMapping') - as they really are an action for that form
     // rather than part of the mapping config.
@@ -126,13 +132,15 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * @param string $fieldName
    *
    * @return mixed|null
-   * @throws \CRM_Core_Exception
    */
   public function getSubmittedValue(string $fieldName) {
     if ($fieldName === 'dataSource') {
       // Hard-coded handling for DataSource as it affects the contents of
       // getSubmittableFields and can cause a loop.
-      return $this->controller->exportValue('DataSource', 'dataSource');
+      // Note that the non-contact imports are not currently sharing the DataSource.tpl
+      // that adds the CSV/SQL options & hence fall back on this hidden field.
+      // - todo - switch to the same DataSource.tpl for all.
+      return $this->controller->exportValue('DataSource', 'dataSource') ?? $this->controller->exportValue('DataSource', 'hidden_dataSource');
     }
     $mappedValues = $this->getSubmittableFields();
     if (array_key_exists($fieldName, $mappedValues)) {
@@ -292,8 +300,6 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * This is called as a snippet in DataSourceConfig and
    * also from DataSource::buildForm to add the fields such
    * that quick form picks them up.
-   *
-   * @throws \CRM_Core_Exception
    */
   protected function getDataSourceFields(): array {
     $className = $this->getDataSourceClassName();
@@ -321,7 +327,6 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * all forms.
    *
    * @return string[]
-   * @throws \CRM_Core_Exception
    */
   protected function getSubmittableFields(): array {
     $dataSourceFields = array_fill_keys($this->getDataSourceFields(), 'DataSource');
@@ -368,7 +373,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
     $id = UserJob::create(FALSE)
       ->setValues([
         'created_id' => CRM_Core_Session::getLoggedInContactID(),
-        'type_id:name' => 'contact_import',
+        'job_type' => $this->getUserJobType(),
         'status_id:name' => 'draft',
         // This suggests the data could be cleaned up after this.
         'expires_date' => '+ 1 week',
@@ -452,6 +457,35 @@ class CRM_Import_Forms extends CRM_Core_Form {
   }
 
   /**
+   * Get the datasource rows ready for csv output.
+   *
+   * @param array $statuses
+   * @param int $limit
+   *
+   * @return array
+   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
+   */
+  protected function getOutputRows($statuses = [], int $limit = 0) {
+    $statuses = (array) $statuses;
+    $dataSource = $this->getDataSourceObject()->setLimit($limit)->setStatuses($statuses)->setStatuses($statuses);
+    $dataSource->setSelectFields(array_merge(['_id', '_status_message'], $dataSource->getDataFieldNames()));
+    return $dataSource->getRows();
+  }
+
+  /**
+   * Get the column headers for the output csv.
+   *
+   * @return array
+   */
+  protected function getOutputColumnsHeaders(): array {
+    $headers = $this->getColumnHeaders();
+    array_unshift($headers, ts('Reason'));
+    array_unshift($headers, ts('Line Number'));
+    return $headers;
+  }
+
+  /**
    * Get the number of rows with the specified status.
    *
    * @param array|int $statuses
@@ -478,7 +512,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
    */
   public static function outputCSV(): void {
     $userJobID = CRM_Utils_Request::retrieveValue('user_job_id', 'Integer', NULL, TRUE);
-    $status = CRM_Utils_Request::retrieveValue('status', 'String', NULL, TRUE);
+    $status = (int) CRM_Utils_Request::retrieveValue('status', 'String', NULL, TRUE);
     $saveFileName = CRM_Import_Parser::saveFileName($status);
 
     $form = new CRM_Import_Forms();
@@ -487,40 +521,13 @@ class CRM_Import_Forms extends CRM_Core_Form {
 
     $form->getUserJob();
     $writer = Writer::createFromFileObject(new SplTempFileObject());
-    $headers = $form->getColumnHeaders();
-    if ($headers) {
-      array_unshift($headers, ts('Reason'));
-      array_unshift($headers, ts('Line Number'));
-      $writer->insertOne($headers);
-    }
-    $writer->addFormatter(['CRM_Import_Forms', 'reorderOutput']);
-    // Note this might be more inefficient that iterating the result
+    $headers = $form->getOutputColumnsHeaders();
+    $writer->insertOne($headers);
+    // Note this might be more inefficient by iterating the result
     // set & doing insertOne - possibly something to explore later.
-    $writer->insertAll($form->getDataRows($status));
-
-    CRM_Utils_System::setHttpHeader('Cache-Control', 'must-revalidate, post-check=0, pre-check=0');
-    CRM_Utils_System::setHttpHeader('Content-Description', 'File Transfer');
-    CRM_Utils_System::setHttpHeader('Content-Type', 'text/csv; charset=UTF-8');
+    $writer->insertAll($form->getOutputRows($status));
     $writer->output($saveFileName);
     CRM_Utils_System::civiExit();
-  }
-
-  /**
-   * When outputting the row as a csv, more the last 2 rows to the start.
-   *
-   * This is because the id and status message fields are at the end. It may make sense
-   * to move them to the start later, when order code cleanup has happened...
-   *
-   * @param array $record
-   */
-  public static function reorderOutput(array $record): array {
-    $rowNumber = array_pop($record);
-    $message = array_pop($record);
-    // Also pop off the status - but we are not going to use this at this stage.
-    array_pop($record);
-    array_unshift($record, $message);
-    array_unshift($record, $rowNumber);
-    return $record;
   }
 
   /**
@@ -538,6 +545,32 @@ class CRM_Import_Forms extends CRM_Core_Form {
   }
 
   /**
+   * Get the url to download the relevant csv file.
+   * @param string $status
+   *
+   * @return string
+   */
+
+  /**
+   *
+   * @return array
+   */
+  public function getTrackingSummary(): array {
+    $summary = [];
+    $fields = $this->getParser()->getTrackingFields();
+    $row = $this->getDataSourceObject()->setAggregateFields($fields)->getRow();
+    foreach ($fields as $fieldName => $field) {
+      $summary[] = [
+        'field_name' => $fieldName,
+        'description' => $field['description'],
+        'value' => $row[$fieldName],
+      ];
+    }
+
+    return $summary;
+  }
+
+  /**
    * Get the fields available for import selection.
    *
    * @return array
@@ -546,9 +579,108 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * @throws \API_Exception
    */
   protected function getAvailableFields(): array {
-    $parser = new CRM_Contact_Import_Parser_Contact();
-    $parser->setUserJobID($this->getUserJobID());
-    return $parser->getAvailableFields();
+    return $this->getParser()->getAvailableFields();
+  }
+
+  /**
+   * Get an instance of the parser class.
+   *
+   * @return \CRM_Contact_Import_Parser_Contact|\CRM_Contribute_Import_Parser_Contribution
+   */
+  protected function getParser() {
+    foreach (CRM_Core_BAO_UserJob::getTypes() as $jobType) {
+      if ($jobType['id'] === $this->getUserJob()['job_type']) {
+        $className = $jobType['class'];
+        $classObject = new $className();
+        $classObject->setUserJobID($this->getUserJobID());
+        return $classObject;
+      };
+    }
+    return NULL;
+  }
+
+  /**
+   * Get the mapped fields as an array of labels.
+   *
+   * e.g
+   * ['First Name', 'Employee Of - First Name', 'Home - Street Address']
+   *
+   * @return array
+   * @throws \API_Exception
+   */
+  protected function getMappedFieldLabels(): array {
+    $mapper = [];
+    $parser = $this->getParser();
+    foreach ($this->getSubmittedValue('mapper') as $columnNumber => $mappedField) {
+      $mapper[$columnNumber] = $parser->getMappedFieldLabel($parser->getMappingFieldFromMapperInput($mappedField, 0, $columnNumber));
+    }
+    return $mapper;
+  }
+
+  /**
+   * Assign variables required for the MapField form.
+   *
+   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
+   */
+  protected function assignMapFieldVariables(): void {
+    $this->addExpectedSmartyVariable('highlightedRelFields');
+    $this->_columnCount = $this->getNumberOfColumns();
+    $this->_columnNames = $this->getColumnHeaders();
+    $this->_dataValues = array_values($this->getDataRows([], 2));
+    $this->assign('columnNames', $this->getColumnHeaders());
+    $this->assign('showColumnNames', $this->getSubmittedValue('skipColumnHeader') || $this->getSubmittedValue('dataSource') !== 'CRM_Import_DataSource');
+    $this->assign('highlightedFields', $this->getHighlightedFields());
+    $this->assign('columnCount', $this->_columnCount);
+    $this->assign('dataValues', $this->_dataValues);
+  }
+
+  /**
+   * Get the fields to be highlighted in the UI.
+   *
+   * The highlighted fields are those used to match
+   * to an existing entity.
+   *
+   * @return array
+   *
+   * @throws \CRM_Core_Exception
+   */
+  protected function getHighlightedFields(): array {
+    return [];
+  }
+
+  /**
+   * Get the data patterns to pattern match the incoming data.
+   *
+   * @return array
+   */
+  public function getDataPatterns(): array {
+    return $this->getParser()->getDataPatterns();
+  }
+
+  /**
+   * Get the data patterns to pattern match the incoming data.
+   *
+   * @return array
+   */
+  public function getHeaderPatterns(): array {
+    return $this->getParser()->getHeaderPatterns();
+  }
+
+  /**
+   * Has the user chosen to update existing records.
+   * @return bool
+   */
+  protected function isUpdateExisting(): bool {
+    return ((int) $this->getSubmittedValue('onDuplicate')) === CRM_Import_Parser::DUPLICATE_UPDATE;
+  }
+
+  /**
+   * Has the user chosen to update existing records.
+   * @return bool
+   */
+  protected function isSkipExisting(): bool {
+    return ((int) $this->getSubmittedValue('onDuplicate')) === CRM_Import_Parser::DUPLICATE_SKIP;
   }
 
 }
