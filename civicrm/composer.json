@@ -51,16 +51,16 @@
     "cache/integration-tests": "~0.17.0",
     "dompdf/dompdf" : "~2",
     "firebase/php-jwt": ">=3 <6",
-    "electrolinux/phpquery": "^0.9.6",
-    "symfony/config": "~3.0 || ~4.4",
+    "rubobaquero/phpquery": "^0.9.15",
+    "symfony/config": "~4.4",
     "symfony/polyfill-iconv": "~1.0",
-    "symfony/dependency-injection": "~3.0 || ~4.4",
-    "symfony/event-dispatcher": "~3.0 || ~4.4",
-    "symfony/filesystem": "~3.0 || ~4.4",
-    "symfony/process": "~3.0 || ~4.4",
+    "symfony/dependency-injection": "~4.4",
+    "symfony/event-dispatcher": "~4.4",
+    "symfony/filesystem": "~4.4",
+    "symfony/process": "~4.4",
     "symfony/var-dumper": "~3.0 || ~4.4 || ~5.1",
     "psr/log": "~1.0 || ~2.0 || ~3.0",
-    "symfony/finder": "~3.0 || ~4.4",
+    "symfony/finder": "~4.4",
     "tecnickcom/tcpdf" : "6.4.*",
     "totten/ca-config": "~22.05",
     "zetacomponents/base": "1.9.*",
@@ -93,7 +93,8 @@
     "ext-json": "*",
     "ezyang/htmlpurifier": "^4.13",
     "phpoffice/phpspreadsheet": "^1.18",
-    "symfony/polyfill-php73": "^1.23"
+    "symfony/polyfill-php73": "^1.23",
+    "html2text/html2text": "^4.3.1"
   },
   "scripts": {
     "post-install-cmd": [
@@ -161,9 +162,6 @@
       },
       "angular-ui-sortable": {
         "url": "https://github.com/angular-ui/ui-sortable/archive/v0.19.0.zip"
-      },
-      "angular-ui-utils": {
-        "url": "https://github.com/angular-ui/ui-utils/archive/v0.1.1.zip"
       },
       "angular-unsavedChanges": {
         "url": "https://github.com/facultymatt/angular-unsavedChanges/archive/v0.1.1.zip",
@@ -278,8 +276,8 @@
       "adrienrn/php-mimetyper": {
         "Update gitignore to ensure that sites that manage via git don't miss out on the important db.json file": "https://patch-diff.githubusercontent.com/raw/adrienrn/php-mimetyper/pull/15.patch"
       },
-      "electrolinux/phpquery": {
-        "PHP7.4 Fix for array access using {} instead of []": "https://raw.githubusercontent.com/civicrm/civicrm-core/fe45bdfc4f3e3d3deb27e3d853cdbc7f616620a9/tools/scripts/composer/patches/php74_array_access_fix_phpquery.patch"
+      "html2text/html2text": {
+        "Fix deprecation warning in php8.1 on html_entity_decode": "https://raw.githubusercontent.com/civicrm/civicrm-core/e758d20e9f613ca6c4cf652c23d2cd7e5d3af3ce/tools/scripts/composer/html2text_html2_text_php81_deprecation.patch"
       },
       "pear/db": {
         "Apply CiviCRM Customisations for the pear:db package": "https://raw.githubusercontent.com/civicrm/civicrm-core/2ad420c394/tools/scripts/composer/pear_db_civicrm_changes.patch"

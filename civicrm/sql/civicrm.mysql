@@ -3525,7 +3525,7 @@ ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMA
 -- *******************************************************/
 CREATE TABLE `civicrm_activity` (
   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Unique  Other Activity ID',
-  `source_record_id` int unsigned COMMENT 'Artificial FK to original transaction (e.g. contribution) IF it is not an Activity. Table can be figured out through activity_type_id, and further through component registry.',
+  `source_record_id` int unsigned COMMENT 'Artificial FK to original transaction (e.g. contribution) IF it is not an Activity. Entity table is discovered by filtering by the appropriate activity_type_id.',
   `activity_type_id` int unsigned NOT NULL DEFAULT 1 COMMENT 'FK to civicrm_option_value.id, that has to be valid, registered activity type.',
   `subject` varchar(255) COMMENT 'The subject/purpose/short description of the activity.',
   `activity_date_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Date and time this activity is scheduled to occur. Formerly named scheduled_date_time.',
@@ -3536,7 +3536,7 @@ CREATE TABLE `civicrm_activity` (
   `details` longtext COMMENT 'Details about the activity (agenda, notes, etc).',
   `status_id` int unsigned COMMENT 'ID of the status this activity is currently in. Foreign key to civicrm_option_value.',
   `priority_id` int unsigned COMMENT 'ID of the priority given to this activity. Foreign key to civicrm_option_value.',
-  `parent_id` int unsigned COMMENT 'Parent meeting ID (if this is a follow-up item). This is not currently implemented',
+  `parent_id` int unsigned COMMENT 'Parent meeting ID (if this is a follow-up item).',
   `is_test` tinyint NOT NULL DEFAULT 0,
   `medium_id` int unsigned DEFAULT NULL COMMENT 'Activity Medium, Implicit FK to civicrm_option_value where option_group = encounter_medium.',
   `is_auto` tinyint NOT NULL DEFAULT 0,

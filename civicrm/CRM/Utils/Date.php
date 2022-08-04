@@ -433,6 +433,7 @@ class CRM_Utils_Date {
         '%A' => $type,
         '%Y' => $year,
         '%s' => str_pad($second, 2, 0, STR_PAD_LEFT),
+        '%S' => str_pad($second, 2, 0, STR_PAD_LEFT),
       ];
 
       return strtr($format, $date);
@@ -1935,7 +1936,7 @@ class CRM_Utils_Date {
       $mysqlDate = 'null';
     }
 
-    if (trim($date)) {
+    if (trim($date ?? '')) {
       $mysqlDate = date($format, strtotime($date . ' ' . $time));
     }
 
