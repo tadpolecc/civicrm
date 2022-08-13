@@ -2990,7 +2990,7 @@ CREATE TABLE `civicrm_dashboard_contact` (
   `dashboard_id` int unsigned NOT NULL COMMENT 'Dashboard ID',
   `contact_id` int unsigned NOT NULL COMMENT 'Contact ID',
   `column_no` int DEFAULT 0 COMMENT 'column no for this widget',
-  `is_active` tinyint NOT NULL DEFAULT 1 COMMENT 'Is this widget active?',
+  `is_active` tinyint DEFAULT 0 COMMENT 'Is this widget active?',
   `weight` int DEFAULT 0 COMMENT 'Ordering of the widgets.',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `index_dashboard_id_contact_id`(dashboard_id, contact_id),
