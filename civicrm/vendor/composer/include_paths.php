@@ -11,11 +11,11 @@ return array(
     $vendorDir . '/pear/auth_sasl',
     $vendorDir . '/pear/console_getopt',
     $vendorDir . '/pear/pear-core-minimal/src',
+    $vendorDir . '/pear/net_socket',
     $vendorDir . '/pear/db',
     $vendorDir . '/pear/log',
     $vendorDir . '/pear/mail',
     $vendorDir . '/pear/mail_mime',
-    $vendorDir . '/pear/net_socket',
     $vendorDir . '/pear/net_smtp',
     $vendorDir . '/pear/validate_finance_creditcard',
 );
