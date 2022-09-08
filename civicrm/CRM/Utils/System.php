@@ -213,7 +213,7 @@ class CRM_Utils_System {
     if (is_array($query)) {
       $buf = '';
       foreach ($query as $key => $value) {
-        $buf .= ($buf ? '&' : '') . urlencode($key) . '=' . urlencode($value);
+        $buf .= ($buf ? '&' : '') . urlencode($key ?? '') . '=' . urlencode($value ?? '');
       }
       $query = $buf;
     }
@@ -244,23 +244,27 @@ class CRM_Utils_System {
    *   An HTML string containing a link to the given path.
    */
   public static function url(
-    $path = NULL,
-    $query = NULL,
+    $path = '',
+    $query = '',
     $absolute = FALSE,
     $fragment = NULL,
     $htmlize = TRUE,
     $frontend = FALSE,
     $forceBackend = FALSE
   ) {
+    // handle legacy null params
+    $path = $path ?? '';
+    $query = $query ?? '';
+
     $query = self::makeQueryString($query);
 
     // Legacy handling for when the system passes around html escaped strings
-    if (strstr(($query ?? ''), '&amp;')) {
+    if (strstr($query, '&amp;')) {
       $query = html_entity_decode($query);
     }
 
     // Extract fragment from path or query if munged together
-    if ($query && strstr(($query ?? ''), '#')) {
+    if ($query && strstr($query, '#')) {
       list($path, $fragment) = explode('#', $query);
     }
     if ($path && strstr($path, '#')) {
@@ -805,7 +809,7 @@ class CRM_Utils_System {
    *   The obscured credit card number.
    */
   public static function mungeCreditCard($number, $keep = 4) {
-    $number = trim($number);
+    $number = trim($number ?? '');
     if (empty($number)) {
       return NULL;
     }
@@ -1030,7 +1034,7 @@ class CRM_Utils_System {
    * @return string[]
    */
   public static function explode($separator, $string, $limit) {
-    $result = explode($separator, $string, $limit);
+    $result = explode($separator, ($string ?? ''), $limit);
     for ($i = count($result); $i < $limit; $i++) {
       $result[$i] = NULL;
     }
@@ -1831,7 +1835,7 @@ class CRM_Utils_System {
         '{sid}' => self::getSiteID(),
         '{baseUrl}' => $config->userFrameworkBaseURL,
         '{lang}' => $tsLocale,
-        '{co}' => $config->defaultContactCountry,
+        '{co}' => $config->defaultContactCountry ?? '',
       ];
       return strtr($url, array_map('urlencode', $vars));
     }

@@ -123,8 +123,7 @@ class Afform extends Generic\AbstractEntity {
         ],
         [
           'name' => 'type',
-          'options' => $self->pseudoconstantOptions('afform_type'),
-          'suffixes' => ['id', 'name', 'label', 'icon'],
+          'pseudoconstant' => ['optionGroupName' => 'afform_type'],
         ],
         [
           'name' => 'requires',
@@ -183,6 +182,11 @@ class Afform extends Generic\AbstractEntity {
           'data_type' => 'Boolean',
         ],
         [
+          'name' => 'navigation',
+          'data_type' => 'Array',
+          'description' => 'Insert into navigation menu {parent: string, label: string, weight: int}',
+        ],
+        [
           'name' => 'layout',
           'data_type' => 'Array',
           'description' => 'HTML form layout; format is controlled by layoutFormat param',
@@ -220,7 +224,7 @@ class Afform extends Generic\AbstractEntity {
           'data_type' => 'String',
           'description' => 'Name of extension which provides this form',
           'readonly' => TRUE,
-          'options' => $self->getLoadOptions() ? \CRM_Core_PseudoConstant::getExtensions() : TRUE,
+          'pseudoconstant' => ['callback' => ['CRM_Core_PseudoConstant', 'getExtensions']],
         ];
         $fields[] = [
           'name' => 'search_displays',

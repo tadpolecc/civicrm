@@ -694,7 +694,7 @@ abstract class CRM_Import_Parser implements UserJobInterface {
     $totalRowCount = $totalRows = $dataSource->getRowCount(['new']);
     $queue = Civi::queue('user_job_' . $this->getUserJobID(), ['type' => 'Sql', 'error' => 'abort']);
     $offset = 0;
-    $batchSize = 50;
+    $batchSize = 5;
     while ($totalRows > 0) {
       if ($totalRows < $batchSize) {
         $batchSize = $totalRows;
@@ -1622,7 +1622,7 @@ abstract class CRM_Import_Parser implements UserJobInterface {
    */
   protected function getFieldEntity(string $fieldName) {
     if ($fieldName === 'do_not_import') {
-      return NULL;
+      return '';
     }
     if (in_array($fieldName, ['email_greeting_id', 'postal_greeting_id', 'addressee_id'], TRUE)) {
       return 'Contact';

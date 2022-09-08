@@ -53,7 +53,7 @@
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
 
@@ -163,7 +163,7 @@
          {/if}
          <tr>
           <td colspan="2" {$valueStyle}>
-           <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+           <table>
             <tr>
              <th>{ts}Item{/ts}</th>
              <th>{ts}Qty{/ts}</th>

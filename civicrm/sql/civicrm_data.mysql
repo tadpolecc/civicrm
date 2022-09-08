@@ -4909,6 +4909,7 @@ SELECT @option_group_id_crs    := max(id) from civicrm_option_group where name =
 SELECT @option_group_id_env    := max(id) from civicrm_option_group where name = 'environment';
 SELECT @option_group_id_default_assignee := max(id) from civicrm_option_group where name = 'activity_default_assignee';
 SELECT @option_group_id_entity_batch_extends := max(id) from civicrm_option_group where name = 'entity_batch_extends';
+SELECT @option_group_id_pdf_format := max(id) from civicrm_option_group where name = 'pdf_format';
 
 SELECT @contributeCompId := max(id) FROM civicrm_component where name = 'CiviContribute';
 SELECT @eventCompId      := max(id) FROM civicrm_component where name = 'CiviEvent';
@@ -5477,6 +5478,9 @@ VALUES
    (@option_group_id_aco, 'Activity Assignees', 1, 'Activity Assignees', NULL, 0, 0, 3, NULL, 0, 0, 1, NULL, NULL, NULL),
    (@option_group_id_aco, 'Activity Source', 2, 'Activity Source', NULL, 0, 0, 2, NULL, 0, 0, 1, NULL, NULL, NULL),
    (@option_group_id_aco, 'Activity Targets', 3, 'Activity Targets', NULL, 0, 0, 1, NULL, 0, 0, 1, NULL, NULL, NULL),
+
+-- pdf_format
+   (@option_group_id_pdf_format, 'Invoice PDF Format', '{"metric":"px","margin_top":10,"margin_bottom":0,"margin_left":65,"margin_right":0}', 'default_invoice_pdf_format', NULL, 0, 0, 1, NULL, 0, 1, 1, NULL, NULL, NULL),
 
 -- financial_account_type
 -- grouping field is specific to Quickbooks for mapping to .iif format
@@ -7055,37 +7059,31 @@ INSERT INTO civicrm_msg_template
 {if \'{contribution.financial_type_id}\'}
 {ts}Financial Type{/ts}: {contribution.financial_type_id:label}
 {/if}
-{if $lineItem}
-{foreach from=$lineItem item=value key=priceset}
+{if $isShowLineItems}
 ---------------------------------------------------------
 {capture assign=ts_item}{ts}Item{/ts}{/capture}
 {capture assign=ts_qty}{ts}Qty{/ts}{/capture}
 {capture assign=ts_each}{ts}Each{/ts}{/capture}
-{if !empty($getTaxDetails)}
+{if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
 {capture assign=ts_subtotal}{ts}Subtotal{/ts}{/capture}
 {capture assign=ts_taxRate}{ts}Tax Rate{/ts}{/capture}
 {capture assign=ts_taxAmount}{ts}Tax Amount{/ts}{/capture}
 {/if}
 {capture assign=ts_total}{ts}Total{/ts}{/capture}
-{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if !empty($getTaxDetails)} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"}
+{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"}
 ----------------------------------------------------------
-{foreach from=$value item=line}
-{capture assign=ts_item}{if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description} {$line.description}{/if}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:$currency|string_format:"%10s"} {if !empty($getTaxDetails)}{$line.unit_price*$line.qty|crmMoney:$currency|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""} {$line.tax_rate|string_format:"%.2f"} %   {$line.tax_amount|crmMoney:$currency|string_format:"%10s"} {else}                  {/if} {/if}   {$line.line_total+$line.tax_amount|crmMoney:$currency|string_format:"%10s"}
-{/foreach}
+{foreach from=$lineItems item=line}
+{capture assign=ts_item}{$line.title}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:\'{contribution.currency}\'|string_format:"%10s"} {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}{$line.unit_price*$line.qty|crmMoney:\'{contribution.currency}\'|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""} {$line.tax_rate|string_format:"%.2f"} %   {$line.tax_amount|crmMoney:\'{contribution.currency}\'|string_format:"%10s"} {else}                  {/if} {/if}   {$line.line_total+$line.tax_amount|crmMoney:\'{contribution.currency}\'|string_format:"%10s"}
 {/foreach}
 {/if}
 
-{if !empty($getTaxDetails) && !empty($dataArray)}
+
+{if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
 {ts}Amount before Tax{/ts} : {$formValues.total_amount-$totalTaxAmount|crmMoney:$currency}
-
-{foreach from=$dataArray item=value key=priceset}
-{if $priceset ||  $priceset == 0 || $value != \'\'}
-{$taxTerm} {$priceset|string_format:"%.2f"}% : {$value|crmMoney:$currency}
-{else}
-{ts}No{/ts} {$taxTerm} : {$value|crmMoney:$currency}
 {/if}
+{foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+{if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if} : {$taxDetail.amount|crmMoney:\'{contribution.currency}\'}
 {/foreach}
-{/if}
 
 {if $isShowTax}
 {ts}Total Tax Amount{/ts} : {contribution.tax_amount}
@@ -7218,43 +7216,42 @@ INSERT INTO civicrm_msg_template
       {/if}
      </tr>
 
-     {if !empty($lineItem) and empty($is_quick_config)}
-      {foreach from=$lineItem item=value key=priceset}
+     {if $isShowLineItems}
        <tr>
         <td colspan="2" {$valueStyle}>
-         <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+         <table>
           <tr>
            <th>{ts}Item{/ts}</th>
            <th>{ts}Qty{/ts}</th>
            <th>{ts}Each{/ts}</th>
-           {if !empty($getTaxDetails)}
+           {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
              <th>{ts}Subtotal{/ts}</th>
              <th>{ts}Tax Rate{/ts}</th>
              <th>{ts}Tax Amount{/ts}</th>
            {/if}
            <th>{ts}Total{/ts}</th>
           </tr>
-          {foreach from=$value item=line}
+          {foreach from=$lineItems item=line}
            <tr>
             <td>
-            {if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description}<div>{$line.description|truncate:30:"..."}</div>{/if}
+              {$line.title}
             </td>
             <td>
              {$line.qty}
             </td>
             <td>
-             {$line.unit_price|crmMoney:$currency}
+             {$line.unit_price|crmMoney:\'{contribution.currency}\'}
             </td>
-            {if !empty($getTaxDetails)}
+            {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
               <td>
-                {$line.unit_price*$line.qty|crmMoney:$currency}
+                {$line.unit_price*$line.qty|crmMoney:\'{contribution.currency}\'}
               </td>
               {if $line.tax_rate || $line.tax_amount != ""}
                 <td>
                   {$line.tax_rate|string_format:"%.2f"}%
                 </td>
                 <td>
-                  {$line.tax_amount|crmMoney:$currency}
+                  {$line.tax_amount|crmMoney:\'{contribution.currency}\'}
                 </td>
               {else}
                 <td></td>
@@ -7262,34 +7259,29 @@ INSERT INTO civicrm_msg_template
               {/if}
             {/if}
             <td>
-             {$line.line_total+$line.tax_amount|crmMoney:$currency}
+             {$line.line_total+$line.tax_amount|crmMoney:\'{contribution.currency}\'}
             </td>
            </tr>
           {/foreach}
          </table>
         </td>
        </tr>
-      {/foreach}
+
      {/if}
-     {if !empty($getTaxDetails) && !empty($dataArray)}
+     {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
        <tr>
          <td {$labelStyle}>
            {ts} Amount before Tax : {/ts}
          </td>
          <td {$valueStyle}>
-           {$formValues.total_amount-$totalTaxAmount|crmMoney:$currency}
+           {$formValues.total_amount-$totalTaxAmount|crmMoney:\'{contribution.currency}\'}
          </td>
        </tr>
 
-      {foreach from=$dataArray item=value key=priceset}
-        <tr>
-        {if $priceset ||  $priceset == 0 || $value != \'\'}
-          <td>&nbsp;{$taxTerm} {$priceset|string_format:"%.2f"}%</td>
-          <td>&nbsp;{$value|crmMoney:$currency}</td>
-        {else}
-          <td>&nbsp;{ts}No{/ts} {$taxTerm}</td>
-          <td>&nbsp;{$value|crmMoney:$currency}</td>
-        {/if}
+       {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+         <tr>
+          <td>{if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if}</td>
+          <td>{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}</td>
         </tr>
       {/foreach}
      {/if}
@@ -7501,37 +7493,31 @@ INSERT INTO civicrm_msg_template
 {if \'{contribution.financial_type_id}\'}
 {ts}Financial Type{/ts}: {contribution.financial_type_id:label}
 {/if}
-{if $lineItem}
-{foreach from=$lineItem item=value key=priceset}
+{if $isShowLineItems}
 ---------------------------------------------------------
 {capture assign=ts_item}{ts}Item{/ts}{/capture}
 {capture assign=ts_qty}{ts}Qty{/ts}{/capture}
 {capture assign=ts_each}{ts}Each{/ts}{/capture}
-{if !empty($getTaxDetails)}
+{if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
 {capture assign=ts_subtotal}{ts}Subtotal{/ts}{/capture}
 {capture assign=ts_taxRate}{ts}Tax Rate{/ts}{/capture}
 {capture assign=ts_taxAmount}{ts}Tax Amount{/ts}{/capture}
 {/if}
 {capture assign=ts_total}{ts}Total{/ts}{/capture}
-{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if !empty($getTaxDetails)} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"}
+{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"}
 ----------------------------------------------------------
-{foreach from=$value item=line}
-{capture assign=ts_item}{if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description} {$line.description}{/if}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:$currency|string_format:"%10s"} {if !empty($getTaxDetails)}{$line.unit_price*$line.qty|crmMoney:$currency|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""} {$line.tax_rate|string_format:"%.2f"} %   {$line.tax_amount|crmMoney:$currency|string_format:"%10s"} {else}                  {/if} {/if}   {$line.line_total+$line.tax_amount|crmMoney:$currency|string_format:"%10s"}
-{/foreach}
+{foreach from=$lineItems item=line}
+{capture assign=ts_item}{$line.title}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:\'{contribution.currency}\'|string_format:"%10s"} {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}{$line.unit_price*$line.qty|crmMoney:\'{contribution.currency}\'|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""} {$line.tax_rate|string_format:"%.2f"} %   {$line.tax_amount|crmMoney:\'{contribution.currency}\'|string_format:"%10s"} {else}                  {/if} {/if}   {$line.line_total+$line.tax_amount|crmMoney:\'{contribution.currency}\'|string_format:"%10s"}
 {/foreach}
 {/if}
 
-{if !empty($getTaxDetails) && !empty($dataArray)}
+
+{if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
 {ts}Amount before Tax{/ts} : {$formValues.total_amount-$totalTaxAmount|crmMoney:$currency}
-
-{foreach from=$dataArray item=value key=priceset}
-{if $priceset ||  $priceset == 0 || $value != \'\'}
-{$taxTerm} {$priceset|string_format:"%.2f"}% : {$value|crmMoney:$currency}
-{else}
-{ts}No{/ts} {$taxTerm} : {$value|crmMoney:$currency}
 {/if}
+{foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+{if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if} : {$taxDetail.amount|crmMoney:\'{contribution.currency}\'}
 {/foreach}
-{/if}
 
 {if $isShowTax}
 {ts}Total Tax Amount{/ts} : {contribution.tax_amount}
@@ -7664,43 +7650,42 @@ INSERT INTO civicrm_msg_template
       {/if}
      </tr>
 
-     {if !empty($lineItem) and empty($is_quick_config)}
-      {foreach from=$lineItem item=value key=priceset}
+     {if $isShowLineItems}
        <tr>
         <td colspan="2" {$valueStyle}>
-         <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+         <table>
           <tr>
            <th>{ts}Item{/ts}</th>
            <th>{ts}Qty{/ts}</th>
            <th>{ts}Each{/ts}</th>
-           {if !empty($getTaxDetails)}
+           {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
              <th>{ts}Subtotal{/ts}</th>
              <th>{ts}Tax Rate{/ts}</th>
              <th>{ts}Tax Amount{/ts}</th>
            {/if}
            <th>{ts}Total{/ts}</th>
           </tr>
-          {foreach from=$value item=line}
+          {foreach from=$lineItems item=line}
            <tr>
             <td>
-            {if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description}<div>{$line.description|truncate:30:"..."}</div>{/if}
+              {$line.title}
             </td>
             <td>
              {$line.qty}
             </td>
             <td>
-             {$line.unit_price|crmMoney:$currency}
+             {$line.unit_price|crmMoney:\'{contribution.currency}\'}
             </td>
-            {if !empty($getTaxDetails)}
+            {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
               <td>
-                {$line.unit_price*$line.qty|crmMoney:$currency}
+                {$line.unit_price*$line.qty|crmMoney:\'{contribution.currency}\'}
               </td>
               {if $line.tax_rate || $line.tax_amount != ""}
                 <td>
                   {$line.tax_rate|string_format:"%.2f"}%
                 </td>
                 <td>
-                  {$line.tax_amount|crmMoney:$currency}
+                  {$line.tax_amount|crmMoney:\'{contribution.currency}\'}
                 </td>
               {else}
                 <td></td>
@@ -7708,34 +7693,29 @@ INSERT INTO civicrm_msg_template
               {/if}
             {/if}
             <td>
-             {$line.line_total+$line.tax_amount|crmMoney:$currency}
+             {$line.line_total+$line.tax_amount|crmMoney:\'{contribution.currency}\'}
             </td>
            </tr>
           {/foreach}
          </table>
         </td>
        </tr>
-      {/foreach}
+
      {/if}
-     {if !empty($getTaxDetails) && !empty($dataArray)}
+     {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
        <tr>
          <td {$labelStyle}>
            {ts} Amount before Tax : {/ts}
          </td>
          <td {$valueStyle}>
-           {$formValues.total_amount-$totalTaxAmount|crmMoney:$currency}
+           {$formValues.total_amount-$totalTaxAmount|crmMoney:\'{contribution.currency}\'}
          </td>
        </tr>
 
-      {foreach from=$dataArray item=value key=priceset}
-        <tr>
-        {if $priceset ||  $priceset == 0 || $value != \'\'}
-          <td>&nbsp;{$taxTerm} {$priceset|string_format:"%.2f"}%</td>
-          <td>&nbsp;{$value|crmMoney:$currency}</td>
-        {else}
-          <td>&nbsp;{ts}No{/ts} {$taxTerm}</td>
-          <td>&nbsp;{$value|crmMoney:$currency}</td>
-        {/if}
+       {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+         <tr>
+          <td>{if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if}</td>
+          <td>{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}</td>
         </tr>
       {/foreach}
      {/if}
@@ -8198,7 +8178,7 @@ INSERT INTO civicrm_msg_template
        {foreach from=$lineItem item=value key=priceset}
         <tr>
          <td colspan="2" {$valueStyle}>
-          <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+          <table>
            <tr>
             <th>{ts}Item{/ts}</th>
             <th>{ts}Qty{/ts}</th>
@@ -8883,7 +8863,7 @@ INSERT INTO civicrm_msg_template
        {foreach from=$lineItem item=value key=priceset}
         <tr>
          <td colspan="2" {$valueStyle}>
-          <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+          <table>
            <tr>
             <th>{ts}Item{/ts}</th>
             <th>{ts}Qty{/ts}</th>
@@ -9334,164 +9314,149 @@ INSERT INTO civicrm_msg_template
         </tr>
       </table>
     {/if}
-      <table style="font-family: Arial, Verdana, sans-serif;" width="100%" height="100" border="0" cellpadding="5" cellspacing="0">
-        <tr>
-          <td width="30%"><b><font size="4" align="center">{ts}INVOICE{/ts}</font></b></td>
-          <td width="50%" valign="bottom"><b><font size="1" align="center">{ts}Invoice Date:{/ts}</font></b></td>
-          <td valign="bottom" style="white-space: nowrap"><b><font size="1" align="right">{domain.name}</font></b></td>
-        </tr>
-        <tr>
-          <td><font size="1" align="center">{contact.display_name}{if \'{contact.current_employer}\'} ({contact.current_employer}){/if}</font></td>
-          <td><font size="1" align="right">{$invoice_date}</font></td>
-          <td style="white-space: nowrap">
-            <font size="1" align="right">
-              {domain.street_address}
-              {domain.supplemental_address_1}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td><font size="1" align="center">{$street_address} {$supplemental_address_1}</font></td>
-          <td><b><font size="1" align="right">{ts}Invoice Number:{/ts}</font></b></td>
-          <td>
-            <font size="1" align="right">
-              {domain.supplemental_address_2}
-              {domain.state_province_id:label}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td><font size="1" align="center">{$supplemental_address_2} {$stateProvinceAbbreviation}</font></td>
-          <td><font size="1" align="right">{contribution.invoice_number}</font></td>
-          <td style="white-space: nowrap">
-            <font size="1" align="right">
-              {domain.city}
-              {domain.postal_code}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td><font size="1" align="right">{$city}  {$postal_code}</font></td>
-          <td height="10"><b><font size="1" align="right">{ts}Reference:{/ts}</font></b></td>
-          <td><font size="1" align="right">{domain.country_id:label}</font></td>
-        </tr>
-        <tr>
-          <td><font size="1" align="right"> {$country}</font></td>
-          <td><font size="1" align="right">{contribution.source}</font></td>
-          <td valign="top" style="white-space: nowrap"><font size="1" align="right">{domain.email}</font> </td>
-        </tr>
-        <tr>
-          <td></td>
-          <td></td>
-          <td valign="top"><font size="1" align="right">{domain.phone}</font> </td>
-        </tr>
-      </table>
+    <table style="font-family: Arial, Verdana, sans-serif;" width="100%" height="100" border="0" cellpadding="5" cellspacing="0">
+      <tr>
+        <td width="30%"><b><font size="4" align="center">{ts}INVOICE{/ts}</font></b></td>
+        <td width="50%" valign="bottom"><b><font size="1" align="center">{ts}Invoice Date:{/ts}</font></b></td>
+        <td valign="bottom" style="white-space: nowrap"><b><font size="1" align="right">{domain.name}</font></b></td>
+      </tr>
+      <tr>
+        <td><font size="1" align="center">{contact.display_name}{if \'{contact.current_employer}\'} ({contact.current_employer}){/if}</font></td>
+        <td><font size="1" align="right">{$invoice_date}</font></td>
+        <td style="white-space: nowrap"><font size="1" align="right">
+          {domain.street_address}
+          {domain.supplemental_address_1}
+        </font></td>
+      </tr>
+      <tr>
+        <td><font size="1" align="center">{$street_address} {$supplemental_address_1}</font></td>
+        <td><b><font size="1" align="right">{ts}Invoice Number:{/ts}</font></b></td>
+        <td><font size="1" align="right">
+          {domain.supplemental_address_2}
+          {domain.state_province_id:label}
+        </font></td>
+      </tr>
+      <tr>
+        <td><font size="1" align="center">{$supplemental_address_2} {$stateProvinceAbbreviation}</font></td>
+        <td><font size="1" align="right">{contribution.invoice_number}</font></td>
+        <td style="white-space: nowrap"><font size="1" align="right">
+          {domain.city}
+          {domain.postal_code}
+        </font></td>
+      </tr>
+      <tr>
+        <td><font size="1" align="right">{$city}  {$postal_code}</font></td>
+        <td height="10"><b><font size="1" align="right">{ts}Reference:{/ts}</font></b></td>
+        <td><font size="1" align="right">{domain.country_id:label}</font></td>
+      </tr>
+      <tr>
+        <td><font size="1" align="right"> {$country}</font></td>
+        <td><font size="1" align="right">{contribution.source}</font></td>
+        <td valign="top" style="white-space: nowrap"><font size="1" align="right">{domain.email}</font> </td>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td valign="top"><font size="1" align="right">{domain.phone}</font> </td>
+      </tr>
+    </table>
 
-             <table style="padding-top:75px;font-family: Arial, Verdana, sans-serif;" width="100%" border="0" cellpadding="5" cellspacing="0">
-              <tr>
-                <th style="text-align:left;font-weight:bold;width:100%"><font size="1">{ts}Description{/ts}</font></th>
-                <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts}Quantity{/ts}</font></th>
-                <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts}Unit Price{/ts}</font></th>
-                <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{domain.tax_term}</font></th>
-                <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
-              </tr>
-              {foreach from=$lineItem item=value key=priceset name=taxpricevalue}
-                {if $smarty.foreach.taxpricevalue.index eq 0}
-                {else}
-                {/if}
-                <tr>
-                  <td style="text-align:left;nowrap"><font size="1">
-                    {if $value.html_type eq \'Text\'}
-                      {$value.label}
-                    {else}
-                      {$value.field_title} - {$value.label}
-                    {/if}
-                    {if $value.description}
-                      <div>{$value.description|truncate:30:"..."}</div>
-                    {/if}
-                   </font>
-                  </td>
-                  <td style="text-align:right;"><font size="1">{$value.qty}</font></td>
-                  <td style="text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
-                  {if $value.tax_amount != \'\'}
-                    <td style="text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
-                  {else}
-                    <td style="text-align:right;"><font size="1">{if $taxTerm}{ts 1=$taxTerm}-{/ts}{/if}</font></td>
-                  {/if}
-                  <td style="text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
-                </tr>
-              {/foreach}
-              <tr>
-                <td colspan="3"></td>
-                <td style="text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
-                <td style="text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
-              </tr>
-              {if !empty($dataArray)}
-              {foreach from=$dataArray item=value key=priceset}
-                <tr>
-                  <td colspan="3"></td>
-                    {if $priceset}
-                      <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm 2=$priceset}TOTAL %1 %2%{/ts}{/if}</font></td>
-                      <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-                    {elseif $priceset == 0}
-                      <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm}TOTAL %1{/ts}{/if}</font></td>
-                      <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-                    {/if}
-                </tr>
-              {/foreach}
-              {/if}
-              <tr>
-                <td colspan="3"></td>
-                <td style="text-align:right;white-space: nowrap"><b><font size="1">{ts 1=$currency}TOTAL %1{/ts}</font></b></td>
-                <td style="text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
-              </tr>
-              <tr>
-                <td colspan="3"></td>
-                <td style="text-align:right;white-space: nowrap"><font size="1">
-                  {if \'{contribution.contribution_status_id:name}\' == \'Refunded\'}
-                    {ts}Amount Credited{/ts}
-                  {else}
-                    {ts}Amount Paid{/ts}
-                  {/if}
-                 </font>
-                </td>
-                <td style="text-align:right;"><font size="1">{$amountPaid|crmMoney:$currency}</font></td>
-              </tr>
-              <tr>
-                <td colspan="3"></td>
-                <td colspan="2"><hr></hr></td>
-              </tr>
-              <tr>
-                <td colspan="3"></td>
-                <td style="text-align:right;white-space: nowrap" ><b><font size="1">{ts}AMOUNT DUE:{/ts}</font></b></td>
-                <td style="text-align:right;"><b><font size="1">{$amountDue|crmMoney:$currency}</font></b></td>
-              </tr>
-
-              <br/><br/><br/>
-              <tr>
-                <td colspan="5"></td>
-              </tr>
-              {if \'{contribution.contribution_status_id:name}\' == \'Pending\' && \'{contribution.is_pay_later}\' == 1}
-                <tr>
-                  <td colspan="3"><b><font size="1" align="center">{ts 1=$dueDate}DUE DATE: %1{/ts}</font></b></td>
-                  <td colspan="2"></td>
-                </tr>
-              {/if}
-            </table>
-          </td>
+    <table style="padding-top:75px;font-family: Arial, Verdana, sans-serif;" width="100%" border="0" cellpadding="5" cellspacing="0">
+      <tr>
+        <th style="text-align:left;font-weight:bold;width:100%"><font size="1">{ts}Description{/ts}</font></th>
+        <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts}Quantity{/ts}</font></th>
+        <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts}Unit Price{/ts}</font></th>
+        <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{domain.tax_term}</font></th>
+        <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
+      </tr>
+      {foreach from=$lineItem item=value key=priceset name=taxpricevalue}
+        <tr>
+          <td style="text-align:left;nowrap"><font size="1">
+            {if $value.html_type eq \'Text\'}
+              {$value.label}
+            {else}
+              {$value.field_title} - {$value.label}
+            {/if}
+            {if $value.description}
+              <div>{$value.description|truncate:30:"..."}</div>
+            {/if}
+          </font></td>
+          <td style="text-align:right;"><font size="1">{$value.qty}</font></td>
+          <td style="text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
+          {if $value.tax_amount != \'\'}
+            <td style="text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
+          {else}
+            <td style="text-align:right;"><font size="1">{if $taxTerm}{ts 1=$taxTerm}-{/ts}{/if}</font></td>
+          {/if}
+          <td style="text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
         </tr>
-      </table>
-
-      {if \'{contribution.contribution_status_id:name}\' == \'Pending\' && \'{contribution.is_pay_later}\' == 1}
-        <table style="margin-top:5px;" width="100%" border="0" cellpadding="0" cellspacing="0">
+      {/foreach}
+      <tr>
+        <td colspan="3"></td>
+        <td style="text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
+        <td style="text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
+      </tr>
+      {if !empty($dataArray)}
+        {foreach from=$dataArray item=value key=priceset}
           <tr>
-            <td><img src="{$resourceBase}/i/contribute/cut_line.png" height="15"></td>
+            <td colspan="3"></td>
+            {if $priceset}
+              <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm 2=$priceset}TOTAL %1 %2%{/ts}{/if}</font></td>
+              <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
+            {elseif $priceset == 0}
+              <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm}TOTAL %1{/ts}{/if}</font></td>
+              <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
+            {/if}
           </tr>
-        </table>
+        {/foreach}
+      {/if}
+      <tr>
+        <td colspan="3"></td>
+        <td style="text-align:right;white-space: nowrap"><b><font size="1">{ts 1=$currency}TOTAL %1{/ts}</font></b></td>
+        <td style="text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
+      </tr>
+      <tr>
+        <td colspan="3"></td>
+        <td style="text-align:right;white-space: nowrap"><font size="1">
+          {if \'{contribution.contribution_status_id:name}\' == \'Refunded\'}
+            {ts}Amount Credited{/ts}
+          {else}
+            {ts}Amount Paid{/ts}
+          {/if}
+        </font></td>
+        <td style="text-align:right;"><font size="1">{$amountPaid|crmMoney:$currency}</font></td>
+      </tr>
+      <tr>
+        <td colspan="3"></td>
+        <td colspan="2"><hr></hr></td>
+      </tr>
+      <tr>
+        <td colspan="3"></td>
+        <td style="text-align:right;white-space: nowrap" ><b><font size="1">{ts}AMOUNT DUE:{/ts}</font></b></td>
+        <td style="text-align:right;"><b><font size="1">{$amountDue|crmMoney:$currency}</font></b></td>
+      </tr>
+      <tr>
+        <td colspan="5"></td>
+      </tr>
+      {if \'{contribution.contribution_status_id:name}\' == \'Pending\' && \'{contribution.is_pay_later}\' == 1}
+        <tr>
+          <td colspan="3"><b><font size="1" align="center">{ts 1=$dueDate}DUE DATE: %1{/ts}</font></b></td>
+          <td colspan="2"></td>
+        </tr>
+      {/if}
+    </table>
 
-        <table style="margin-top:5px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="0" id="desc">
-          <tr>
-            <td width="60%"><b><font size="4" align="right">{ts}PAYMENT ADVICE{/ts}</font></b><br/><br/><font size="1" align="left"><b>{ts}To:{/ts}</b><div style="width:24em;word-wrap:break-word;">
+    {if \'{contribution.contribution_status_id:name}\' == \'Pending\' && \'{contribution.is_pay_later}\' == 1}
+      <table style="margin-top:5px;" width="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+          <td><img src="{$resourceBase}/i/contribute/cut_line.png" height="15"></td>
+        </tr>
+      </table>
+
+      <table style="margin-top:5px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="0" id="desc">
+        <tr>
+          <td width="60%"><b><font size="4" align="right">{ts}PAYMENT ADVICE{/ts}</font></b><br/><br/>
+            <font size="1" align="left"><b>{ts}To:{/ts}</b><div style="width:24em;word-wrap:break-word;">
               {domain.name}<br />
               {domain.street_address} {domain.supplemental_address_1}<br />
               {domain.supplemental_address_2} {domain.state_province_id:label}<br />
@@ -9499,161 +9464,151 @@ INSERT INTO civicrm_msg_template
               {domain.country_id:label}<br />
               {domain.email}</div>
               {domain.phone}<br />
-             </font><br/><br/><font size="1" align="left">{$notes}</font>
-            </td>
-            <td width="40%">
-              <table cellpadding="5" cellspacing="0"  width="100%" border="0">
+            </font>
+            <br/><br/><font size="1" align="left">{$notes}</font>
+          </td>
+          <td width="40%">
+            <table cellpadding="5" cellspacing="0"  width="100%" border="0">
+              <tr>
+                <td width="100%"><font size="1" align="right" style="font-weight:bold;">{ts}Customer:{/ts}</font></td>
+                <td style="white-space: nowrap"><font size="1" align="right">{contact.display_name}</font></td>
+              </tr>
+              <tr>
+                <td><font size="1" align="right" style="font-weight:bold;">{ts}Invoice Number:{/ts}</font></td>
+                <td><font size="1" align="right">{contribution.invoice_number}</font></td>
+              </tr>
+              <tr><td colspan="5" style="color:#F5F5F5;"><hr></td></tr>
+              {if $is_pay_later == 1}
                 <tr>
-                  <td width="100%"><font size="1" align="right" style="font-weight:bold;">{ts}Customer:{/ts}</font></td>
-                  <td style="white-space: nowrap"><font size="1" align="right">{contact.display_name}</font></td>
+                  <td><font size="1" align="right" style="font-weight:bold;">{ts}Amount Due:{/ts}</font></td>
+                  <td><font size="1" align="right" style="font-weight:bold;">{$amount|crmMoney:$currency}</font></td>
                 </tr>
+              {else}
                 <tr>
-                  <td><font size="1" align="right" style="font-weight:bold;">{ts}Invoice Number:{/ts}</font></td>
-                  <td><font size="1" align="right">{contribution.invoice_number}</font></td>
+                  <td><font size="1" align="right" style="font-weight:bold;">{ts}Amount Due:{/ts}</font></td>
+                  <td><font size="1" align="right" style="font-weight:bold;">{$amountDue|crmMoney:$currency}</font></td>
                 </tr>
-                <tr><td colspan="5" style="color:#F5F5F5;"><hr></td></tr>
-                {if $is_pay_later == 1}
-                  <tr>
-                    <td><font size="1" align="right" style="font-weight:bold;">{ts}Amount Due:{/ts}</font></td>
-                    <td><font size="1" align="right" style="font-weight:bold;">{$amount|crmMoney:$currency}</font></td>
-                  </tr>
-                {else}
-                  <tr>
-                    <td><font size="1" align="right" style="font-weight:bold;">{ts}Amount Due:{/ts}</font></td>
-                    <td><font size="1" align="right" style="font-weight:bold;">{$amountDue|crmMoney:$currency}</font></td>
-                  </tr>
-                {/if}
-                <tr>
-                  <td><font size="1" align="right" style="font-weight:bold;">{ts}Due Date:{/ts}</font></td>
-                  <td><font size="1" align="right">{$dueDate}</font></td>
-                </tr>
-                <tr>
-                  <td colspan="5" style="color:#F5F5F5;"><hr></td>
-                </tr>
-              </table>
-      {/if}
-
-      {if \'{contribution.contribution_status_id:name}\' === \'Refunded\' || \'{contribution.contribution_status_id:name}\' === \'Cancelled\'}
-      {if $config->empoweredBy}
-        <table style="margin-top:2px;padding-left:7px;page-break-before: always;">
-          <tr>
-            <td><img src="{$resourceBase}/i/civi99.png" height="34px" width="99px"></td>
-          </tr>
-        </table>
-      {/if}
-
-      <table style="font-family: Arial, Verdana, sans-serif" width="100%" height="100" border="0" cellpadding="5" cellspacing="5">
-        <tr>
-          <td style="padding-left:15px;"><b><font size="4" align="center">{ts}CREDIT NOTE{/ts}</font></b></td>
-          <td style="padding-left:30px;"><b><font size="1" align="right">{ts}Date:{/ts}</font></b></td>
-          <td><font size="1" align="right">{domain.name}</font></td>
-        </tr>
-        <tr>
-          <td style="padding-left:17px;"><font size="1" align="center">{contact.display_name}{if \'{contact.current_employer}\'} ({contact.current_employer}){/if}</font></td>
-          <td style="padding-left:30px;"><font size="1" align="right">{$invoice_date}</font></td>
-          <td>
-            <font size="1" align="right">
-              {domain.street_address}
-              {domain.supplemental_address_1}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding-left:17px;"><font size="1" align="center">{$street_address}   {$supplemental_address_1}</font></td>
-          <td style="padding-left:30px;"><b><font size="1" align="right">{ts}Credit Note Number:{/ts}</font></b></td>
-          <td>
-            <font size="1" align="right">
-              {domain.supplemental_address_2}
-              {domain.state_province_id:label}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding-left:17px;"><font size="1" align="center">{$supplemental_address_2}  {$stateProvinceAbbreviation}</font></td>
-          <td style="padding-left:30px;"><font size="1" align="right">{contribution.creditnote_id}</font></td>
-          <td>
-            <font size="1" align="right">
-              {domain.city}
-              {domain.postal_code}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding-left:17px;"><font size="1" align="right">{$city}  {$postal_code}</font></td>
-          <td height="10" style="padding-left:30px;"><b><font size="1" align="right">{ts}Reference:{/ts}</font></b></td>
-          <td>
-            <font size="1" align="right">
-              {domain.country_id:label}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td></td>
-          <td style="padding-left:30px;"><font size="1" align="right">{contribution.source}</font></td>
-          <td>
-            <font size="1" align="right">
-              {domain.email}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td></td>
-          <td></td>
-          <td>
-            <font size="1" align="right">
-              {domain.phone}
-           </font>
+              {/if}
+              <tr>
+                <td><font size="1" align="right" style="font-weight:bold;">{ts}Due Date:{/ts}</font></td>
+                <td><font size="1" align="right">{$dueDate}</font></td>
+              </tr>
+              <tr>
+                <td colspan="5" style="color:#F5F5F5;"><hr></td>
+              </tr>
+            </table>
           </td>
         </tr>
       </table>
+    {/if}
 
-      <table style="margin-top:75px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="5" id="desc">
+    {if \'{contribution.contribution_status_id:name}\' === \'Refunded\' || \'{contribution.contribution_status_id:name}\' === \'Cancelled\'}
+    {if $config->empoweredBy}
+      <table style="margin-top:2px;padding-left:7px;page-break-before: always;">
         <tr>
-          <td colspan="2">
-            <table>
+          <td><img src="{$resourceBase}/i/civi99.png" height="34px" width="99px"></td>
+        </tr>
+      </table>
+    {/if}
+
+    <table style="font-family: Arial, Verdana, sans-serif" width="100%" height="100" border="0" cellpadding="5" cellspacing="5">
+      <tr>
+        <td style="padding-left:15px;"><b><font size="4" align="center">{ts}CREDIT NOTE{/ts}</font></b></td>
+        <td style="padding-left:30px;"><b><font size="1" align="right">{ts}Date:{/ts}</font></b></td>
+        <td><font size="1" align="right">{domain.name}</font></td>
+      </tr>
+      <tr>
+        <td style="padding-left:17px;"><font size="1" align="center">{contact.display_name}{if \'{contact.current_employer}\'} ({contact.current_employer}){/if}</font></td>
+        <td style="padding-left:30px;"><font size="1" align="right">{$invoice_date}</font></td>
+        <td><font size="1" align="right">
+          {domain.street_address}
+          {domain.supplemental_address_1}
+         </font></td>
+      </tr>
+      <tr>
+        <td style="padding-left:17px;"><font size="1" align="center">{$street_address}   {$supplemental_address_1}</font></td>
+        <td style="padding-left:30px;"><b><font size="1" align="right">{ts}Credit Note Number:{/ts}</font></b></td>
+        <td><font size="1" align="right">
+          {domain.supplemental_address_2}
+          {domain.state_province_id:label}
+        </font></td>
+      </tr>
+      <tr>
+        <td style="padding-left:17px;"><font size="1" align="center">{$supplemental_address_2}  {$stateProvinceAbbreviation}</font></td>
+        <td style="padding-left:30px;"><font size="1" align="right">{contribution.creditnote_id}</font></td>
+        <td><font size="1" align="right">
+          {domain.city}
+          {domain.postal_code}
+        </font></td>
+      </tr>
+      <tr>
+        <td style="padding-left:17px;"><font size="1" align="right">{$city}  {$postal_code}</font></td>
+        <td height="10" style="padding-left:30px;"><b><font size="1" align="right">{ts}Reference:{/ts}</font></b></td>
+        <td><font size="1" align="right">
+          {domain.country_id:label}
+        </font></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td style="padding-left:30px;"><font size="1" align="right">{contribution.source}</font></td>
+        <td><font size="1" align="right">
+          {domain.email}
+        </font></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td><font size="1" align="right">
+          {domain.phone}
+        </font></td>
+      </tr>
+    </table>
+
+    <table style="margin-top:75px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="5" id="desc">
+      <tr>
+        <td colspan="2">
+          <table>
+            <tr>
+              <th style="padding-right:28px;text-align:left;font-weight:bold;width:200px;"><font size="1">{ts}Description{/ts}</font></th>
+              <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts}Quantity{/ts}</font></th>
+              <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts}Unit Price{/ts}</font></th>
+              <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{domain.tax_term}</font></th>
+              <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
+            </tr>
+            {foreach from=$lineItem item=value key=priceset name=pricevalue}
+              {if $smarty.foreach.pricevalue.index eq 0}
+                <tr><td colspan="5"><hr size="3" style="color:#000;"></hr></td></tr>
+              {else}
+                <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
+              {/if}
               <tr>
-                <th style="padding-right:28px;text-align:left;font-weight:bold;width:200px;"><font size="1">{ts}Description{/ts}</font></th>
-                <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts}Quantity{/ts}</font></th>
-                <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts}Unit Price{/ts}</font></th>
-                <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{domain.tax_term}</font></th>
-                <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
-              </tr>
-              {foreach from=$lineItem item=value key=priceset name=pricevalue}
-                {if $smarty.foreach.pricevalue.index eq 0}
-                  <tr><td colspan="5"><hr size="3" style="color:#000;"></hr></td></tr>
-                {else}
-                  <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
-                {/if}
-                <tr>
-                  <td style ="text-align:left;"  >
-                    <font size="1">
-                      {if $value.html_type eq \'Text\'}
-                        {$value.label}
-                      {else}
-                        {$value.field_title} - {$value.label}
-                      {/if}
-                      {if $value.description}
-                        <div>{$value.description|truncate:30:"..."}</div>
-                      {/if}
-                   </font>
-                  </td>
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{$value.qty}</font></td>
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
-                  {if $value.tax_amount != \'\'}
-                    <td style="padding-left:28px;text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
+                <td style ="text-align:left;"  ><font size="1">
+                  {if $value.html_type eq \'Text\'}
+                    {$value.label}
                   {else}
-                    <td style="padding-left:28px;text-align:right"><font size="1">{if $taxTerm}{ts 1=$taxTerm}No %1{/ts}{/if}</font></td>
+                    {$value.field_title} - {$value.label}
                   {/if}
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
-                </tr>
-              {/foreach}
-              <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
-              <tr>
-                <td colspan="3"></td>
-                <td style="padding-left:28px;text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
-                <td style="padding-left:28px;text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
+                  {if $value.description}
+                    <div>{$value.description|truncate:30:"..."}</div>
+                  {/if}
+                </font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.qty}</font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
+                {if $value.tax_amount != \'\'}
+                  <td style="padding-left:28px;text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
+                {else}
+                  <td style="padding-left:28px;text-align:right"><font size="1">{if $taxTerm}{ts 1=$taxTerm}No %1{/ts}{/if}</font></td>
+                {/if}
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
               </tr>
-              {if !empty($dataArray)}
+            {/foreach}
+            <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
+            <tr>
+              <td colspan="3"></td>
+              <td style="padding-left:28px;text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
+              <td style="padding-left:28px;text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
+            </tr>
+            {if !empty($dataArray)}
               {foreach from=$dataArray item=value key=priceset}
                 <tr>
                   <td colspan="3"></td>
@@ -9666,78 +9621,78 @@ INSERT INTO civicrm_msg_template
                   {/if}
                 </tr>
               {/foreach}
-              {/if}
+            {/if}
+            <tr>
+              <td colspan="3"></td>
+              <td colspan="2"><hr></hr></td>
+            </tr>
+            <tr>
+              <td colspan="3"></td>
+              <td style="padding-left:28px;text-align:right;"><b><font size="1">{ts 1=$currency}TOTAL %1{/ts}</font></b></td>
+              <td style="padding-left:28px;text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
+            </tr>
+            {if \'{contribution.is_pay_later}\' == 0}
+              <tr>
+                <td colspan="3"></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{ts}LESS Credit to invoice(s){/ts}</font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
+              </tr>
               <tr>
                 <td colspan="3"></td>
                 <td colspan="2"><hr></hr></td>
               </tr>
               <tr>
                 <td colspan="3"></td>
-                <td style="padding-left:28px;text-align:right;"><b><font size="1">{ts 1=$currency}TOTAL %1{/ts}</font></b></td>
-                <td style="padding-left:28px;text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
+                <td style="padding-left:28px;text-align:right;"><b><font size="1">{ts}REMAINING CREDIT{/ts}</font></b></td>
+                <td style="padding-left:28px;text-align:right;"><b><font size="1">{$amountDue|crmMoney:$currency}</font></b></td>
+                <td style="padding-left:28px;"><font size="1" align="right"></font></td>
               </tr>
-              {if \'{contribution.is_pay_later}\' == 0}
-                <tr>
-                  <td colspan="3"></td>
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{ts}LESS Credit to invoice(s){/ts}</font></td>
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
-                </tr>
-                <tr>
-                  <td colspan="3"></td>
-                  <td colspan="2"><hr></hr></td>
-                </tr>
-                <tr>
-                  <td colspan="3"></td>
-                  <td style="padding-left:28px;text-align:right;"><b><font size="1">{ts}REMAINING CREDIT{/ts}</font></b></td>
-                  <td style="padding-left:28px;text-align:right;"><b><font size="1">{$amountDue|crmMoney:$currency}</font></b></td>
-                  <td style="padding-left:28px;"><font size="1" align="right"></font></td>
-                </tr>
-              {/if}
-              <br/><br/><br/>
-              <tr>
-                <td colspan="3"></td>
-              </tr>
-              <tr>
-                <td></td>
-                <td colspan="3"></td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
+            {/if}
+            <br/><br/><br/>
+            <tr>
+              <td colspan="3"></td>
+            </tr>
+            <tr>
+              <td></td>
+              <td colspan="3"></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-      <table width="100%" style="margin-top:5px;padding-right:45px;">
-        <tr>
-          <td><img src="{$resourceBase}/i/contribute/cut_line.png" height="15" width="100%"></td>
-        </tr>
-      </table>
+    <table width="100%" style="margin-top:5px;padding-right:45px;">
+      <tr>
+        <td><img src="{$resourceBase}/i/contribute/cut_line.png" height="15" width="100%"></td>
+      </tr>
+    </table>
 
-      <table style="margin-top:6px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="5" id="desc">
-        <tr>
-          <td width="60%"><font size="4" align="right"><b>{ts}CREDIT ADVICE{/ts}</b><br/><br /><div style="font-size:10px;max-width:300px;">{ts}Please do not pay on this advice. Deduct the amount of this Credit Note from your next payment to us{/ts}</div><br/></font></td>
-          <td width="40%">
-            <table align="right">
-              <tr>
-                <td colspan="2"></td>
-                <td><font size="1" align="right" style="font-weight:bold;">{ts}Customer:{/ts}</font></td>
-                <td><font size="1" align="right">{contact.display_name}</font></td>
-              </tr>
-              <tr>
-                <td colspan="2"></td>
-                <td><font size="1" align="right" style="font-weight:bold;">{ts}Credit Note#:{/ts}</font></td>
-                <td><font size="1" align="right">{contribution.creditnote_id}</font></td>
-              </tr>
-              <tr><td colspan="5"style="color:#F5F5F5;"><hr></hr></td></tr>
-              <tr>
-                <td colspan="2"></td>
-                <td><font size="1" align="right" style="font-weight:bold;">{ts}Credit Amount:{/ts}</font></td>
-                <td width=\'50px\'><font size="1" align="right" style="font-weight:bold;">{$amount|crmMoney:$currency}</font></td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    {/if}
+    <table style="margin-top:6px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="5" id="desc">
+      <tr>
+        <td width="60%"><font size="4" align="right"><b>{ts}CREDIT ADVICE{/ts}</b><br/><br /><div style="font-size:10px;max-width:300px;">{ts}Please do not pay on this advice. Deduct the amount of this Credit Note from your next payment to us{/ts}</div><br/></font></td>
+        <td width="40%">
+          <table align="right">
+            <tr>
+              <td colspan="2"></td>
+              <td><font size="1" align="right" style="font-weight:bold;">{ts}Customer:{/ts}</font></td>
+              <td><font size="1" align="right">{contact.display_name}</font></td>
+            </tr>
+            <tr>
+              <td colspan="2"></td>
+              <td><font size="1" align="right" style="font-weight:bold;">{ts}Credit Note#:{/ts}</font></td>
+              <td><font size="1" align="right">{contribution.creditnote_id}</font></td>
+            </tr>
+            <tr><td colspan="5"style="color:#F5F5F5;"><hr></hr></td></tr>
+            <tr>
+              <td colspan="2"></td>
+              <td><font size="1" align="right" style="font-weight:bold;">{ts}Credit Amount:{/ts}</font></td>
+              <td width=\'50px\'><font size="1" align="right" style="font-weight:bold;">{$amount|crmMoney:$currency}</font></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  {/if}
 
   </div>
   </body>
@@ -9771,164 +9726,149 @@ INSERT INTO civicrm_msg_template
         </tr>
       </table>
     {/if}
-      <table style="font-family: Arial, Verdana, sans-serif;" width="100%" height="100" border="0" cellpadding="5" cellspacing="0">
-        <tr>
-          <td width="30%"><b><font size="4" align="center">{ts}INVOICE{/ts}</font></b></td>
-          <td width="50%" valign="bottom"><b><font size="1" align="center">{ts}Invoice Date:{/ts}</font></b></td>
-          <td valign="bottom" style="white-space: nowrap"><b><font size="1" align="right">{domain.name}</font></b></td>
-        </tr>
-        <tr>
-          <td><font size="1" align="center">{contact.display_name}{if \'{contact.current_employer}\'} ({contact.current_employer}){/if}</font></td>
-          <td><font size="1" align="right">{$invoice_date}</font></td>
-          <td style="white-space: nowrap">
-            <font size="1" align="right">
-              {domain.street_address}
-              {domain.supplemental_address_1}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td><font size="1" align="center">{$street_address} {$supplemental_address_1}</font></td>
-          <td><b><font size="1" align="right">{ts}Invoice Number:{/ts}</font></b></td>
-          <td>
-            <font size="1" align="right">
-              {domain.supplemental_address_2}
-              {domain.state_province_id:label}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td><font size="1" align="center">{$supplemental_address_2} {$stateProvinceAbbreviation}</font></td>
-          <td><font size="1" align="right">{contribution.invoice_number}</font></td>
-          <td style="white-space: nowrap">
-            <font size="1" align="right">
-              {domain.city}
-              {domain.postal_code}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td><font size="1" align="right">{$city}  {$postal_code}</font></td>
-          <td height="10"><b><font size="1" align="right">{ts}Reference:{/ts}</font></b></td>
-          <td><font size="1" align="right">{domain.country_id:label}</font></td>
-        </tr>
-        <tr>
-          <td><font size="1" align="right"> {$country}</font></td>
-          <td><font size="1" align="right">{contribution.source}</font></td>
-          <td valign="top" style="white-space: nowrap"><font size="1" align="right">{domain.email}</font> </td>
-        </tr>
-        <tr>
-          <td></td>
-          <td></td>
-          <td valign="top"><font size="1" align="right">{domain.phone}</font> </td>
-        </tr>
-      </table>
+    <table style="font-family: Arial, Verdana, sans-serif;" width="100%" height="100" border="0" cellpadding="5" cellspacing="0">
+      <tr>
+        <td width="30%"><b><font size="4" align="center">{ts}INVOICE{/ts}</font></b></td>
+        <td width="50%" valign="bottom"><b><font size="1" align="center">{ts}Invoice Date:{/ts}</font></b></td>
+        <td valign="bottom" style="white-space: nowrap"><b><font size="1" align="right">{domain.name}</font></b></td>
+      </tr>
+      <tr>
+        <td><font size="1" align="center">{contact.display_name}{if \'{contact.current_employer}\'} ({contact.current_employer}){/if}</font></td>
+        <td><font size="1" align="right">{$invoice_date}</font></td>
+        <td style="white-space: nowrap"><font size="1" align="right">
+          {domain.street_address}
+          {domain.supplemental_address_1}
+        </font></td>
+      </tr>
+      <tr>
+        <td><font size="1" align="center">{$street_address} {$supplemental_address_1}</font></td>
+        <td><b><font size="1" align="right">{ts}Invoice Number:{/ts}</font></b></td>
+        <td><font size="1" align="right">
+          {domain.supplemental_address_2}
+          {domain.state_province_id:label}
+        </font></td>
+      </tr>
+      <tr>
+        <td><font size="1" align="center">{$supplemental_address_2} {$stateProvinceAbbreviation}</font></td>
+        <td><font size="1" align="right">{contribution.invoice_number}</font></td>
+        <td style="white-space: nowrap"><font size="1" align="right">
+          {domain.city}
+          {domain.postal_code}
+        </font></td>
+      </tr>
+      <tr>
+        <td><font size="1" align="right">{$city}  {$postal_code}</font></td>
+        <td height="10"><b><font size="1" align="right">{ts}Reference:{/ts}</font></b></td>
+        <td><font size="1" align="right">{domain.country_id:label}</font></td>
+      </tr>
+      <tr>
+        <td><font size="1" align="right"> {$country}</font></td>
+        <td><font size="1" align="right">{contribution.source}</font></td>
+        <td valign="top" style="white-space: nowrap"><font size="1" align="right">{domain.email}</font> </td>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td valign="top"><font size="1" align="right">{domain.phone}</font> </td>
+      </tr>
+    </table>
 
-             <table style="padding-top:75px;font-family: Arial, Verdana, sans-serif;" width="100%" border="0" cellpadding="5" cellspacing="0">
-              <tr>
-                <th style="text-align:left;font-weight:bold;width:100%"><font size="1">{ts}Description{/ts}</font></th>
-                <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts}Quantity{/ts}</font></th>
-                <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts}Unit Price{/ts}</font></th>
-                <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{domain.tax_term}</font></th>
-                <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
-              </tr>
-              {foreach from=$lineItem item=value key=priceset name=taxpricevalue}
-                {if $smarty.foreach.taxpricevalue.index eq 0}
-                {else}
-                {/if}
-                <tr>
-                  <td style="text-align:left;nowrap"><font size="1">
-                    {if $value.html_type eq \'Text\'}
-                      {$value.label}
-                    {else}
-                      {$value.field_title} - {$value.label}
-                    {/if}
-                    {if $value.description}
-                      <div>{$value.description|truncate:30:"..."}</div>
-                    {/if}
-                   </font>
-                  </td>
-                  <td style="text-align:right;"><font size="1">{$value.qty}</font></td>
-                  <td style="text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
-                  {if $value.tax_amount != \'\'}
-                    <td style="text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
-                  {else}
-                    <td style="text-align:right;"><font size="1">{if $taxTerm}{ts 1=$taxTerm}-{/ts}{/if}</font></td>
-                  {/if}
-                  <td style="text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
-                </tr>
-              {/foreach}
-              <tr>
-                <td colspan="3"></td>
-                <td style="text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
-                <td style="text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
-              </tr>
-              {if !empty($dataArray)}
-              {foreach from=$dataArray item=value key=priceset}
-                <tr>
-                  <td colspan="3"></td>
-                    {if $priceset}
-                      <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm 2=$priceset}TOTAL %1 %2%{/ts}{/if}</font></td>
-                      <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-                    {elseif $priceset == 0}
-                      <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm}TOTAL %1{/ts}{/if}</font></td>
-                      <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-                    {/if}
-                </tr>
-              {/foreach}
-              {/if}
-              <tr>
-                <td colspan="3"></td>
-                <td style="text-align:right;white-space: nowrap"><b><font size="1">{ts 1=$currency}TOTAL %1{/ts}</font></b></td>
-                <td style="text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
-              </tr>
-              <tr>
-                <td colspan="3"></td>
-                <td style="text-align:right;white-space: nowrap"><font size="1">
-                  {if \'{contribution.contribution_status_id:name}\' == \'Refunded\'}
-                    {ts}Amount Credited{/ts}
-                  {else}
-                    {ts}Amount Paid{/ts}
-                  {/if}
-                 </font>
-                </td>
-                <td style="text-align:right;"><font size="1">{$amountPaid|crmMoney:$currency}</font></td>
-              </tr>
-              <tr>
-                <td colspan="3"></td>
-                <td colspan="2"><hr></hr></td>
-              </tr>
-              <tr>
-                <td colspan="3"></td>
-                <td style="text-align:right;white-space: nowrap" ><b><font size="1">{ts}AMOUNT DUE:{/ts}</font></b></td>
-                <td style="text-align:right;"><b><font size="1">{$amountDue|crmMoney:$currency}</font></b></td>
-              </tr>
-
-              <br/><br/><br/>
-              <tr>
-                <td colspan="5"></td>
-              </tr>
-              {if \'{contribution.contribution_status_id:name}\' == \'Pending\' && \'{contribution.is_pay_later}\' == 1}
-                <tr>
-                  <td colspan="3"><b><font size="1" align="center">{ts 1=$dueDate}DUE DATE: %1{/ts}</font></b></td>
-                  <td colspan="2"></td>
-                </tr>
-              {/if}
-            </table>
-          </td>
+    <table style="padding-top:75px;font-family: Arial, Verdana, sans-serif;" width="100%" border="0" cellpadding="5" cellspacing="0">
+      <tr>
+        <th style="text-align:left;font-weight:bold;width:100%"><font size="1">{ts}Description{/ts}</font></th>
+        <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts}Quantity{/ts}</font></th>
+        <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts}Unit Price{/ts}</font></th>
+        <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{domain.tax_term}</font></th>
+        <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
+      </tr>
+      {foreach from=$lineItem item=value key=priceset name=taxpricevalue}
+        <tr>
+          <td style="text-align:left;nowrap"><font size="1">
+            {if $value.html_type eq \'Text\'}
+              {$value.label}
+            {else}
+              {$value.field_title} - {$value.label}
+            {/if}
+            {if $value.description}
+              <div>{$value.description|truncate:30:"..."}</div>
+            {/if}
+          </font></td>
+          <td style="text-align:right;"><font size="1">{$value.qty}</font></td>
+          <td style="text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
+          {if $value.tax_amount != \'\'}
+            <td style="text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
+          {else}
+            <td style="text-align:right;"><font size="1">{if $taxTerm}{ts 1=$taxTerm}-{/ts}{/if}</font></td>
+          {/if}
+          <td style="text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
         </tr>
-      </table>
-
-      {if \'{contribution.contribution_status_id:name}\' == \'Pending\' && \'{contribution.is_pay_later}\' == 1}
-        <table style="margin-top:5px;" width="100%" border="0" cellpadding="0" cellspacing="0">
+      {/foreach}
+      <tr>
+        <td colspan="3"></td>
+        <td style="text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
+        <td style="text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
+      </tr>
+      {if !empty($dataArray)}
+        {foreach from=$dataArray item=value key=priceset}
           <tr>
-            <td><img src="{$resourceBase}/i/contribute/cut_line.png" height="15"></td>
+            <td colspan="3"></td>
+            {if $priceset}
+              <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm 2=$priceset}TOTAL %1 %2%{/ts}{/if}</font></td>
+              <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
+            {elseif $priceset == 0}
+              <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm}TOTAL %1{/ts}{/if}</font></td>
+              <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
+            {/if}
           </tr>
-        </table>
+        {/foreach}
+      {/if}
+      <tr>
+        <td colspan="3"></td>
+        <td style="text-align:right;white-space: nowrap"><b><font size="1">{ts 1=$currency}TOTAL %1{/ts}</font></b></td>
+        <td style="text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
+      </tr>
+      <tr>
+        <td colspan="3"></td>
+        <td style="text-align:right;white-space: nowrap"><font size="1">
+          {if \'{contribution.contribution_status_id:name}\' == \'Refunded\'}
+            {ts}Amount Credited{/ts}
+          {else}
+            {ts}Amount Paid{/ts}
+          {/if}
+        </font></td>
+        <td style="text-align:right;"><font size="1">{$amountPaid|crmMoney:$currency}</font></td>
+      </tr>
+      <tr>
+        <td colspan="3"></td>
+        <td colspan="2"><hr></hr></td>
+      </tr>
+      <tr>
+        <td colspan="3"></td>
+        <td style="text-align:right;white-space: nowrap" ><b><font size="1">{ts}AMOUNT DUE:{/ts}</font></b></td>
+        <td style="text-align:right;"><b><font size="1">{$amountDue|crmMoney:$currency}</font></b></td>
+      </tr>
+      <tr>
+        <td colspan="5"></td>
+      </tr>
+      {if \'{contribution.contribution_status_id:name}\' == \'Pending\' && \'{contribution.is_pay_later}\' == 1}
+        <tr>
+          <td colspan="3"><b><font size="1" align="center">{ts 1=$dueDate}DUE DATE: %1{/ts}</font></b></td>
+          <td colspan="2"></td>
+        </tr>
+      {/if}
+    </table>
 
-        <table style="margin-top:5px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="0" id="desc">
-          <tr>
-            <td width="60%"><b><font size="4" align="right">{ts}PAYMENT ADVICE{/ts}</font></b><br/><br/><font size="1" align="left"><b>{ts}To:{/ts}</b><div style="width:24em;word-wrap:break-word;">
+    {if \'{contribution.contribution_status_id:name}\' == \'Pending\' && \'{contribution.is_pay_later}\' == 1}
+      <table style="margin-top:5px;" width="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+          <td><img src="{$resourceBase}/i/contribute/cut_line.png" height="15"></td>
+        </tr>
+      </table>
+
+      <table style="margin-top:5px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="0" id="desc">
+        <tr>
+          <td width="60%"><b><font size="4" align="right">{ts}PAYMENT ADVICE{/ts}</font></b><br/><br/>
+            <font size="1" align="left"><b>{ts}To:{/ts}</b><div style="width:24em;word-wrap:break-word;">
               {domain.name}<br />
               {domain.street_address} {domain.supplemental_address_1}<br />
               {domain.supplemental_address_2} {domain.state_province_id:label}<br />
@@ -9936,161 +9876,151 @@ INSERT INTO civicrm_msg_template
               {domain.country_id:label}<br />
               {domain.email}</div>
               {domain.phone}<br />
-             </font><br/><br/><font size="1" align="left">{$notes}</font>
-            </td>
-            <td width="40%">
-              <table cellpadding="5" cellspacing="0"  width="100%" border="0">
+            </font>
+            <br/><br/><font size="1" align="left">{$notes}</font>
+          </td>
+          <td width="40%">
+            <table cellpadding="5" cellspacing="0"  width="100%" border="0">
+              <tr>
+                <td width="100%"><font size="1" align="right" style="font-weight:bold;">{ts}Customer:{/ts}</font></td>
+                <td style="white-space: nowrap"><font size="1" align="right">{contact.display_name}</font></td>
+              </tr>
+              <tr>
+                <td><font size="1" align="right" style="font-weight:bold;">{ts}Invoice Number:{/ts}</font></td>
+                <td><font size="1" align="right">{contribution.invoice_number}</font></td>
+              </tr>
+              <tr><td colspan="5" style="color:#F5F5F5;"><hr></td></tr>
+              {if $is_pay_later == 1}
                 <tr>
-                  <td width="100%"><font size="1" align="right" style="font-weight:bold;">{ts}Customer:{/ts}</font></td>
-                  <td style="white-space: nowrap"><font size="1" align="right">{contact.display_name}</font></td>
+                  <td><font size="1" align="right" style="font-weight:bold;">{ts}Amount Due:{/ts}</font></td>
+                  <td><font size="1" align="right" style="font-weight:bold;">{$amount|crmMoney:$currency}</font></td>
                 </tr>
+              {else}
                 <tr>
-                  <td><font size="1" align="right" style="font-weight:bold;">{ts}Invoice Number:{/ts}</font></td>
-                  <td><font size="1" align="right">{contribution.invoice_number}</font></td>
+                  <td><font size="1" align="right" style="font-weight:bold;">{ts}Amount Due:{/ts}</font></td>
+                  <td><font size="1" align="right" style="font-weight:bold;">{$amountDue|crmMoney:$currency}</font></td>
                 </tr>
-                <tr><td colspan="5" style="color:#F5F5F5;"><hr></td></tr>
-                {if $is_pay_later == 1}
-                  <tr>
-                    <td><font size="1" align="right" style="font-weight:bold;">{ts}Amount Due:{/ts}</font></td>
-                    <td><font size="1" align="right" style="font-weight:bold;">{$amount|crmMoney:$currency}</font></td>
-                  </tr>
-                {else}
-                  <tr>
-                    <td><font size="1" align="right" style="font-weight:bold;">{ts}Amount Due:{/ts}</font></td>
-                    <td><font size="1" align="right" style="font-weight:bold;">{$amountDue|crmMoney:$currency}</font></td>
-                  </tr>
-                {/if}
-                <tr>
-                  <td><font size="1" align="right" style="font-weight:bold;">{ts}Due Date:{/ts}</font></td>
-                  <td><font size="1" align="right">{$dueDate}</font></td>
-                </tr>
-                <tr>
-                  <td colspan="5" style="color:#F5F5F5;"><hr></td>
-                </tr>
-              </table>
-      {/if}
-
-      {if \'{contribution.contribution_status_id:name}\' === \'Refunded\' || \'{contribution.contribution_status_id:name}\' === \'Cancelled\'}
-      {if $config->empoweredBy}
-        <table style="margin-top:2px;padding-left:7px;page-break-before: always;">
-          <tr>
-            <td><img src="{$resourceBase}/i/civi99.png" height="34px" width="99px"></td>
-          </tr>
-        </table>
-      {/if}
-
-      <table style="font-family: Arial, Verdana, sans-serif" width="100%" height="100" border="0" cellpadding="5" cellspacing="5">
-        <tr>
-          <td style="padding-left:15px;"><b><font size="4" align="center">{ts}CREDIT NOTE{/ts}</font></b></td>
-          <td style="padding-left:30px;"><b><font size="1" align="right">{ts}Date:{/ts}</font></b></td>
-          <td><font size="1" align="right">{domain.name}</font></td>
-        </tr>
-        <tr>
-          <td style="padding-left:17px;"><font size="1" align="center">{contact.display_name}{if \'{contact.current_employer}\'} ({contact.current_employer}){/if}</font></td>
-          <td style="padding-left:30px;"><font size="1" align="right">{$invoice_date}</font></td>
-          <td>
-            <font size="1" align="right">
-              {domain.street_address}
-              {domain.supplemental_address_1}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding-left:17px;"><font size="1" align="center">{$street_address}   {$supplemental_address_1}</font></td>
-          <td style="padding-left:30px;"><b><font size="1" align="right">{ts}Credit Note Number:{/ts}</font></b></td>
-          <td>
-            <font size="1" align="right">
-              {domain.supplemental_address_2}
-              {domain.state_province_id:label}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding-left:17px;"><font size="1" align="center">{$supplemental_address_2}  {$stateProvinceAbbreviation}</font></td>
-          <td style="padding-left:30px;"><font size="1" align="right">{contribution.creditnote_id}</font></td>
-          <td>
-            <font size="1" align="right">
-              {domain.city}
-              {domain.postal_code}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding-left:17px;"><font size="1" align="right">{$city}  {$postal_code}</font></td>
-          <td height="10" style="padding-left:30px;"><b><font size="1" align="right">{ts}Reference:{/ts}</font></b></td>
-          <td>
-            <font size="1" align="right">
-              {domain.country_id:label}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td></td>
-          <td style="padding-left:30px;"><font size="1" align="right">{contribution.source}</font></td>
-          <td>
-            <font size="1" align="right">
-              {domain.email}
-           </font>
-          </td>
-        </tr>
-        <tr>
-          <td></td>
-          <td></td>
-          <td>
-            <font size="1" align="right">
-              {domain.phone}
-           </font>
+              {/if}
+              <tr>
+                <td><font size="1" align="right" style="font-weight:bold;">{ts}Due Date:{/ts}</font></td>
+                <td><font size="1" align="right">{$dueDate}</font></td>
+              </tr>
+              <tr>
+                <td colspan="5" style="color:#F5F5F5;"><hr></td>
+              </tr>
+            </table>
           </td>
         </tr>
       </table>
+    {/if}
 
-      <table style="margin-top:75px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="5" id="desc">
+    {if \'{contribution.contribution_status_id:name}\' === \'Refunded\' || \'{contribution.contribution_status_id:name}\' === \'Cancelled\'}
+    {if $config->empoweredBy}
+      <table style="margin-top:2px;padding-left:7px;page-break-before: always;">
         <tr>
-          <td colspan="2">
-            <table>
+          <td><img src="{$resourceBase}/i/civi99.png" height="34px" width="99px"></td>
+        </tr>
+      </table>
+    {/if}
+
+    <table style="font-family: Arial, Verdana, sans-serif" width="100%" height="100" border="0" cellpadding="5" cellspacing="5">
+      <tr>
+        <td style="padding-left:15px;"><b><font size="4" align="center">{ts}CREDIT NOTE{/ts}</font></b></td>
+        <td style="padding-left:30px;"><b><font size="1" align="right">{ts}Date:{/ts}</font></b></td>
+        <td><font size="1" align="right">{domain.name}</font></td>
+      </tr>
+      <tr>
+        <td style="padding-left:17px;"><font size="1" align="center">{contact.display_name}{if \'{contact.current_employer}\'} ({contact.current_employer}){/if}</font></td>
+        <td style="padding-left:30px;"><font size="1" align="right">{$invoice_date}</font></td>
+        <td><font size="1" align="right">
+          {domain.street_address}
+          {domain.supplemental_address_1}
+         </font></td>
+      </tr>
+      <tr>
+        <td style="padding-left:17px;"><font size="1" align="center">{$street_address}   {$supplemental_address_1}</font></td>
+        <td style="padding-left:30px;"><b><font size="1" align="right">{ts}Credit Note Number:{/ts}</font></b></td>
+        <td><font size="1" align="right">
+          {domain.supplemental_address_2}
+          {domain.state_province_id:label}
+        </font></td>
+      </tr>
+      <tr>
+        <td style="padding-left:17px;"><font size="1" align="center">{$supplemental_address_2}  {$stateProvinceAbbreviation}</font></td>
+        <td style="padding-left:30px;"><font size="1" align="right">{contribution.creditnote_id}</font></td>
+        <td><font size="1" align="right">
+          {domain.city}
+          {domain.postal_code}
+        </font></td>
+      </tr>
+      <tr>
+        <td style="padding-left:17px;"><font size="1" align="right">{$city}  {$postal_code}</font></td>
+        <td height="10" style="padding-left:30px;"><b><font size="1" align="right">{ts}Reference:{/ts}</font></b></td>
+        <td><font size="1" align="right">
+          {domain.country_id:label}
+        </font></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td style="padding-left:30px;"><font size="1" align="right">{contribution.source}</font></td>
+        <td><font size="1" align="right">
+          {domain.email}
+        </font></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td><font size="1" align="right">
+          {domain.phone}
+        </font></td>
+      </tr>
+    </table>
+
+    <table style="margin-top:75px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="5" id="desc">
+      <tr>
+        <td colspan="2">
+          <table>
+            <tr>
+              <th style="padding-right:28px;text-align:left;font-weight:bold;width:200px;"><font size="1">{ts}Description{/ts}</font></th>
+              <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts}Quantity{/ts}</font></th>
+              <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts}Unit Price{/ts}</font></th>
+              <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{domain.tax_term}</font></th>
+              <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
+            </tr>
+            {foreach from=$lineItem item=value key=priceset name=pricevalue}
+              {if $smarty.foreach.pricevalue.index eq 0}
+                <tr><td colspan="5"><hr size="3" style="color:#000;"></hr></td></tr>
+              {else}
+                <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
+              {/if}
               <tr>
-                <th style="padding-right:28px;text-align:left;font-weight:bold;width:200px;"><font size="1">{ts}Description{/ts}</font></th>
-                <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts}Quantity{/ts}</font></th>
-                <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts}Unit Price{/ts}</font></th>
-                <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{domain.tax_term}</font></th>
-                <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
-              </tr>
-              {foreach from=$lineItem item=value key=priceset name=pricevalue}
-                {if $smarty.foreach.pricevalue.index eq 0}
-                  <tr><td colspan="5"><hr size="3" style="color:#000;"></hr></td></tr>
-                {else}
-                  <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
-                {/if}
-                <tr>
-                  <td style ="text-align:left;"  >
-                    <font size="1">
-                      {if $value.html_type eq \'Text\'}
-                        {$value.label}
-                      {else}
-                        {$value.field_title} - {$value.label}
-                      {/if}
-                      {if $value.description}
-                        <div>{$value.description|truncate:30:"..."}</div>
-                      {/if}
-                   </font>
-                  </td>
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{$value.qty}</font></td>
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
-                  {if $value.tax_amount != \'\'}
-                    <td style="padding-left:28px;text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
+                <td style ="text-align:left;"  ><font size="1">
+                  {if $value.html_type eq \'Text\'}
+                    {$value.label}
                   {else}
-                    <td style="padding-left:28px;text-align:right"><font size="1">{if $taxTerm}{ts 1=$taxTerm}No %1{/ts}{/if}</font></td>
+                    {$value.field_title} - {$value.label}
                   {/if}
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
-                </tr>
-              {/foreach}
-              <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
-              <tr>
-                <td colspan="3"></td>
-                <td style="padding-left:28px;text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
-                <td style="padding-left:28px;text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
+                  {if $value.description}
+                    <div>{$value.description|truncate:30:"..."}</div>
+                  {/if}
+                </font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.qty}</font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
+                {if $value.tax_amount != \'\'}
+                  <td style="padding-left:28px;text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
+                {else}
+                  <td style="padding-left:28px;text-align:right"><font size="1">{if $taxTerm}{ts 1=$taxTerm}No %1{/ts}{/if}</font></td>
+                {/if}
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
               </tr>
-              {if !empty($dataArray)}
+            {/foreach}
+            <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
+            <tr>
+              <td colspan="3"></td>
+              <td style="padding-left:28px;text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
+              <td style="padding-left:28px;text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
+            </tr>
+            {if !empty($dataArray)}
               {foreach from=$dataArray item=value key=priceset}
                 <tr>
                   <td colspan="3"></td>
@@ -10103,78 +10033,78 @@ INSERT INTO civicrm_msg_template
                   {/if}
                 </tr>
               {/foreach}
-              {/if}
+            {/if}
+            <tr>
+              <td colspan="3"></td>
+              <td colspan="2"><hr></hr></td>
+            </tr>
+            <tr>
+              <td colspan="3"></td>
+              <td style="padding-left:28px;text-align:right;"><b><font size="1">{ts 1=$currency}TOTAL %1{/ts}</font></b></td>
+              <td style="padding-left:28px;text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
+            </tr>
+            {if \'{contribution.is_pay_later}\' == 0}
+              <tr>
+                <td colspan="3"></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{ts}LESS Credit to invoice(s){/ts}</font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
+              </tr>
               <tr>
                 <td colspan="3"></td>
                 <td colspan="2"><hr></hr></td>
               </tr>
               <tr>
                 <td colspan="3"></td>
-                <td style="padding-left:28px;text-align:right;"><b><font size="1">{ts 1=$currency}TOTAL %1{/ts}</font></b></td>
-                <td style="padding-left:28px;text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
+                <td style="padding-left:28px;text-align:right;"><b><font size="1">{ts}REMAINING CREDIT{/ts}</font></b></td>
+                <td style="padding-left:28px;text-align:right;"><b><font size="1">{$amountDue|crmMoney:$currency}</font></b></td>
+                <td style="padding-left:28px;"><font size="1" align="right"></font></td>
               </tr>
-              {if \'{contribution.is_pay_later}\' == 0}
-                <tr>
-                  <td colspan="3"></td>
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{ts}LESS Credit to invoice(s){/ts}</font></td>
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{$amount|crmMoney:$currency}</font></td>
-                </tr>
-                <tr>
-                  <td colspan="3"></td>
-                  <td colspan="2"><hr></hr></td>
-                </tr>
-                <tr>
-                  <td colspan="3"></td>
-                  <td style="padding-left:28px;text-align:right;"><b><font size="1">{ts}REMAINING CREDIT{/ts}</font></b></td>
-                  <td style="padding-left:28px;text-align:right;"><b><font size="1">{$amountDue|crmMoney:$currency}</font></b></td>
-                  <td style="padding-left:28px;"><font size="1" align="right"></font></td>
-                </tr>
-              {/if}
-              <br/><br/><br/>
-              <tr>
-                <td colspan="3"></td>
-              </tr>
-              <tr>
-                <td></td>
-                <td colspan="3"></td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
+            {/if}
+            <br/><br/><br/>
+            <tr>
+              <td colspan="3"></td>
+            </tr>
+            <tr>
+              <td></td>
+              <td colspan="3"></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-      <table width="100%" style="margin-top:5px;padding-right:45px;">
-        <tr>
-          <td><img src="{$resourceBase}/i/contribute/cut_line.png" height="15" width="100%"></td>
-        </tr>
-      </table>
+    <table width="100%" style="margin-top:5px;padding-right:45px;">
+      <tr>
+        <td><img src="{$resourceBase}/i/contribute/cut_line.png" height="15" width="100%"></td>
+      </tr>
+    </table>
 
-      <table style="margin-top:6px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="5" id="desc">
-        <tr>
-          <td width="60%"><font size="4" align="right"><b>{ts}CREDIT ADVICE{/ts}</b><br/><br /><div style="font-size:10px;max-width:300px;">{ts}Please do not pay on this advice. Deduct the amount of this Credit Note from your next payment to us{/ts}</div><br/></font></td>
-          <td width="40%">
-            <table align="right">
-              <tr>
-                <td colspan="2"></td>
-                <td><font size="1" align="right" style="font-weight:bold;">{ts}Customer:{/ts}</font></td>
-                <td><font size="1" align="right">{contact.display_name}</font></td>
-              </tr>
-              <tr>
-                <td colspan="2"></td>
-                <td><font size="1" align="right" style="font-weight:bold;">{ts}Credit Note#:{/ts}</font></td>
-                <td><font size="1" align="right">{contribution.creditnote_id}</font></td>
-              </tr>
-              <tr><td colspan="5"style="color:#F5F5F5;"><hr></hr></td></tr>
-              <tr>
-                <td colspan="2"></td>
-                <td><font size="1" align="right" style="font-weight:bold;">{ts}Credit Amount:{/ts}</font></td>
-                <td width=\'50px\'><font size="1" align="right" style="font-weight:bold;">{$amount|crmMoney:$currency}</font></td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    {/if}
+    <table style="margin-top:6px;font-family: Arial, Verdana, sans-serif" width="100%" border="0" cellpadding="5" cellspacing="5" id="desc">
+      <tr>
+        <td width="60%"><font size="4" align="right"><b>{ts}CREDIT ADVICE{/ts}</b><br/><br /><div style="font-size:10px;max-width:300px;">{ts}Please do not pay on this advice. Deduct the amount of this Credit Note from your next payment to us{/ts}</div><br/></font></td>
+        <td width="40%">
+          <table align="right">
+            <tr>
+              <td colspan="2"></td>
+              <td><font size="1" align="right" style="font-weight:bold;">{ts}Customer:{/ts}</font></td>
+              <td><font size="1" align="right">{contact.display_name}</font></td>
+            </tr>
+            <tr>
+              <td colspan="2"></td>
+              <td><font size="1" align="right" style="font-weight:bold;">{ts}Credit Note#:{/ts}</font></td>
+              <td><font size="1" align="right">{contribution.creditnote_id}</font></td>
+            </tr>
+            <tr><td colspan="5"style="color:#F5F5F5;"><hr></hr></td></tr>
+            <tr>
+              <td colspan="2"></td>
+              <td><font size="1" align="right" style="font-weight:bold;">{ts}Credit Amount:{/ts}</font></td>
+              <td width=\'50px\'><font size="1" align="right" style="font-weight:bold;">{$amount|crmMoney:$currency}</font></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  {/if}
 
   </div>
   </body>
@@ -11879,7 +11809,7 @@ INSERT INTO civicrm_msg_template
 ===============================================================================
 
 {$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 
 {if !empty($event.participant_role)}
 {ts}Participant Role{/ts}: {$event.participant_role}
@@ -12082,7 +12012,7 @@ INSERT INTO civicrm_msg_template
     <tr>
       <td colspan="2" {$valueStyle}>
          {$event.event_title}<br />
-        {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+        {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
     </tr>
 
@@ -12243,7 +12173,7 @@ INSERT INTO civicrm_msg_template
 ===============================================================================
 
 {$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 
 {if !empty($event.participant_role)}
 {ts}Participant Role{/ts}: {$event.participant_role}
@@ -12446,7 +12376,7 @@ INSERT INTO civicrm_msg_template
     <tr>
       <td colspan="2" {$valueStyle}>
          {$event.event_title}<br />
-        {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+        {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
     </tr>
 
@@ -12561,7 +12491,7 @@ INSERT INTO civicrm_msg_template
 ==========================================================={if !empty($pricesetFieldsCount) }===================={/if}
 
 {$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 
 {if !empty($event.participant_role) and $event.participant_role neq \'Attendee\' and empty($defaultRole)}
 {ts}Participant Role{/ts}: {$event.participant_role}
@@ -12865,7 +12795,7 @@ INSERT INTO civicrm_msg_template
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
 
@@ -12975,7 +12905,7 @@ INSERT INTO civicrm_msg_template
          {/if}
          <tr>
           <td colspan="2" {$valueStyle}>
-           <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+           <table>
             <tr>
              <th>{ts}Item{/ts}</th>
              <th>{ts}Qty{/ts}</th>
@@ -13373,7 +13303,7 @@ INSERT INTO civicrm_msg_template
 ==========================================================={if !empty($pricesetFieldsCount) }===================={/if}
 
 {$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 
 {if !empty($event.participant_role) and $event.participant_role neq \'Attendee\' and empty($defaultRole)}
 {ts}Participant Role{/ts}: {$event.participant_role}
@@ -13677,7 +13607,7 @@ INSERT INTO civicrm_msg_template
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
 
@@ -13787,7 +13717,7 @@ INSERT INTO civicrm_msg_template
          {/if}
          <tr>
           <td colspan="2" {$valueStyle}>
-           <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+           <table>
             <tr>
              <th>{ts}Item{/ts}</th>
              <th>{ts}Qty{/ts}</th>
@@ -14192,17 +14122,17 @@ INSERT INTO civicrm_msg_template
 ==========================================================={if !empty($pricesetFieldsCount)}===================={/if}
 
 {$event.event_title}
-{$event.event_start_date|date_format:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|date_format:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
 {if !empty($conference_sessions)}
 
 
 {ts}Your schedule:{/ts}
 {assign var=\'group_by_day\' value=\'NA\'}
 {foreach from=$conference_sessions item=session}
-{if $session.start_date|date_format:"%Y/%m/%d" != $group_by_day|date_format:"%Y/%m/%d"}
+{if $session.start_date|crmDate:"%Y/%m/%d" != $group_by_day|crmDate:"%Y/%m/%d"}
 {assign var=\'group_by_day\' value=$session.start_date}
 
-{$group_by_day|date_format:"%m/%d/%Y"}
+{$group_by_day|crmDate:"%m/%d/%Y"}
 
 
 {/if}
@@ -14498,7 +14428,7 @@ You were registered by: {$payer.name}
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|date_format:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|date_format:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
 
@@ -14513,9 +14443,9 @@ You were registered by: {$payer.name}
        <td colspan="2" {$valueStyle}>
   {assign var=\'group_by_day\' value=\'NA\'}
   {foreach from=$conference_sessions item=session}
-   {if $session.start_date|date_format:"%Y/%m/%d" != $group_by_day|date_format:"%Y/%m/%d"}
+   {if $session.start_date|crmDate:"%Y/%m/%d" != $group_by_day|crmDate:"%Y/%m/%d"}
     {assign var=\'group_by_day\' value=$session.start_date}
-          <em>{$group_by_day|date_format:"%m/%d/%Y"}</em><br />
+          <em>{$group_by_day|crmDate:"%m/%d/%Y"}</em><br />
    {/if}
    {$session.start_date|crmDate:0:1}{if $session.end_date}-{$session.end_date|crmDate:0:1}{/if} {$session.title}<br />
    {if $session.location}&nbsp;&nbsp;&nbsp;&nbsp;{$session.location}<br />{/if}
@@ -14636,7 +14566,7 @@ You were registered by: {$payer.name}
          {/if}
          <tr>
           <td colspan="2" {$valueStyle}>
-           <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+           <table>
             <tr>
              <th>{ts}Item{/ts}</th>
              <th>{ts}Qty{/ts}</th>
@@ -14980,17 +14910,17 @@ You were registered by: {$payer.name}
 ==========================================================={if !empty($pricesetFieldsCount)}===================={/if}
 
 {$event.event_title}
-{$event.event_start_date|date_format:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|date_format:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
 {if !empty($conference_sessions)}
 
 
 {ts}Your schedule:{/ts}
 {assign var=\'group_by_day\' value=\'NA\'}
 {foreach from=$conference_sessions item=session}
-{if $session.start_date|date_format:"%Y/%m/%d" != $group_by_day|date_format:"%Y/%m/%d"}
+{if $session.start_date|crmDate:"%Y/%m/%d" != $group_by_day|crmDate:"%Y/%m/%d"}
 {assign var=\'group_by_day\' value=$session.start_date}
 
-{$group_by_day|date_format:"%m/%d/%Y"}
+{$group_by_day|crmDate:"%m/%d/%Y"}
 
 
 {/if}
@@ -15286,7 +15216,7 @@ You were registered by: {$payer.name}
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|date_format:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|date_format:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
 
@@ -15301,9 +15231,9 @@ You were registered by: {$payer.name}
        <td colspan="2" {$valueStyle}>
   {assign var=\'group_by_day\' value=\'NA\'}
   {foreach from=$conference_sessions item=session}
-   {if $session.start_date|date_format:"%Y/%m/%d" != $group_by_day|date_format:"%Y/%m/%d"}
+   {if $session.start_date|crmDate:"%Y/%m/%d" != $group_by_day|crmDate:"%Y/%m/%d"}
     {assign var=\'group_by_day\' value=$session.start_date}
-          <em>{$group_by_day|date_format:"%m/%d/%Y"}</em><br />
+          <em>{$group_by_day|crmDate:"%m/%d/%Y"}</em><br />
    {/if}
    {$session.start_date|crmDate:0:1}{if $session.end_date}-{$session.end_date|crmDate:0:1}{/if} {$session.title}<br />
    {if $session.location}&nbsp;&nbsp;&nbsp;&nbsp;{$session.location}<br />{/if}
@@ -15424,7 +15354,7 @@ You were registered by: {$payer.name}
          {/if}
          <tr>
           <td colspan="2" {$valueStyle}>
-           <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+           <table>
             <tr>
              <th>{ts}Item{/ts}</th>
              <th>{ts}Qty{/ts}</th>
@@ -15734,7 +15664,7 @@ You were registered by: {$payer.name}
 {/if}
 
   Your order number is #{$transaction_id}. {if !empty($line_items) && empty($is_refund)} Information about the workshops will be sent separately to each participant.{/if}
- Here\'s a summary of your transaction placed on {$transaction_date|date_format:"%D %I:%M %p %Z"}:
+ Here\'s a summary of your transaction placed on {$transaction_date|crmDate:"%D %I:%M %p %Z"}:
 
 {if $billing_name}
 ===========================================================
@@ -15756,11 +15686,11 @@ You were registered by: {$payer.name}
 
 
 {foreach from=$line_items item=line_item}
-{$line_item.event->title} ({$line_item.event->start_date|date_format:"%D"})
+{$line_item.event->title} ({$line_item.event->start_date|crmDate:"%D"})
 {if $line_item.event->is_show_location}
   {$line_item.location.address.1.display|strip_tags:false}
 {/if}{*End of isShowLocation condition*}
-{$line_item.event->start_date|date_format:"%D %I:%M %p"} - {$line_item.event->end_date|date_format:"%I:%M %p"}
+{$line_item.event->start_date|crmDate:"%D %I:%M %p"} - {$line_item.event->end_date|crmDate:"%I:%M %p"}
 
   Quantity: {$line_item.num_participants}
 
@@ -15829,7 +15759,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
     {/if}
 
     <p>Your order number is #{$transaction_id}. {if !empty($line_items) && empty($is_refund)} Information about the workshops will be sent separately to each participant.{/if}
-  Here\'s a summary of your transaction placed on {$transaction_date|date_format:"%D %I:%M %p %Z"}:</p>
+  Here\'s a summary of your transaction placed on {$transaction_date|crmDate:"%D %I:%M %p %Z"}:</p>
 
 {if $billing_name}
   <table class="billing-info">
@@ -15894,11 +15824,11 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
   {foreach from=$line_items item=line_item}
   <tr>
     <td style="width: 220px">
-      {$line_item.event->title} ({$line_item.event->start_date|date_format:"%D"})<br />
+      {$line_item.event->title} ({$line_item.event->start_date|crmDate:"%D"})<br />
       {if $line_item.event->is_show_location}
         {$line_item.location.address.1.display|nl2br}
       {/if}{*End of isShowLocation condition*}<br /><br />
-      {$line_item.event->start_date|date_format:"%D %I:%M %p"} - {$line_item.event->end_date|date_format:"%I:%M %p"}
+      {$line_item.event->start_date|crmDate:"%D %I:%M %p"} - {$line_item.event->end_date|crmDate:"%I:%M %p"}
     </td>
     <td style="width: 180px">
     {$line_item.num_participants}
@@ -15991,7 +15921,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
 {/if}
 
   Your order number is #{$transaction_id}. {if !empty($line_items) && empty($is_refund)} Information about the workshops will be sent separately to each participant.{/if}
- Here\'s a summary of your transaction placed on {$transaction_date|date_format:"%D %I:%M %p %Z"}:
+ Here\'s a summary of your transaction placed on {$transaction_date|crmDate:"%D %I:%M %p %Z"}:
 
 {if $billing_name}
 ===========================================================
@@ -16013,11 +15943,11 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
 
 
 {foreach from=$line_items item=line_item}
-{$line_item.event->title} ({$line_item.event->start_date|date_format:"%D"})
+{$line_item.event->title} ({$line_item.event->start_date|crmDate:"%D"})
 {if $line_item.event->is_show_location}
   {$line_item.location.address.1.display|strip_tags:false}
 {/if}{*End of isShowLocation condition*}
-{$line_item.event->start_date|date_format:"%D %I:%M %p"} - {$line_item.event->end_date|date_format:"%I:%M %p"}
+{$line_item.event->start_date|crmDate:"%D %I:%M %p"} - {$line_item.event->end_date|crmDate:"%I:%M %p"}
 
   Quantity: {$line_item.num_participants}
 
@@ -16086,7 +16016,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
     {/if}
 
     <p>Your order number is #{$transaction_id}. {if !empty($line_items) && empty($is_refund)} Information about the workshops will be sent separately to each participant.{/if}
-  Here\'s a summary of your transaction placed on {$transaction_date|date_format:"%D %I:%M %p %Z"}:</p>
+  Here\'s a summary of your transaction placed on {$transaction_date|crmDate:"%D %I:%M %p %Z"}:</p>
 
 {if $billing_name}
   <table class="billing-info">
@@ -16151,11 +16081,11 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
   {foreach from=$line_items item=line_item}
   <tr>
     <td style="width: 220px">
-      {$line_item.event->title} ({$line_item.event->start_date|date_format:"%D"})<br />
+      {$line_item.event->title} ({$line_item.event->start_date|crmDate:"%D"})<br />
       {if $line_item.event->is_show_location}
         {$line_item.location.address.1.display|nl2br}
       {/if}{*End of isShowLocation condition*}<br /><br />
-      {$line_item.event->start_date|date_format:"%D %I:%M %p"} - {$line_item.event->end_date|date_format:"%I:%M %p"}
+      {$line_item.event->start_date|crmDate:"%D %I:%M %p"} - {$line_item.event->end_date|crmDate:"%I:%M %p"}
     </td>
     <td style="width: 180px">
     {$line_item.num_participants}
@@ -16615,17 +16545,17 @@ Click this link to go to a web page where you can confirm your registration onli
 
 ===========================================================
 {$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 {if $conference_sessions}
 
 
 {ts}Your schedule:{/ts}
 {assign var=\'group_by_day\' value=\'NA\'}
 {foreach from=$conference_sessions item=session}
-{if $session.start_date|date_format:"%Y/%m/%d" != $group_by_day|date_format:"%Y/%m/%d"}
+{if $session.start_date|crmDate:"%Y/%m/%d" != $group_by_day|crmDate:"%Y/%m/%d"}
 {assign var=\'group_by_day\' value=$session.start_date}
 
-{$group_by_day|date_format:"%m/%d/%Y"}
+{$group_by_day|crmDate:"%m/%d/%Y"}
 
 
 {/if}
@@ -16732,7 +16662,7 @@ Click this link to go to a web page where you can confirm your registration onli
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      {if $conference_sessions}
@@ -16745,9 +16675,9 @@ Click this link to go to a web page where you can confirm your registration onli
        <td colspan="2" {$valueStyle}>
   {assign var=\'group_by_day\' value=\'NA\'}
   {foreach from=$conference_sessions item=session}
-   {if $session.start_date|date_format:"%Y/%m/%d" != $group_by_day|date_format:"%Y/%m/%d"}
+   {if $session.start_date|crmDate:"%Y/%m/%d" != $group_by_day|crmDate:"%Y/%m/%d"}
     {assign var=\'group_by_day\' value=$session.start_date}
-          <em>{$group_by_day|date_format:"%m/%d/%Y"}</em><br />
+          <em>{$group_by_day|crmDate:"%m/%d/%Y"}</em><br />
    {/if}
    {$session.start_date|crmDate:0:1}{if $session.end_date}-{$session.end_date|crmDate:0:1}{/if} {$session.title}<br />
    {if $session.location}&nbsp;&nbsp;&nbsp;&nbsp;{$session.location}<br />{/if}
@@ -16891,17 +16821,17 @@ Click this link to go to a web page where you can confirm your registration onli
 
 ===========================================================
 {$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 {if $conference_sessions}
 
 
 {ts}Your schedule:{/ts}
 {assign var=\'group_by_day\' value=\'NA\'}
 {foreach from=$conference_sessions item=session}
-{if $session.start_date|date_format:"%Y/%m/%d" != $group_by_day|date_format:"%Y/%m/%d"}
+{if $session.start_date|crmDate:"%Y/%m/%d" != $group_by_day|crmDate:"%Y/%m/%d"}
 {assign var=\'group_by_day\' value=$session.start_date}
 
-{$group_by_day|date_format:"%m/%d/%Y"}
+{$group_by_day|crmDate:"%m/%d/%Y"}
 
 
 {/if}
@@ -17008,7 +16938,7 @@ Click this link to go to a web page where you can confirm your registration onli
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      {if $conference_sessions}
@@ -17021,9 +16951,9 @@ Click this link to go to a web page where you can confirm your registration onli
        <td colspan="2" {$valueStyle}>
   {assign var=\'group_by_day\' value=\'NA\'}
   {foreach from=$conference_sessions item=session}
-   {if $session.start_date|date_format:"%Y/%m/%d" != $group_by_day|date_format:"%Y/%m/%d"}
+   {if $session.start_date|crmDate:"%Y/%m/%d" != $group_by_day|crmDate:"%Y/%m/%d"}
     {assign var=\'group_by_day\' value=$session.start_date}
-          <em>{$group_by_day|date_format:"%m/%d/%Y"}</em><br />
+          <em>{$group_by_day|crmDate:"%m/%d/%Y"}</em><br />
    {/if}
    {$session.start_date|crmDate:0:1}{if $session.end_date}-{$session.end_date|crmDate:0:1}{/if} {$session.title}<br />
    {if $session.location}&nbsp;&nbsp;&nbsp;&nbsp;{$session.location}<br />{/if}
@@ -17159,7 +17089,7 @@ or want to inquire about reinstating your registration for this event.{/ts}
 
 ===========================================================
 {$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 
 {ts}Participant Role{/ts}: {$participant.role}
 
@@ -17236,7 +17166,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      <tr>
@@ -17342,7 +17272,7 @@ or want to inquire about reinstating your registration for this event.{/ts}
 
 ===========================================================
 {$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 
 {ts}Participant Role{/ts}: {$participant.role}
 
@@ -17419,7 +17349,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      <tr>
@@ -17522,7 +17452,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
 ===========================================================
 {$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 
 {ts}Participant Role{/ts}: {$participant.role}
 
@@ -17595,7 +17525,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      <tr>
@@ -17696,7 +17626,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
 ===========================================================
 {$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 
 {ts}Participant Role{/ts}: {$participant.role}
 
@@ -17769,7 +17699,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
      <tr>
       <td colspan="2" {$valueStyle}>
        {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|date_format:"%Y%m%d" == $event.event_start_date|date_format:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      <tr>
@@ -18177,7 +18107,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
                 {foreach from=$lineItem item=value key=priceset}
                   <tr>
                     <td colspan="2" {$valueStyle}>
-                      <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+                      <table>
                         <tr>
                           <th>{ts}Item{/ts}</th>
                           <th>{ts}Fee{/ts}</th>
@@ -18586,7 +18516,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
                 {foreach from=$lineItem item=value key=priceset}
                   <tr>
                     <td colspan="2" {$valueStyle}>
-                      <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+                      <table>
                         <tr>
                           <th>{ts}Item{/ts}</th>
                           <th>{ts}Fee{/ts}</th>
@@ -19150,7 +19080,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
        {foreach from=$lineItem item=value key=priceset}
         <tr>
          <td colspan="2" {$valueStyle}>
-          <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+          <table>
            <tr>
             <th>{ts}Item{/ts}</th>
             <th>{ts}Qty{/ts}</th>
@@ -19191,7 +19121,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
        {foreach from=$lineItem item=value key=priceset}
         <tr>
          <td colspan="2" {$valueStyle}>
-          <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+          <table>
            <tr>
             <th>{ts}Item{/ts}</th>
             <th>{ts}Fee{/ts}</th>
@@ -19944,7 +19874,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
        {foreach from=$lineItem item=value key=priceset}
         <tr>
          <td colspan="2" {$valueStyle}>
-          <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+          <table>
            <tr>
             <th>{ts}Item{/ts}</th>
             <th>{ts}Qty{/ts}</th>
@@ -19985,7 +19915,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
        {foreach from=$lineItem item=value key=priceset}
         <tr>
          <td colspan="2" {$valueStyle}>
-          <table> {* FIXME: style this table so that it looks like the text version (justification, etc.) *}
+          <table>
            <tr>
             <th>{ts}Item{/ts}</th>
             <th>{ts}Fee{/ts}</th>
@@ -23064,6 +22994,26 @@ INSERT IGNORE INTO civicrm_extension (type, full_name, name, label, file, is_act
 INSERT IGNORE INTO civicrm_extension (type, full_name, name, label, file, is_active) VALUES ('module', 'ckeditor4', 'CKEditor4', 'CKEditor4', 'ckeditor4', 1);
 INSERT IGNORE INTO civicrm_extension (type, full_name, name, label, file, is_active) VALUES ('module', 'legacycustomsearches', 'Custom search framework', 'Custom search framework', 'legacycustomsearches', 1);
 INSERT IGNORE INTO civicrm_extension (type, full_name, name, label, file, is_active) VALUES ('module', 'org.civicrm.flexmailer', 'FlexMailer', 'FlexMailer', 'flexmailer', 1);
+
+-- dev/core#3783 Recent Items providers
+INSERT INTO civicrm_option_group (`name`, `title`, `is_reserved`, `is_active`) VALUES ('recent_items_providers', 'Recent Items Providers', 1, 1);
+
+SELECT @option_group_id_recent := max(id) from civicrm_option_group where name = 'recent_items_providers';
+
+INSERT INTO civicrm_option_value (`option_group_id`, label, `value`, `name`, `grouping`, `filter`, `is_default`, `weight`, description, `is_optgroup`, `is_reserved`, `is_active`, `component_id`, `visibility_id`)
+ VALUES
+    (@option_group_id_recent, 'Contacts', 'Contact', 'Contacts', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Relationships', 'Relationship', 'Relationships', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Activities', 'Activity', 'Activities', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Notes', 'Note', 'Notes', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Groups', 'Group', 'Groups', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Cases', 'Case', 'Cases', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Contributions', 'Contribution', 'Contributions', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Participants', 'Participant', 'Participants', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Memberships', 'Membership', 'Memberships', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Pledges', 'Pledge', 'Pledges', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Events', 'Event', 'Events', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
+    (@option_group_id_recent, 'Campaigns', 'Campaign', 'Campaigns', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL);
 -- +--------------------------------------------------------------------+
 -- | Copyright CiviCRM LLC. All rights reserved.                        |
 -- |                                                                    |
@@ -23825,4 +23775,4 @@ INSERT INTO `civicrm_report_instance`
     ( `domain_id`, `title`, `report_id`, `description`, `permission`, `form_values`)
 VALUES
     (  @domainID, 'Survey Details', 'survey/detail', 'Detailed report for canvassing, phone-banking, walk lists or other surveys.', 'access CiviReport', 'a:39:{s:6:"fields";a:2:{s:9:"sort_name";s:1:"1";s:6:"result";s:1:"1";}s:22:"assignee_contact_id_op";s:2:"eq";s:25:"assignee_contact_id_value";s:0:"";s:12:"sort_name_op";s:3:"has";s:15:"sort_name_value";s:0:"";s:17:"street_number_min";s:0:"";s:17:"street_number_max";s:0:"";s:16:"street_number_op";s:3:"lte";s:19:"street_number_value";s:0:"";s:14:"street_name_op";s:3:"has";s:17:"street_name_value";s:0:"";s:15:"postal_code_min";s:0:"";s:15:"postal_code_max";s:0:"";s:14:"postal_code_op";s:3:"lte";s:17:"postal_code_value";s:0:"";s:7:"city_op";s:3:"has";s:10:"city_value";s:0:"";s:20:"state_province_id_op";s:2:"in";s:23:"state_province_id_value";a:0:{}s:13:"country_id_op";s:2:"in";s:16:"country_id_value";a:0:{}s:12:"survey_id_op";s:2:"in";s:15:"survey_id_value";a:0:{}s:12:"status_id_op";s:2:"eq";s:15:"status_id_value";s:1:"1";s:11:"custom_1_op";s:2:"in";s:14:"custom_1_value";a:0:{}s:11:"custom_2_op";s:2:"in";s:14:"custom_2_value";a:0:{}s:17:"custom_3_relative";s:1:"0";s:13:"custom_3_from";s:0:"";s:11:"custom_3_to";s:0:"";s:11:"description";s:75:"Detailed report for canvassing, phone-banking, walk lists or other surveys.";s:13:"email_subject";s:0:"";s:8:"email_to";s:0:"";s:8:"email_cc";s:0:"";s:10:"permission";s:17:"access CiviReport";s:6:"groups";s:0:"";s:9:"domain_id";i:1;}');
-UPDATE civicrm_domain SET version = '5.52.3';
+UPDATE civicrm_domain SET version = '5.53.0';
