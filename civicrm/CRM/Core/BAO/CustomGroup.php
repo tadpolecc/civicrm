@@ -577,7 +577,7 @@ ORDER BY civicrm_custom_group.weight,
     }
 
     if (empty($groupTree)) {
-      list($multipleFieldGroups, $groupTree) = self::buildGroupTree($entityType, $toReturn, $subTypes, $queryString, $params, $subType);
+      [$multipleFieldGroups, $groupTree] = self::buildGroupTree($entityType, $toReturn, $subTypes, $queryString, $params, $subType);
 
       $cache->set($cacheKey, $groupTree);
       $cache->set($multipleFieldGroupCacheKey, $multipleFieldGroups);
@@ -655,7 +655,14 @@ ORDER BY civicrm_custom_group.weight,
     }
     $subTypes = CRM_Contact_BAO_ContactType::subTypeInfo($entityType, TRUE);
     $subTypes = array_merge($subTypes, CRM_Event_PseudoConstant::eventType());
-    if (!array_key_exists($subType, $subTypes)) {
+    // When you create a new contact type it gets saved in mixed case in the database.
+    // Eg. "Service User" becomes "Service_User" in civicrm_contact_type.name
+    // But that field does not differentiate case (eg. you can't add Service_User and service_user because mysql will report a duplicate error)
+    // webform_civicrm and some other integrations pass in the name as lowercase to API3 Contact.duplicatecheck
+    // Since we can't actually have two strings with different cases in the database perform a case-insensitive search here:
+    $subTypes = array_change_key_case($subTypes, CASE_LOWER);
+    if (!array_key_exists(mb_strtolower($subType), $subTypes)) {
+      \Civi::log()->debug("entityType: {$entityType}; subType: {$subType}");
       throw new CRM_Core_Exception('Invalid Filter');
     }
     return $subType;
@@ -878,10 +885,10 @@ ORDER BY civicrm_custom_group.weight,
             );
             $customValue['imageURL'] = str_replace('persist/contribute', 'custom', $config->imageUploadURL) .
               $fileDAO->uri;
-            list($path) = CRM_Core_BAO_File::path($fileDAO->id, $entityId);
+            [$path] = CRM_Core_BAO_File::path($fileDAO->id, $entityId);
             if ($path && file_exists($path)) {
-              list($imageWidth, $imageHeight) = getimagesize($path);
-              list($imageThumbWidth, $imageThumbHeight) = CRM_Contact_BAO_Contact::getThumbSize($imageWidth, $imageHeight);
+              [$imageWidth, $imageHeight] = getimagesize($path);
+              [$imageThumbWidth, $imageThumbHeight] = CRM_Contact_BAO_Contact::getThumbSize($imageWidth, $imageHeight);
               $customValue['imageThumbWidth'] = $imageThumbWidth;
               $customValue['imageThumbHeight'] = $imageThumbHeight;
             }
@@ -2252,6 +2259,7 @@ SELECT  civicrm_custom_group.id as groupID, civicrm_custom_group.title as groupT
    * @return array
    */
   public static function getMultipleFieldGroup() {
+    CRM_Core_Error::deprecatedFunctionWarning('api');
     $multipleGroup = [];
     $dao = new CRM_Core_DAO_CustomGroup();
     $dao->is_multiple = 1;
@@ -2348,7 +2356,7 @@ SELECT  civicrm_custom_group.id as groupID, civicrm_custom_group.title as groupT
    */
   public static function getSubTypes(): array {
     $sel2 = [];
-    $activityType = CRM_Core_PseudoConstant::activityType(FALSE, TRUE, FALSE, 'label', TRUE);
+    $activityType = CRM_Activity_BAO_Activity::buildOptions('activity_type_id', 'search');
 
     $eventType = CRM_Core_OptionGroup::values('event_type');
     $campaignTypes = CRM_Campaign_PseudoConstant::campaignType();
@@ -2474,7 +2482,7 @@ SELECT  civicrm_custom_group.id as groupID, civicrm_custom_group.title as groupT
       [
         'id' => 'Pledge',
         'label' => ts('Pledges'),
-        'grouping' => 'TODO',
+        'grouping' => NULL,
         'table_name' => 'civicrm_pledge',
       ],
       [

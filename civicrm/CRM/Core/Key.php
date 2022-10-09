@@ -103,7 +103,7 @@ class CRM_Core_Key {
    * @param string $name
    * @param bool $addSequence
    *
-   * @return string
+   * @return string|null
    *   if valid, else null
    */
   public static function validate($key, $name, $addSequence = FALSE) {
@@ -112,7 +112,7 @@ class CRM_Core_Key {
     }
 
     if ($addSequence) {
-      list($k, $t) = explode('_', $key);
+      [$k, $t] = explode('_', $key);
       if ($t < 1 || $t > 10000) {
         return NULL;
       }

@@ -19,20 +19,13 @@ use Civi\Api4\Utils\CoreUtil;
 use Civi\Api4\Utils\ReflectionUtils;
 
 /**
- * @method string getLanguage()
- * @method $this setLanguage(string $language)
+ * Common properties and helper-methods used for DB-oriented actions.
  */
 trait DAOActionTrait {
 
   /**
-   * Specify the language to use if this is a multi-lingual environment.
-   *
-   * E.g. "en_US" or "fr_CA"
-   *
-   * @var string
+   * @var array
    */
-  protected $language;
-
   private $_maxWeights = [];
 
   /**
@@ -121,9 +114,10 @@ trait DAOActionTrait {
     }
 
     $result = [];
+    $idField = CoreUtil::getIdFieldName($this->getEntityName());
 
     foreach ($items as &$item) {
-      $entityId = $item['id'] ?? NULL;
+      $entityId = $item[$idField] ?? NULL;
       FormattingUtil::formatWriteParams($item, $this->entityFields());
       $this->formatCustomParams($item, $entityId);
 
@@ -309,11 +303,13 @@ trait DAOActionTrait {
     if (!isset($info[$fieldName])) {
       $info = [];
       $fields = CustomField::get(FALSE)
-        ->addSelect('id', 'name', 'html_type', 'data_type', 'custom_group_id.extends')
+        ->addSelect('id', 'name', 'html_type', 'data_type', 'custom_group_id.extends', 'column_name', 'custom_group_id.table_name')
         ->addWhere('custom_group_id.name', '=', $groupName)
         ->execute()->indexBy('name');
       foreach ($fields as $name => $field) {
         $field['custom_field_id'] = $field['id'];
+        $field['table_name'] = $field['custom_group_id.table_name'];
+        unset($field['custom_group_id.table_name']);
         $field['name'] = $groupName . '.' . $name;
         $field['entity'] = CustomGroupJoinable::getEntityFromExtends($field['custom_group_id.extends']);
         $info[$name] = $field;

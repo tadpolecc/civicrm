@@ -5995,7 +5995,6 @@ VALUES
  ('AuthNet',            'Authorize.Net',          NULL,1,0,'API Login','Payment Key','MD5 Hash',NULL,'Payment_AuthorizeNet','https://secure2.authorize.net/gateway/transact.dll',NULL,'https://api2.authorize.net/xml/v1/request.api',NULL,'https://test.authorize.net/gateway/transact.dll',NULL,'https://apitest.authorize.net/xml/v1/request.api',NULL,1,1),
  ('PayJunction',        'PayJunction',            NULL,0,0,'User Name','Password',NULL,NULL,'Payment_PayJunction','https://payjunction.com/quick_link',NULL,NULL,NULL,'https://www.payjunctionlabs.com/quick_link',NULL,NULL,NULL,1,1),
  ('Dummy',              'Dummy Payment Processor',NULL,1,1,'User Name',NULL,NULL,NULL,'Payment_Dummy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,1),
- ('Elavon',             'Elavon Payment Processor','Elavon / Nova Virtual Merchant',0,0,'SSL Merchant ID ','SSL User ID','SSL PIN',NULL,'Payment_Elavon','https://www.myvirtualmerchant.com/VirtualMerchant/processxml.do',NULL,NULL,NULL,'https://www.myvirtualmerchant.com/VirtualMerchant/processxml.do',NULL,NULL,NULL,1,0),
  ('Realex',             'Realex Payment',         NULL,0,0,'Merchant ID', 'Password', NULL, 'Account', 'Payment_Realex', 'https://epage.payandshop.com/epage.cgi', NULL, NULL, NULL, 'https://epage.payandshop.com/epage-remote.cgi', NULL, NULL, NULL, 1, 0),
  ('FirstData',          'FirstData (aka linkpoint)', 'FirstData (aka linkpoint)', 0, 0, 'Store name', 'certificate path', NULL, NULL, 'Payment_FirstData', 'https://secure.linkpt.net', NULL, NULL, NULL, 'https://staging.linkpt.net', NULL, NULL, NULL, 1, 0);
 
@@ -7045,7 +7044,7 @@ INSERT INTO civicrm_msg_template
       
       
       ('Contributions - Receipt (off-line)', '{ts}Contribution Receipt{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {if !empty($formValues.receipt_text)}
 {$formValues.receipt_text}
@@ -7181,7 +7180,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     {if !empty($formValues.receipt_text)}
      <p>{$formValues.receipt_text|htmlize}</p>
     {else}
@@ -7479,7 +7478,7 @@ INSERT INTO civicrm_msg_template
 </html>
 ', 'contribution_offline_receipt', @tpl_ovid_contribution_offline_receipt, 1,          0),
       ('Contributions - Receipt (off-line)', '{ts}Contribution Receipt{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {if !empty($formValues.receipt_text)}
 {$formValues.receipt_text}
@@ -7615,7 +7614,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     {if !empty($formValues.receipt_text)}
      <p>{$formValues.receipt_text|htmlize}</p>
     {else}
@@ -7915,7 +7914,7 @@ INSERT INTO civicrm_msg_template
       
       
       ('Contributions - Receipt (on-line)', '{if $is_pay_later}{ts}Invoice{/ts}{else}{ts}Receipt{/ts}{/if} - {$title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 {if !empty($receipt_text)}
 {$receipt_text}
 {/if}
@@ -7926,49 +7925,43 @@ INSERT INTO civicrm_msg_template
 ===========================================================
 {/if}
 
-{if $amount}
+{if \'{contribution.total_amount|raw}\' !== \'0.00\'}
 ===========================================================
 {ts}Contribution Information{/ts}
 
 ===========================================================
 {if $isShowLineItems}
-{foreach from=$lineItem item=value key=priceset}
+
 ---------------------------------------------------------
 {capture assign=ts_item}{ts}Item{/ts}{/capture}
 {capture assign=ts_qty}{ts}Qty{/ts}{/capture}
 {capture assign=ts_each}{ts}Each{/ts}{/capture}
-{if !empty($dataArray)}
+{if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
 {capture assign=ts_subtotal}{ts}Subtotal{/ts}{/capture}
 {capture assign=ts_taxRate}{ts}Tax Rate{/ts}{/capture}
 {capture assign=ts_taxAmount}{ts}Tax Amount{/ts}{/capture}
 {/if}
 {capture assign=ts_total}{ts}Total{/ts}{/capture}
-{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if !empty($dataArray)} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"}
+{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"}
 ----------------------------------------------------------
-{foreach from=$value item=line}
-{capture assign=ts_item}{if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description} {$line.description}{/if}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:$currency|string_format:"%10s"} {if !empty($dataArray)}{$line.unit_price*$line.qty|crmMoney:$currency|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""}  {$line.tax_rate|string_format:"%.2f"} %  {$line.tax_amount|crmMoney:$currency|string_format:"%10s"} {else}                  {/if}  {/if} {$line.line_total+$line.tax_amount|crmMoney:$currency|string_format:"%10s"}
-{/foreach}
+{foreach from=$lineItems item=line}
+{capture assign=ts_item}{$line.title}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:$currency|string_format:"%10s"} {if !empty($dataArray)}{$line.unit_price*$line.qty|crmMoney:$currency|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""}  {$line.tax_rate|string_format:"%.2f"} %  {$line.tax_amount|crmMoney:$currency|string_format:"%10s"} {else}                  {/if}  {/if} {$line.line_total+$line.tax_amount|crmMoney:$currency|string_format:"%10s"}
 {/foreach}
 
-{if !empty($dataArray)}
+{if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
 {ts}Amount before Tax{/ts}: {$amount-$totalTaxAmount|crmMoney:$currency}
-
-{foreach from=$dataArray item=value key=priceset}
-{if $priceset || $priceset == 0}
-{$taxTerm} {$priceset|string_format:"%.2f"}%: {$value|crmMoney:$currency}
-{else}
-{ts}No{/ts} {$taxTerm}: {$value|crmMoney:$currency}
-{/if}
-{/foreach}
+  {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+    {if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if} : {$taxDetail.amount|crmMoney:\'{contribution.currency}\'}
+  {/foreach}
 {/if}
 
 {if $isShowTax}
 {ts}Total Tax Amount{/ts}: {contribution.tax_amount|crmMoney}
 {/if}
 
-{ts}Total Amount{/ts}: {$amount|crmMoney:$currency}
+{ts}Total Amount{/ts}: {contribution.total_amount}
 {else}
-{ts}Amount{/ts}: {$amount|crmMoney:$currency} {if \'{contribution.amount_level}\'} - {contribution.amount_level}{/if}
+{ts}Amount{/ts}: {contribution.total_amount} {if \'{contribution.amount_level}\'} - {contribution.amount_level}{/if}
 {/if}
 {/if}
 {if !empty($receive_date)}
@@ -8140,7 +8133,7 @@ INSERT INTO civicrm_msg_template
 {capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
 {capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
 
-  <table id="crm-event_receipt" style="font-family: Arial, Verdana, sans-serif; text-align: left; width:100%; max-width:700px; padding:0; margin:0; border:0px;">
+<table id="crm-event_receipt" style="font-family: Arial, Verdana, sans-serif; text-align: left; width:100%; max-width:700px; padding:0; margin:0; border:0px;">
 
   <!-- BEGIN HEADER -->
   <!-- You can add table row(s) here with logo or other header elements -->
@@ -8150,7 +8143,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-     {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     {if !empty($receipt_text)}
      <p>{$receipt_text|htmlize}</p>
     {/if}
@@ -8161,123 +8154,99 @@ INSERT INTO civicrm_msg_template
 
    </td>
   </tr>
-  </table>
-  <table style="width:100%; max-width:500px; border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse;">
-
-     {if $amount}
-
-
-      <tr>
-       <th {$headerStyle}>
+</table>
+<table style="width:100%; max-width:500px; border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse;">
+  {if \'{contribution.total_amount|raw}\' !== \'0.00\'}
+    <tr>
+      <th {$headerStyle}>
         {ts}Contribution Information{/ts}
-       </th>
+      </th>
+    </tr>
+
+    {if $isShowLineItems}
+      <tr>
+        <td colspan="2" {$valueStyle}>
+          <table>
+            <tr>
+              <th>{ts}Item{/ts}</th>
+              <th>{ts}Qty{/ts}</th>
+              <th>{ts}Each{/ts}</th>
+              {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
+                <th>{ts}Subtotal{/ts}</th>
+                <th>{ts}Tax Rate{/ts}</th>
+                <th>{ts}Tax Amount{/ts}</th>
+              {/if}
+              <th>{ts}Total{/ts}</th>
+            </tr>
+            {foreach from=$lineItems item=line}
+              <tr>
+                <td>{$line.title}</td>
+                <td>{$line.qty}</td>
+                <td>{$line.unit_price|crmMoney:$currency}</td>
+                {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
+                  <td>{$line.unit_price*$line.qty|crmMoney:$currency}</td>
+                  {if $line.tax_rate || $line.tax_amount != ""}
+                    <td>{$line.tax_rate|string_format:"%.2f"}%</td>
+                    <td>{$line.tax_amount|crmMoney:$currency}</td>
+                  {else}
+                    <td></td>
+                    <td></td>
+                  {/if}
+                {/if}
+                <td>
+                  {$line.line_total+$line.tax_amount|crmMoney:$currency}
+                </td>
+              </tr>
+            {/foreach}
+          </table>
+        </td>
       </tr>
 
-      {if $isShowLineItems}
-
-       {foreach from=$lineItem item=value key=priceset}
+      {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
         <tr>
-         <td colspan="2" {$valueStyle}>
-          <table>
-           <tr>
-            <th>{ts}Item{/ts}</th>
-            <th>{ts}Qty{/ts}</th>
-            <th>{ts}Each{/ts}</th>
-            {if !empty($dataArray)}
-             <th>{ts}Subtotal{/ts}</th>
-             <th>{ts}Tax Rate{/ts}</th>
-             <th>{ts}Tax Amount{/ts}</th>
-            {/if}
-            <th>{ts}Total{/ts}</th>
-           </tr>
-           {foreach from=$value item=line}
-            <tr>
-             <td>
-             {if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description}<div>{$line.description|truncate:30:"..."}</div>{/if}
-             </td>
-             <td>
-              {$line.qty}
-             </td>
-             <td>
-              {$line.unit_price|crmMoney:$currency}
-             </td>
-             {if !empty($getTaxDetails)}
-              <td>
-               {$line.unit_price*$line.qty|crmMoney:$currency}
-              </td>
-              {if $line.tax_rate || $line.tax_amount != ""}
-               <td>
-                {$line.tax_rate|string_format:"%.2f"}%
-               </td>
-               <td>
-                {$line.tax_amount|crmMoney:$currency}
-               </td>
-              {else}
-               <td></td>
-               <td></td>
-              {/if}
-             {/if}
-             <td>
-              {$line.line_total+$line.tax_amount|crmMoney:$currency}
-             </td>
-            </tr>
-           {/foreach}
-          </table>
-         </td>
-        </tr>
-       {/foreach}
-       {if !empty($dataArray)}
-        <tr>
-         <td {$labelStyle}>
-          {ts} Amount before Tax : {/ts}
-         </td>
-         <td {$valueStyle}>
-          {$amount-$totalTaxAmount|crmMoney:$currency}
-         </td>
+          <td {$labelStyle}>
+            {ts} Amount before Tax : {/ts}
+          </td>
+          <td {$valueStyle}>
+            {$amount-$totalTaxAmount|crmMoney:$currency}
+          </td>
         </tr>
 
-        {foreach from=$dataArray item=value key=priceset}
-         <tr>
-          {if $priceset || $priceset == 0}
-           <td>&nbsp;{$taxTerm} {$priceset|string_format:"%.2f"}%</td>
-           <td>&nbsp;{$value|crmMoney:$currency}</td>
-          {else}
-           <td>&nbsp;{ts}No{/ts} {$taxTerm}</td>
-           <td>&nbsp;{$value|crmMoney:$currency}</td>
-          {/if}
-         </tr>
+        {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+          <tr>
+            <td>{if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if}</td>
+            <td>{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}</td>
+          </tr>
         {/foreach}
 
-       {/if}
-       {if $isShowTax}
+      {/if}
+      {if $isShowTax}
         <tr>
-         <td {$labelStyle}>
-          {ts}Total Tax{/ts}
-         </td>
-         <td {$valueStyle}>
-          {$totalTaxAmount|crmMoney:$currency}
-         </td>
+          <td {$labelStyle}>
+            {ts}Total Tax{/ts}
+          </td>
+          <td {$valueStyle}>
+            {contribution.tax_amount}
+          </td>
         </tr>
-       {/if}
-       <tr>
+      {/if}
+      <tr>
         <td {$labelStyle}>
-         {ts}Total Amount{/ts}
+          {ts}Total Amount{/ts}
         </td>
         <td {$valueStyle}>
-         {$amount|crmMoney:$currency}
+          {contribution.total_amount}
         </td>
-       </tr>
-
-      {else}
-
-      {if !empty($totalTaxAmount)}
-         <tr>
-           <td {$labelStyle}>
-             {ts}Total Tax Amount{/ts}
-           </td>
-           <td {$valueStyle}>
-             {contribution.tax_amount|crmMoney}
-           </td>
+      </tr>
+    {else}
+      {if \'{contribution.tax_amount|raw}\' !== \'0.00\'}
+        <tr>
+          <td {$labelStyle}>
+            {ts}Total Tax Amount{/ts}
+          </td>
+          <td {$valueStyle}>
+            {contribution.tax_amount}
+          </td>
          </tr>
        {/if}
        <tr>
@@ -8285,13 +8254,13 @@ INSERT INTO civicrm_msg_template
          {ts}Amount{/ts}
         </td>
         <td {$valueStyle}>
-         {$amount|crmMoney:$currency} {if \'{contribution.amount_level}\'} - {contribution.amount_level}{/if}
+         {contribution.total_amount} {if \'{contribution.amount_level}\'} - {contribution.amount_level}{/if}
         </td>
        </tr>
 
       {/if}
 
-     {/if}
+  {/if}
 
 
      {if !empty($receive_date)}
@@ -8600,7 +8569,7 @@ INSERT INTO civicrm_msg_template
 </html>
 ', 'contribution_online_receipt', @tpl_ovid_contribution_online_receipt, 1,          0),
       ('Contributions - Receipt (on-line)', '{if $is_pay_later}{ts}Invoice{/ts}{else}{ts}Receipt{/ts}{/if} - {$title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 {if !empty($receipt_text)}
 {$receipt_text}
 {/if}
@@ -8611,49 +8580,43 @@ INSERT INTO civicrm_msg_template
 ===========================================================
 {/if}
 
-{if $amount}
+{if \'{contribution.total_amount|raw}\' !== \'0.00\'}
 ===========================================================
 {ts}Contribution Information{/ts}
 
 ===========================================================
 {if $isShowLineItems}
-{foreach from=$lineItem item=value key=priceset}
+
 ---------------------------------------------------------
 {capture assign=ts_item}{ts}Item{/ts}{/capture}
 {capture assign=ts_qty}{ts}Qty{/ts}{/capture}
 {capture assign=ts_each}{ts}Each{/ts}{/capture}
-{if !empty($dataArray)}
+{if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
 {capture assign=ts_subtotal}{ts}Subtotal{/ts}{/capture}
 {capture assign=ts_taxRate}{ts}Tax Rate{/ts}{/capture}
 {capture assign=ts_taxAmount}{ts}Tax Amount{/ts}{/capture}
 {/if}
 {capture assign=ts_total}{ts}Total{/ts}{/capture}
-{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if !empty($dataArray)} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"}
+{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"}
 ----------------------------------------------------------
-{foreach from=$value item=line}
-{capture assign=ts_item}{if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description} {$line.description}{/if}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:$currency|string_format:"%10s"} {if !empty($dataArray)}{$line.unit_price*$line.qty|crmMoney:$currency|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""}  {$line.tax_rate|string_format:"%.2f"} %  {$line.tax_amount|crmMoney:$currency|string_format:"%10s"} {else}                  {/if}  {/if} {$line.line_total+$line.tax_amount|crmMoney:$currency|string_format:"%10s"}
-{/foreach}
+{foreach from=$lineItems item=line}
+{capture assign=ts_item}{$line.title}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:$currency|string_format:"%10s"} {if !empty($dataArray)}{$line.unit_price*$line.qty|crmMoney:$currency|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""}  {$line.tax_rate|string_format:"%.2f"} %  {$line.tax_amount|crmMoney:$currency|string_format:"%10s"} {else}                  {/if}  {/if} {$line.line_total+$line.tax_amount|crmMoney:$currency|string_format:"%10s"}
 {/foreach}
 
-{if !empty($dataArray)}
+{if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
 {ts}Amount before Tax{/ts}: {$amount-$totalTaxAmount|crmMoney:$currency}
-
-{foreach from=$dataArray item=value key=priceset}
-{if $priceset || $priceset == 0}
-{$taxTerm} {$priceset|string_format:"%.2f"}%: {$value|crmMoney:$currency}
-{else}
-{ts}No{/ts} {$taxTerm}: {$value|crmMoney:$currency}
-{/if}
-{/foreach}
+  {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+    {if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if} : {$taxDetail.amount|crmMoney:\'{contribution.currency}\'}
+  {/foreach}
 {/if}
 
 {if $isShowTax}
 {ts}Total Tax Amount{/ts}: {contribution.tax_amount|crmMoney}
 {/if}
 
-{ts}Total Amount{/ts}: {$amount|crmMoney:$currency}
+{ts}Total Amount{/ts}: {contribution.total_amount}
 {else}
-{ts}Amount{/ts}: {$amount|crmMoney:$currency} {if \'{contribution.amount_level}\'} - {contribution.amount_level}{/if}
+{ts}Amount{/ts}: {contribution.total_amount} {if \'{contribution.amount_level}\'} - {contribution.amount_level}{/if}
 {/if}
 {/if}
 {if !empty($receive_date)}
@@ -8825,7 +8788,7 @@ INSERT INTO civicrm_msg_template
 {capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
 {capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
 
-  <table id="crm-event_receipt" style="font-family: Arial, Verdana, sans-serif; text-align: left; width:100%; max-width:700px; padding:0; margin:0; border:0px;">
+<table id="crm-event_receipt" style="font-family: Arial, Verdana, sans-serif; text-align: left; width:100%; max-width:700px; padding:0; margin:0; border:0px;">
 
   <!-- BEGIN HEADER -->
   <!-- You can add table row(s) here with logo or other header elements -->
@@ -8835,7 +8798,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-     {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     {if !empty($receipt_text)}
      <p>{$receipt_text|htmlize}</p>
     {/if}
@@ -8846,123 +8809,99 @@ INSERT INTO civicrm_msg_template
 
    </td>
   </tr>
-  </table>
-  <table style="width:100%; max-width:500px; border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse;">
-
-     {if $amount}
-
-
-      <tr>
-       <th {$headerStyle}>
+</table>
+<table style="width:100%; max-width:500px; border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse;">
+  {if \'{contribution.total_amount|raw}\' !== \'0.00\'}
+    <tr>
+      <th {$headerStyle}>
         {ts}Contribution Information{/ts}
-       </th>
+      </th>
+    </tr>
+
+    {if $isShowLineItems}
+      <tr>
+        <td colspan="2" {$valueStyle}>
+          <table>
+            <tr>
+              <th>{ts}Item{/ts}</th>
+              <th>{ts}Qty{/ts}</th>
+              <th>{ts}Each{/ts}</th>
+              {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
+                <th>{ts}Subtotal{/ts}</th>
+                <th>{ts}Tax Rate{/ts}</th>
+                <th>{ts}Tax Amount{/ts}</th>
+              {/if}
+              <th>{ts}Total{/ts}</th>
+            </tr>
+            {foreach from=$lineItems item=line}
+              <tr>
+                <td>{$line.title}</td>
+                <td>{$line.qty}</td>
+                <td>{$line.unit_price|crmMoney:$currency}</td>
+                {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
+                  <td>{$line.unit_price*$line.qty|crmMoney:$currency}</td>
+                  {if $line.tax_rate || $line.tax_amount != ""}
+                    <td>{$line.tax_rate|string_format:"%.2f"}%</td>
+                    <td>{$line.tax_amount|crmMoney:$currency}</td>
+                  {else}
+                    <td></td>
+                    <td></td>
+                  {/if}
+                {/if}
+                <td>
+                  {$line.line_total+$line.tax_amount|crmMoney:$currency}
+                </td>
+              </tr>
+            {/foreach}
+          </table>
+        </td>
       </tr>
 
-      {if $isShowLineItems}
-
-       {foreach from=$lineItem item=value key=priceset}
+      {if $isShowTax && \'{contribution.tax_amount|raw}\' !== \'0.00\'}
         <tr>
-         <td colspan="2" {$valueStyle}>
-          <table>
-           <tr>
-            <th>{ts}Item{/ts}</th>
-            <th>{ts}Qty{/ts}</th>
-            <th>{ts}Each{/ts}</th>
-            {if !empty($dataArray)}
-             <th>{ts}Subtotal{/ts}</th>
-             <th>{ts}Tax Rate{/ts}</th>
-             <th>{ts}Tax Amount{/ts}</th>
-            {/if}
-            <th>{ts}Total{/ts}</th>
-           </tr>
-           {foreach from=$value item=line}
-            <tr>
-             <td>
-             {if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description}<div>{$line.description|truncate:30:"..."}</div>{/if}
-             </td>
-             <td>
-              {$line.qty}
-             </td>
-             <td>
-              {$line.unit_price|crmMoney:$currency}
-             </td>
-             {if !empty($getTaxDetails)}
-              <td>
-               {$line.unit_price*$line.qty|crmMoney:$currency}
-              </td>
-              {if $line.tax_rate || $line.tax_amount != ""}
-               <td>
-                {$line.tax_rate|string_format:"%.2f"}%
-               </td>
-               <td>
-                {$line.tax_amount|crmMoney:$currency}
-               </td>
-              {else}
-               <td></td>
-               <td></td>
-              {/if}
-             {/if}
-             <td>
-              {$line.line_total+$line.tax_amount|crmMoney:$currency}
-             </td>
-            </tr>
-           {/foreach}
-          </table>
-         </td>
-        </tr>
-       {/foreach}
-       {if !empty($dataArray)}
-        <tr>
-         <td {$labelStyle}>
-          {ts} Amount before Tax : {/ts}
-         </td>
-         <td {$valueStyle}>
-          {$amount-$totalTaxAmount|crmMoney:$currency}
-         </td>
+          <td {$labelStyle}>
+            {ts} Amount before Tax : {/ts}
+          </td>
+          <td {$valueStyle}>
+            {$amount-$totalTaxAmount|crmMoney:$currency}
+          </td>
         </tr>
 
-        {foreach from=$dataArray item=value key=priceset}
-         <tr>
-          {if $priceset || $priceset == 0}
-           <td>&nbsp;{$taxTerm} {$priceset|string_format:"%.2f"}%</td>
-           <td>&nbsp;{$value|crmMoney:$currency}</td>
-          {else}
-           <td>&nbsp;{ts}No{/ts} {$taxTerm}</td>
-           <td>&nbsp;{$value|crmMoney:$currency}</td>
-          {/if}
-         </tr>
+        {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+          <tr>
+            <td>{if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if}</td>
+            <td>{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}</td>
+          </tr>
         {/foreach}
 
-       {/if}
-       {if $isShowTax}
+      {/if}
+      {if $isShowTax}
         <tr>
-         <td {$labelStyle}>
-          {ts}Total Tax{/ts}
-         </td>
-         <td {$valueStyle}>
-          {$totalTaxAmount|crmMoney:$currency}
-         </td>
+          <td {$labelStyle}>
+            {ts}Total Tax{/ts}
+          </td>
+          <td {$valueStyle}>
+            {contribution.tax_amount}
+          </td>
         </tr>
-       {/if}
-       <tr>
+      {/if}
+      <tr>
         <td {$labelStyle}>
-         {ts}Total Amount{/ts}
+          {ts}Total Amount{/ts}
         </td>
         <td {$valueStyle}>
-         {$amount|crmMoney:$currency}
+          {contribution.total_amount}
         </td>
-       </tr>
-
-      {else}
-
-      {if !empty($totalTaxAmount)}
-         <tr>
-           <td {$labelStyle}>
-             {ts}Total Tax Amount{/ts}
-           </td>
-           <td {$valueStyle}>
-             {contribution.tax_amount|crmMoney}
-           </td>
+      </tr>
+    {else}
+      {if \'{contribution.tax_amount|raw}\' !== \'0.00\'}
+        <tr>
+          <td {$labelStyle}>
+            {ts}Total Tax Amount{/ts}
+          </td>
+          <td {$valueStyle}>
+            {contribution.tax_amount}
+          </td>
          </tr>
        {/if}
        <tr>
@@ -8970,13 +8909,13 @@ INSERT INTO civicrm_msg_template
          {ts}Amount{/ts}
         </td>
         <td {$valueStyle}>
-         {$amount|crmMoney:$currency} {if \'{contribution.amount_level}\'} - {contribution.amount_level}{/if}
+         {contribution.total_amount} {if \'{contribution.amount_level}\'} - {contribution.amount_level}{/if}
         </td>
        </tr>
 
       {/if}
 
-     {/if}
+  {/if}
 
 
      {if !empty($receive_date)}
@@ -9310,7 +9249,7 @@ INSERT INTO civicrm_msg_template
     {if $config->empoweredBy}
       <table style="margin-top:5px;padding-bottom:50px;" cellpadding="5" cellspacing="0">
         <tr>
-          <td><img src="{$resourceBase}/i/civi99.png" height="34px" width="99px"></td>
+          <td><img src="{domain.empowered_by_civicrm_image_url}" height="34px" width="99px"></td>
         </tr>
       </table>
     {/if}
@@ -9369,26 +9308,19 @@ INSERT INTO civicrm_msg_template
         <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{domain.tax_term}</font></th>
         <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
       </tr>
-      {foreach from=$lineItem item=value key=priceset name=taxpricevalue}
+      {foreach from=$lineItems item=line}
         <tr>
           <td style="text-align:left;nowrap"><font size="1">
-            {if $value.html_type eq \'Text\'}
-              {$value.label}
-            {else}
-              {$value.field_title} - {$value.label}
-            {/if}
-            {if $value.description}
-              <div>{$value.description|truncate:30:"..."}</div>
-            {/if}
+            {$line.title}
           </font></td>
-          <td style="text-align:right;"><font size="1">{$value.qty}</font></td>
-          <td style="text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
-          {if $value.tax_amount != \'\'}
-            <td style="text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
-          {else}
-            <td style="text-align:right;"><font size="1">{if $taxTerm}{ts 1=$taxTerm}-{/ts}{/if}</font></td>
-          {/if}
-          <td style="text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
+          <td style="text-align:right;"><font size="1">{$line.qty}</font></td>
+          <td style="text-align:right;"><font size="1">{$line.unit_price|crmMoney:$currency}</font></td>
+            {if $line.tax_amount != \'\'}
+              <td style="text-align:right;"><font size="1">{if $line.tax_rate}{$line.tax_rate|crmNumberFormat}%{/if}</font></td>
+            {else}
+              <td style="text-align:right;"><font size="1">{if \'{domain.tax_term}\'}{ts 1=\'{domain.tax_term}\'}-{/ts}{/if}</font></td>
+            {/if}
+          <td style="text-align:right;"><font size="1">{$line.line_total|crmMoney:\'{contribution.currency}\'}</font></td>
         </tr>
       {/foreach}
       <tr>
@@ -9396,20 +9328,15 @@ INSERT INTO civicrm_msg_template
         <td style="text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
         <td style="text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
       </tr>
-      {if !empty($dataArray)}
-        {foreach from=$dataArray item=value key=priceset}
+      {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+        {if $taxRate != 0}
           <tr>
             <td colspan="3"></td>
-            {if $priceset}
-              <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm 2=$priceset}TOTAL %1 %2%{/ts}{/if}</font></td>
-              <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-            {elseif $priceset == 0}
-              <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm}TOTAL %1{/ts}{/if}</font></td>
-              <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-            {/if}
+            <td style="text-align:right;white-space: nowrap"><font size="1">{if \'{domain.tax_term}\'}{ts 1=\'{domain.tax_term}\' 2=$taxRate|crmNumberFormat}TOTAL %1 %2%{/ts}{/if}</font></td>
+            <td style="text-align:right"><font size="1" align="right">{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}</font> </td>
           </tr>
-        {/foreach}
-      {/if}
+        {/if}
+      {/foreach}
       <tr>
         <td colspan="3"></td>
         <td style="text-align:right;white-space: nowrap"><b><font size="1">{ts 1=$currency}TOTAL %1{/ts}</font></b></td>
@@ -9575,31 +9502,20 @@ INSERT INTO civicrm_msg_template
               <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{domain.tax_term}</font></th>
               <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
             </tr>
-            {foreach from=$lineItem item=value key=priceset name=pricevalue}
-              {if $smarty.foreach.pricevalue.index eq 0}
-                <tr><td colspan="5"><hr size="3" style="color:#000;"></hr></td></tr>
-              {else}
-                <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
-              {/if}
+            {foreach from=$lineItems item=line key=index}
+              <tr><td colspan="5"><hr {if $index == 0}size="3" style="color:#000;"{else}style="color:#F5F5F5;"{/if}></hr></td></tr>
               <tr>
                 <td style ="text-align:left;"  ><font size="1">
-                  {if $value.html_type eq \'Text\'}
-                    {$value.label}
-                  {else}
-                    {$value.field_title} - {$value.label}
-                  {/if}
-                  {if $value.description}
-                    <div>{$value.description|truncate:30:"..."}</div>
-                  {/if}
+                  {$line.title}
                 </font></td>
-                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.qty}</font></td>
-                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
-                {if $value.tax_amount != \'\'}
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$line.qty}</font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$line.unit_price|crmMoney:$currency}</font></td>
+                {if $line.tax_amount != \'\'}
+                  <td style="padding-left:28px;text-align:right;"><font size="1">{if $line.tax_rate}{$line.tax_rate|crmNumberFormat}%{/if}</font></td>
                 {else}
-                  <td style="padding-left:28px;text-align:right"><font size="1">{if $taxTerm}{ts 1=$taxTerm}No %1{/ts}{/if}</font></td>
+                  <td style="padding-left:28px;text-align:right"><font size="1">{if \'{domain.tax_term}\'}{ts 1=\'{domain.tax_term}\'}No %1{/ts}{/if}</font></td>
                 {/if}
-                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$line.line_total|crmMoney:\'{contribution.currency}\'}</font></td>
               </tr>
             {/foreach}
             <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
@@ -9608,20 +9524,15 @@ INSERT INTO civicrm_msg_template
               <td style="padding-left:28px;text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
               <td style="padding-left:28px;text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
             </tr>
-            {if !empty($dataArray)}
-              {foreach from=$dataArray item=value key=priceset}
-                <tr>
-                  <td colspan="3"></td>
-                  {if $priceset}
-                    <td style="padding-left:28px;text-align:right;"><font size="1">{if $taxTerm}{ts 1=$taxTerm 2=$priceset}TOTAL %1 %2%{/ts}{/if}</font></td>
-                    <td style="padding-left:28px;text-align:right;"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-                  {elseif $priceset == 0}
-                    <td style="padding-left:28px;text-align:right;"><font size="1">{if $taxTerm}{ts 1=$taxTerm}TOTAL NO %1{/ts}{/if}</font></td>
-                    <td style="padding-left:28px;text-align:right;"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-                  {/if}
-                </tr>
+            {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+                {if $taxRate != 0}
+                  <tr>
+                    <td colspan="3"></td>
+                    <td style="padding-left:28px;text-align:right;"><font size="1">{if \'{domain.tax_term}\'}{ts 1=\'{domain.tax_term}\' 2=$taxRate|crmNumberFormat}TOTAL %1 %2%{/ts}{/if}</font></td>
+                    <td style="padding-left:28px;text-align:right;"><font size="1" align="right">{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}</font> </td>
+                  </tr>
+                {/if}
               {/foreach}
-            {/if}
             <tr>
               <td colspan="3"></td>
               <td colspan="2"><hr></hr></td>
@@ -9722,7 +9633,7 @@ INSERT INTO civicrm_msg_template
     {if $config->empoweredBy}
       <table style="margin-top:5px;padding-bottom:50px;" cellpadding="5" cellspacing="0">
         <tr>
-          <td><img src="{$resourceBase}/i/civi99.png" height="34px" width="99px"></td>
+          <td><img src="{domain.empowered_by_civicrm_image_url}" height="34px" width="99px"></td>
         </tr>
       </table>
     {/if}
@@ -9781,26 +9692,19 @@ INSERT INTO civicrm_msg_template
         <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{domain.tax_term}</font></th>
         <th style="text-align:right;font-weight:bold;white-space: nowrap"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
       </tr>
-      {foreach from=$lineItem item=value key=priceset name=taxpricevalue}
+      {foreach from=$lineItems item=line}
         <tr>
           <td style="text-align:left;nowrap"><font size="1">
-            {if $value.html_type eq \'Text\'}
-              {$value.label}
-            {else}
-              {$value.field_title} - {$value.label}
-            {/if}
-            {if $value.description}
-              <div>{$value.description|truncate:30:"..."}</div>
-            {/if}
+            {$line.title}
           </font></td>
-          <td style="text-align:right;"><font size="1">{$value.qty}</font></td>
-          <td style="text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
-          {if $value.tax_amount != \'\'}
-            <td style="text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
-          {else}
-            <td style="text-align:right;"><font size="1">{if $taxTerm}{ts 1=$taxTerm}-{/ts}{/if}</font></td>
-          {/if}
-          <td style="text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
+          <td style="text-align:right;"><font size="1">{$line.qty}</font></td>
+          <td style="text-align:right;"><font size="1">{$line.unit_price|crmMoney:$currency}</font></td>
+            {if $line.tax_amount != \'\'}
+              <td style="text-align:right;"><font size="1">{if $line.tax_rate}{$line.tax_rate|crmNumberFormat}%{/if}</font></td>
+            {else}
+              <td style="text-align:right;"><font size="1">{if \'{domain.tax_term}\'}{ts 1=\'{domain.tax_term}\'}-{/ts}{/if}</font></td>
+            {/if}
+          <td style="text-align:right;"><font size="1">{$line.line_total|crmMoney:\'{contribution.currency}\'}</font></td>
         </tr>
       {/foreach}
       <tr>
@@ -9808,20 +9712,15 @@ INSERT INTO civicrm_msg_template
         <td style="text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
         <td style="text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
       </tr>
-      {if !empty($dataArray)}
-        {foreach from=$dataArray item=value key=priceset}
+      {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+        {if $taxRate != 0}
           <tr>
             <td colspan="3"></td>
-            {if $priceset}
-              <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm 2=$priceset}TOTAL %1 %2%{/ts}{/if}</font></td>
-              <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-            {elseif $priceset == 0}
-              <td style="text-align:right;white-space: nowrap"><font size="1">{if $taxTerm}{ts 1=$taxTerm}TOTAL %1{/ts}{/if}</font></td>
-              <td style="text-align:right"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-            {/if}
+            <td style="text-align:right;white-space: nowrap"><font size="1">{if \'{domain.tax_term}\'}{ts 1=\'{domain.tax_term}\' 2=$taxRate|crmNumberFormat}TOTAL %1 %2%{/ts}{/if}</font></td>
+            <td style="text-align:right"><font size="1" align="right">{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}</font> </td>
           </tr>
-        {/foreach}
-      {/if}
+        {/if}
+      {/foreach}
       <tr>
         <td colspan="3"></td>
         <td style="text-align:right;white-space: nowrap"><b><font size="1">{ts 1=$currency}TOTAL %1{/ts}</font></b></td>
@@ -9987,31 +9886,20 @@ INSERT INTO civicrm_msg_template
               <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{domain.tax_term}</font></th>
               <th style="padding-left:28px;text-align:right;font-weight:bold;"><font size="1">{ts 1=$currency}Amount %1{/ts}</font></th>
             </tr>
-            {foreach from=$lineItem item=value key=priceset name=pricevalue}
-              {if $smarty.foreach.pricevalue.index eq 0}
-                <tr><td colspan="5"><hr size="3" style="color:#000;"></hr></td></tr>
-              {else}
-                <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
-              {/if}
+            {foreach from=$lineItems item=line key=index}
+              <tr><td colspan="5"><hr {if $index == 0}size="3" style="color:#000;"{else}style="color:#F5F5F5;"{/if}></hr></td></tr>
               <tr>
                 <td style ="text-align:left;"  ><font size="1">
-                  {if $value.html_type eq \'Text\'}
-                    {$value.label}
-                  {else}
-                    {$value.field_title} - {$value.label}
-                  {/if}
-                  {if $value.description}
-                    <div>{$value.description|truncate:30:"..."}</div>
-                  {/if}
+                  {$line.title}
                 </font></td>
-                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.qty}</font></td>
-                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.unit_price|crmMoney:$currency}</font></td>
-                {if $value.tax_amount != \'\'}
-                  <td style="padding-left:28px;text-align:right;"><font size="1">{if $value.tax_rate}{$value.tax_rate}%{/if}</font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$line.qty}</font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$line.unit_price|crmMoney:$currency}</font></td>
+                {if $line.tax_amount != \'\'}
+                  <td style="padding-left:28px;text-align:right;"><font size="1">{if $line.tax_rate}{$line.tax_rate|crmNumberFormat}%{/if}</font></td>
                 {else}
-                  <td style="padding-left:28px;text-align:right"><font size="1">{if $taxTerm}{ts 1=$taxTerm}No %1{/ts}{/if}</font></td>
+                  <td style="padding-left:28px;text-align:right"><font size="1">{if \'{domain.tax_term}\'}{ts 1=\'{domain.tax_term}\'}No %1{/ts}{/if}</font></td>
                 {/if}
-                <td style="padding-left:28px;text-align:right;"><font size="1">{$value.subTotal|crmMoney:$currency}</font></td>
+                <td style="padding-left:28px;text-align:right;"><font size="1">{$line.line_total|crmMoney:\'{contribution.currency}\'}</font></td>
               </tr>
             {/foreach}
             <tr><td colspan="5" style="color:#F5F5F5;"><hr></hr></td></tr>
@@ -10020,20 +9908,15 @@ INSERT INTO civicrm_msg_template
               <td style="padding-left:28px;text-align:right;"><font size="1">{ts}Sub Total{/ts}</font></td>
               <td style="padding-left:28px;text-align:right;"><font size="1">{$subTotal|crmMoney:$currency}</font></td>
             </tr>
-            {if !empty($dataArray)}
-              {foreach from=$dataArray item=value key=priceset}
-                <tr>
-                  <td colspan="3"></td>
-                  {if $priceset}
-                    <td style="padding-left:28px;text-align:right;"><font size="1">{if $taxTerm}{ts 1=$taxTerm 2=$priceset}TOTAL %1 %2%{/ts}{/if}</font></td>
-                    <td style="padding-left:28px;text-align:right;"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-                  {elseif $priceset == 0}
-                    <td style="padding-left:28px;text-align:right;"><font size="1">{if $taxTerm}{ts 1=$taxTerm}TOTAL NO %1{/ts}{/if}</font></td>
-                    <td style="padding-left:28px;text-align:right;"><font size="1" align="right">{$value|crmMoney:$currency}</font> </td>
-                  {/if}
-                </tr>
+            {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+                {if $taxRate != 0}
+                  <tr>
+                    <td colspan="3"></td>
+                    <td style="padding-left:28px;text-align:right;"><font size="1">{if \'{domain.tax_term}\'}{ts 1=\'{domain.tax_term}\' 2=$taxRate|crmNumberFormat}TOTAL %1 %2%{/ts}{/if}</font></td>
+                    <td style="padding-left:28px;text-align:right;"><font size="1" align="right">{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}</font> </td>
+                  </tr>
+                {/if}
               {/foreach}
-            {/if}
             <tr>
               <td colspan="3"></td>
               <td colspan="2"><hr></hr></td>
@@ -10113,7 +9996,7 @@ INSERT INTO civicrm_msg_template
       
       
       ('Contributions - Recurring Start and End Notification', '{ts}Recurring Contribution Notification{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {if $recur_txnType eq \'START\'}
 {if $auto_renew_membership}
@@ -10199,7 +10082,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
    </td>
   </tr>
 
@@ -10312,7 +10195,7 @@ INSERT INTO civicrm_msg_template
 </html>
 ', 'contribution_recurring_notify', @tpl_ovid_contribution_recurring_notify, 1,          0),
       ('Contributions - Recurring Start and End Notification', '{ts}Recurring Contribution Notification{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {if $recur_txnType eq \'START\'}
 {if $auto_renew_membership}
@@ -10398,7 +10281,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
    </td>
   </tr>
 
@@ -10513,7 +10396,7 @@ INSERT INTO civicrm_msg_template
       
       
       ('Contributions - Recurring Cancellation Notification', '{ts}Recurring Contribution Cancellation Notification{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1=$amount 2=$recur_frequency_interval 3=$recur_frequency_unit}Your recurring contribution of %1, every %2 %3 has been cancelled as requested.{/ts}
 ', '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -10538,7 +10421,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1=$amount 2=$recur_frequency_interval 3=$recur_frequency_unit}Your recurring contribution of %1, every %2 %3 has been cancelled as requested.{/ts}</p>
    </td>
   </tr>
@@ -10549,7 +10432,7 @@ INSERT INTO civicrm_msg_template
 </html>
 ', 'contribution_recurring_cancelled', @tpl_ovid_contribution_recurring_cancelled, 1,          0),
       ('Contributions - Recurring Cancellation Notification', '{ts}Recurring Contribution Cancellation Notification{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1=$amount 2=$recur_frequency_interval 3=$recur_frequency_unit}Your recurring contribution of %1, every %2 %3 has been cancelled as requested.{/ts}
 ', '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -10574,7 +10457,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1=$amount 2=$recur_frequency_interval 3=$recur_frequency_unit}Your recurring contribution of %1, every %2 %3 has been cancelled as requested.{/ts}</p>
    </td>
   </tr>
@@ -10587,7 +10470,7 @@ INSERT INTO civicrm_msg_template
       
       
       ('Contributions - Recurring Billing Updates', '{ts}Recurring Contribution Billing Updates{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1=$amount 2=$recur_frequency_interval 3=$recur_frequency_unit}Billing details for your recurring contribution of %1, every %2 %3 have been updated.{/ts}
 
@@ -10632,7 +10515,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1=$amount 2=$recur_frequency_interval 3=$recur_frequency_unit}Billing details for your recurring contribution of %1, every %2 %3 have been updated.{/ts}</p>
    </td>
   </tr>
@@ -10675,7 +10558,7 @@ INSERT INTO civicrm_msg_template
 </html>
 ', 'contribution_recurring_billing', @tpl_ovid_contribution_recurring_billing, 1,          0),
       ('Contributions - Recurring Billing Updates', '{ts}Recurring Contribution Billing Updates{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1=$amount 2=$recur_frequency_interval 3=$recur_frequency_unit}Billing details for your recurring contribution of %1, every %2 %3 have been updated.{/ts}
 
@@ -10720,7 +10603,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1=$amount 2=$recur_frequency_interval 3=$recur_frequency_unit}Billing details for your recurring contribution of %1, every %2 %3 have been updated.{/ts}</p>
    </td>
   </tr>
@@ -10765,7 +10648,7 @@ INSERT INTO civicrm_msg_template
       
       
       ('Contributions - Recurring Updates', '{ts}Recurring Contribution Update Notification{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts}Your recurring contribution has been updated as requested:{/ts}
 
@@ -10795,7 +10678,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts}Your recurring contribution has been updated as requested:{/ts}
     <p>{ts 1=$amount 2=$recur_frequency_interval 3=$recur_frequency_unit}Recurring contribution is for %1, every %2 %3(s){/ts}{if $installments}{ts 1=$installments} for %1 installments{/ts}{/if}.</p>
 
@@ -10809,7 +10692,7 @@ INSERT INTO civicrm_msg_template
 </html>
 ', 'contribution_recurring_edit', @tpl_ovid_contribution_recurring_edit, 1,          0),
       ('Contributions - Recurring Updates', '{ts}Recurring Contribution Update Notification{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts}Your recurring contribution has been updated as requested:{/ts}
 
@@ -10839,7 +10722,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts}Your recurring contribution has been updated as requested:{/ts}
     <p>{ts 1=$amount 2=$recur_frequency_interval 3=$recur_frequency_unit}Recurring contribution is for %1, every %2 %3(s){/ts}{if $installments}{ts 1=$installments} for %1 installments{/ts}{/if}.</p>
 
@@ -11295,7 +11178,7 @@ INSERT INTO civicrm_msg_template
       
       
       ('Personal Campaign Pages - Supporter Welcome', '{ts 1=$contribPageTitle}Your Personal Campaign Page for %1{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1="$contribPageTitle"}Thanks for creating a personal campaign page in support of %1.{/ts}
 
@@ -11375,7 +11258,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1="$contribPageTitle"}Thanks for creating a personal campaign page in support of %1.{/ts}</p>
    </td>
   </tr>
@@ -11452,7 +11335,7 @@ INSERT INTO civicrm_msg_template
 </html>
 ', 'pcp_supporter_notify', @tpl_ovid_pcp_supporter_notify, 1,          0),
       ('Personal Campaign Pages - Supporter Welcome', '{ts 1=$contribPageTitle}Your Personal Campaign Page for %1{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1="$contribPageTitle"}Thanks for creating a personal campaign page in support of %1.{/ts}
 
@@ -11532,7 +11415,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1="$contribPageTitle"}Thanks for creating a personal campaign page in support of %1.{/ts}</p>
    </td>
   </tr>
@@ -11615,7 +11498,7 @@ INSERT INTO civicrm_msg_template
 {ts}Personal Campaign Page Owner Notification{/ts}
 
 ===========================================================
-{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts}You have received a donation at your personal page{/ts}: {$page_title}
 >> {$pcpInfoURL}
@@ -11645,7 +11528,7 @@ INSERT INTO civicrm_msg_template
 {capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
 {capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
 
-  {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+  {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
   <p>{ts}You have received a donation at your personal page{/ts}: <a href="{$pcpInfoURL}">{$page_title}</a></p>
   <p>{ts}Your fundraising total has been updated.{/ts}<br/>
     {ts}The donor\'s information is listed below.  You can choose to contact them and convey your thanks if you wish.{/ts} <br/>
@@ -11667,7 +11550,7 @@ INSERT INTO civicrm_msg_template
 {ts}Personal Campaign Page Owner Notification{/ts}
 
 ===========================================================
-{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts}You have received a donation at your personal page{/ts}: {$page_title}
 >> {$pcpInfoURL}
@@ -11697,7 +11580,7 @@ INSERT INTO civicrm_msg_template
 {capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
 {capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
 
-  {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+  {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
   <p>{ts}You have received a donation at your personal page{/ts}: <a href="{$pcpInfoURL}">{$page_title}</a></p>
   <p>{ts}Your fundraising total has been updated.{/ts}<br/>
     {ts}The donor\'s information is listed below.  You can choose to contact them and convey your thanks if you wish.{/ts} <br/>
@@ -11856,7 +11739,7 @@ INSERT INTO civicrm_msg_template
   <!-- BEGIN CONTENT -->
   <tr>
     <td>
-      {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+      {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
       {if $isRefund}
         <p>{ts}A refund has been issued based on changes in your registration selections.{/ts}</p>
       {else}
@@ -12220,7 +12103,7 @@ INSERT INTO civicrm_msg_template
   <!-- BEGIN CONTENT -->
   <tr>
     <td>
-      {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+      {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
       {if $isRefund}
         <p>{ts}A refund has been issued based on changes in your registration selections.{/ts}</p>
       {else}
@@ -12446,8 +12329,8 @@ INSERT INTO civicrm_msg_template
 ', 'payment_or_refund_notification', @tpl_ovid_payment_or_refund_notification, 0,          1) ,      
       
       
-      ('Events - Registration Confirmation and Receipt (off-line)', '{ts}Event Confirmation{/ts} - {$event.title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+      ('Events - Registration Confirmation and Receipt (off-line)', '{ts}Event Confirmation{/ts} - {event.title} - {contact.display_name}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 {if !empty($event.confirm_email_text) AND (empty($isOnWaitlist) AND empty($isRequireApproval))}
 {$event.confirm_email_text}
 {/if}
@@ -12490,8 +12373,8 @@ INSERT INTO civicrm_msg_template
 
 ==========================================================={if !empty($pricesetFieldsCount) }===================={/if}
 
-{$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{event.title}
+{event.start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 
 {if !empty($event.participant_role) and $event.participant_role neq \'Attendee\' and empty($defaultRole)}
 {ts}Participant Role{/ts}: {$event.participant_role}
@@ -12762,7 +12645,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
 
     {if !empty($event.confirm_email_text) AND (empty($isOnWaitlist) AND empty($isRequireApproval))}
      <p>{$event.confirm_email_text|htmlize}</p>
@@ -12794,8 +12677,8 @@ INSERT INTO civicrm_msg_template
      </tr>
      <tr>
       <td colspan="2" {$valueStyle}>
-       {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {event.title}<br />
+       {event.start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
 
@@ -13258,8 +13141,8 @@ INSERT INTO civicrm_msg_template
 </body>
 </html>
 ', 'event_offline_receipt', @tpl_ovid_event_offline_receipt, 1,          0),
-      ('Events - Registration Confirmation and Receipt (off-line)', '{ts}Event Confirmation{/ts} - {$event.title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+      ('Events - Registration Confirmation and Receipt (off-line)', '{ts}Event Confirmation{/ts} - {event.title} - {contact.display_name}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 {if !empty($event.confirm_email_text) AND (empty($isOnWaitlist) AND empty($isRequireApproval))}
 {$event.confirm_email_text}
 {/if}
@@ -13302,8 +13185,8 @@ INSERT INTO civicrm_msg_template
 
 ==========================================================={if !empty($pricesetFieldsCount) }===================={/if}
 
-{$event.event_title}
-{$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+{event.title}
+{event.start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
 
 {if !empty($event.participant_role) and $event.participant_role neq \'Attendee\' and empty($defaultRole)}
 {ts}Participant Role{/ts}: {$event.participant_role}
@@ -13574,7 +13457,7 @@ INSERT INTO civicrm_msg_template
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
 
     {if !empty($event.confirm_email_text) AND (empty($isOnWaitlist) AND empty($isRequireApproval))}
      <p>{$event.confirm_email_text|htmlize}</p>
@@ -13606,8 +13489,8 @@ INSERT INTO civicrm_msg_template
      </tr>
      <tr>
       <td colspan="2" {$valueStyle}>
-       {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {event.title}<br />
+       {event.start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
 
@@ -14072,8 +13955,8 @@ INSERT INTO civicrm_msg_template
 ', 'event_offline_receipt', @tpl_ovid_event_offline_receipt, 0,          1) ,      
       
       
-      ('Events - Registration Confirmation and Receipt (on-line)', '{if !empty($isOnWaitlist)}{ts}Wait List Confirmation{/ts}{elseif !empty($isRequireApproval)}{ts}Registration Request Confirmation{/ts}{else}{ts}Registration Confirmation{/ts}{/if} - {$event.event_title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+      ('Events - Registration Confirmation and Receipt (on-line)', '{if !empty($isOnWaitlist)}{ts}Wait List Confirmation{/ts}{elseif !empty($isRequireApproval)}{ts}Registration Request Confirmation{/ts}{else}{ts}Registration Confirmation{/ts}{/if} - {event.title} - {contact.display_name}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 {if !empty($event.confirm_email_text) AND (empty($isOnWaitlist) AND empty($isRequireApproval))}
 {$event.confirm_email_text}
 
@@ -14121,8 +14004,8 @@ INSERT INTO civicrm_msg_template
 
 ==========================================================={if !empty($pricesetFieldsCount)}===================={/if}
 
-{$event.event_title}
-{$event.event_start_date|crmDate:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
+{event.title}
+{event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
 {if !empty($conference_sessions)}
 
 
@@ -14388,7 +14271,7 @@ You were registered by: {$payer.name}
 
   <tr>
    <td>
-     {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
 
     {if !empty($event.confirm_email_text) AND (empty($isOnWaitlist) AND empty($isRequireApproval))}
      <p>{$event.confirm_email_text|htmlize}</p>
@@ -14427,8 +14310,8 @@ You were registered by: {$payer.name}
      </tr>
      <tr>
       <td colspan="2" {$valueStyle}>
-       {$event.event_title}<br />
-       {$event.event_start_date|crmDate:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
+       {event.title}<br />
+       {event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
 
@@ -14860,8 +14743,8 @@ You were registered by: {$payer.name}
 </body>
 </html>
 ', 'event_online_receipt', @tpl_ovid_event_online_receipt, 1,          0),
-      ('Events - Registration Confirmation and Receipt (on-line)', '{if !empty($isOnWaitlist)}{ts}Wait List Confirmation{/ts}{elseif !empty($isRequireApproval)}{ts}Registration Request Confirmation{/ts}{else}{ts}Registration Confirmation{/ts}{/if} - {$event.event_title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+      ('Events - Registration Confirmation and Receipt (on-line)', '{if !empty($isOnWaitlist)}{ts}Wait List Confirmation{/ts}{elseif !empty($isRequireApproval)}{ts}Registration Request Confirmation{/ts}{else}{ts}Registration Confirmation{/ts}{/if} - {event.title} - {contact.display_name}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 {if !empty($event.confirm_email_text) AND (empty($isOnWaitlist) AND empty($isRequireApproval))}
 {$event.confirm_email_text}
 
@@ -14909,8 +14792,8 @@ You were registered by: {$payer.name}
 
 ==========================================================={if !empty($pricesetFieldsCount)}===================={/if}
 
-{$event.event_title}
-{$event.event_start_date|crmDate:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
+{event.title}
+{event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
 {if !empty($conference_sessions)}
 
 
@@ -15176,7 +15059,7 @@ You were registered by: {$payer.name}
 
   <tr>
    <td>
-     {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
 
     {if !empty($event.confirm_email_text) AND (empty($isOnWaitlist) AND empty($isRequireApproval))}
      <p>{$event.confirm_email_text|htmlize}</p>
@@ -15215,8 +15098,8 @@ You were registered by: {$payer.name}
      </tr>
      <tr>
       <td colspan="2" {$valueStyle}>
-       {$event.event_title}<br />
-       {$event.event_start_date|crmDate:"%A"} {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
+       {event.title}<br />
+       {event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
       </td>
      </tr>
 
@@ -15651,7 +15534,7 @@ You were registered by: {$payer.name}
       
       
       ('Events - Receipt only', 'Receipt for {if $events_in_cart} Event Registration{/if} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {if $is_pay_later}
   This is being sent to you as an acknowledgement that you have registered one or more members for the following workshop, event or purchase. Please note, however, that the status of your payment is pending, and the registration for this event will not be completed until your payment is received.
@@ -15743,7 +15626,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
     {capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
     {capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
 
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     {if $is_pay_later}
       <p>
         This is being sent to you as an acknowledgement that you have registered one or more members for the following workshop, event or purchase. Please note, however, that the status of your payment is pending, and the registration for this event will not be completed until your payment is received.
@@ -15908,7 +15791,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
 </html>
 ', 'event_registration_receipt', @tpl_ovid_event_registration_receipt, 1,          0),
       ('Events - Receipt only', 'Receipt for {if $events_in_cart} Event Registration{/if} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {if $is_pay_later}
   This is being sent to you as an acknowledgement that you have registered one or more members for the following workshop, event or purchase. Please note, however, that the status of your payment is pending, and the registration for this event will not be completed until your payment is received.
@@ -16000,7 +15883,7 @@ Total: {$total|crmMoney:$currency|string_format:"%10s"}
     {capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
     {capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
 
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     {if $is_pay_later}
       <p>
         This is being sent to you as an acknowledgement that you have registered one or more members for the following workshop, event or purchase. Please note, however, that the status of your payment is pending, and the registration for this event will not be completed until your payment is received.
@@ -17443,7 +17326,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
       
       
       ('Events - Registration Transferred Notice', '{ts 1=$event.event_title}Event Registration Transferred for %1{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1=$to_participant}Your Event Registration has been transferred to %1.{/ts}
 
@@ -17510,7 +17393,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1=$to_participant}Your Event Registration has been Transferred to %1.{/ts}</p>
    </td>
   </tr>
@@ -17617,7 +17500,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 </html>
 ', 'participant_transferred', @tpl_ovid_participant_transferred, 1,          0),
       ('Events - Registration Transferred Notice', '{ts 1=$event.event_title}Event Registration Transferred for %1{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1=$to_participant}Your Event Registration has been transferred to %1.{/ts}
 
@@ -17684,7 +17567,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1=$to_participant}Your Event Registration has been Transferred to %1.{/ts}</p>
    </td>
   </tr>
@@ -17909,7 +17792,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 {elseif $receiptType EQ \'membership renewal\'}
 {ts}Membership Renewal Confirmation and Receipt{/ts}
 {/if} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {if $receipt_text}
 {$receipt_text}
@@ -18042,7 +17925,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
     <tr>
       <td>
-        {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+        {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
         {if $receipt_text}
           <p>{$receipt_text|htmlize}</p>
           <p>{ts}Thank you for this contribution.{/ts}</p>
@@ -18318,7 +18201,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 {elseif $receiptType EQ \'membership renewal\'}
 {ts}Membership Renewal Confirmation and Receipt{/ts}
 {/if} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {if $receipt_text}
 {$receipt_text}
@@ -18451,7 +18334,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
     <tr>
       <td>
-        {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+        {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
         {if $receipt_text}
           <p>{$receipt_text|htmlize}</p>
           <p>{ts}Thank you for this contribution.{/ts}</p>
@@ -18725,7 +18608,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
       
       
       ('Memberships - Receipt (on-line)', '{if $is_pay_later}{ts}Invoice{/ts}{else}{ts}Receipt{/ts}{/if} - {$title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 {if !empty($receipt_text)}
 {$receipt_text}
 {/if}
@@ -18988,7 +18871,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
   <tr>
    <td>
-     {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     {if !empty($receipt_text)}
      <p>{$receipt_text|htmlize}</p>
     {/if}
@@ -19519,7 +19402,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 </html>
 ', 'membership_online_receipt', @tpl_ovid_membership_online_receipt, 1,          0),
       ('Memberships - Receipt (on-line)', '{if $is_pay_later}{ts}Invoice{/ts}{else}{ts}Receipt{/ts}{/if} - {$title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 {if !empty($receipt_text)}
 {$receipt_text}
 {/if}
@@ -19782,7 +19665,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
   <tr>
    <td>
-     {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     {if !empty($receipt_text)}
      <p>{$receipt_text|htmlize}</p>
     {/if}
@@ -20315,7 +20198,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
       
       
       ('Memberships - Auto-renew Cancellation Notification', '{ts}Autorenew Membership Cancellation Notification{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1=$membershipType}The automatic renewal of your %1 membership has been cancelled as requested. This does not affect the status of your membership - you will receive a separate notification when your membership is up for renewal.{/ts}
 
@@ -20351,7 +20234,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1=$membershipType}The automatic renewal of your %1 membership has been cancelled as requested. This does not affect the status of your membership - you will receive a separate notification when your membership is up for renewal.{/ts}</p>
 
    </td>
@@ -20399,7 +20282,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 </html>
 ', 'membership_autorenew_cancelled', @tpl_ovid_membership_autorenew_cancelled, 1,          0),
       ('Memberships - Auto-renew Cancellation Notification', '{ts}Autorenew Membership Cancellation Notification{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1=$membershipType}The automatic renewal of your %1 membership has been cancelled as requested. This does not affect the status of your membership - you will receive a separate notification when your membership is up for renewal.{/ts}
 
@@ -20435,7 +20318,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1=$membershipType}The automatic renewal of your %1 membership has been cancelled as requested. This does not affect the status of your membership - you will receive a separate notification when your membership is up for renewal.{/ts}</p>
 
    </td>
@@ -20485,7 +20368,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
       
       
       ('Memberships - Auto-renew Billing Updates', '{ts}Membership Autorenewal Billing Updates{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1=$membershipType}Billing details for your automatically renewed %1 membership have been updated.{/ts}
 
@@ -20530,7 +20413,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1=$membershipType}Billing details for your automatically renewed %1 membership have been updated.{/ts}</p>
    </td>
   </tr>
@@ -20574,7 +20457,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 </html>
 ', 'membership_autorenew_billing', @tpl_ovid_membership_autorenew_billing, 1,          0),
       ('Memberships - Auto-renew Billing Updates', '{ts}Membership Autorenewal Billing Updates{/ts} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 {ts 1=$membershipType}Billing details for your automatically renewed %1 membership have been updated.{/ts}
 
@@ -20619,7 +20502,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
 
   <tr>
    <td>
-    {assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+    {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
     <p>{ts 1=$membershipType}Billing details for your automatically renewed %1 membership have been updated.{/ts}</p>
    </td>
   </tr>
@@ -21481,20 +21364,20 @@ or need to modify your payment schedule.{/ts}</p>
       
       
       ('Petition - signature added', 'Thank you for signing {$petition.title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 Thank you for signing {$petition.title}.
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
 
 <p>Thank you for signing {$petition.title}.</p>
 
 {include file="CRM/Campaign/Page/Petition/SocialNetwork.tpl" petition_id=$survey_id noscript=true emailMode=true}
 ', 'petition_sign', @tpl_ovid_petition_sign, 1,          0),
       ('Petition - signature added', 'Thank you for signing {$petition.title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 Thank you for signing {$petition.title}.
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
 
 <p>Thank you for signing {$petition.title}.</p>
 
@@ -21503,7 +21386,7 @@ Thank you for signing {$petition.title}.
       
       
       ('Petition - need verification', 'Confirmation of signature needed for {$petition.title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 Thank you for signing {$petition.title}.
 
@@ -21513,7 +21396,7 @@ Please do so by visiting the following email confirmation web page:
 {$petition.confirmUrlPlainText}
 
 If you did not sign this petition, please ignore this message.
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
 
 <p>Thank you for signing {$petition.title}.</p>
 
@@ -21527,7 +21410,7 @@ Email confirmation page: <a href="{$petition.confirmUrl}">{$petition.confirmUrl}
 <p>If you did not sign this petition, please ignore this message.</p>
 ', 'petition_confirmation_needed', @tpl_ovid_petition_confirmation_needed, 1,          0),
       ('Petition - need verification', 'Confirmation of signature needed for {$petition.title} - {contact.display_name}
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}{$greeting},{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
 Thank you for signing {$petition.title}.
 
@@ -21537,7 +21420,7 @@ Please do so by visiting the following email confirmation web page:
 {$petition.confirmUrlPlainText}
 
 If you did not sign this petition, please ignore this message.
-', '{assign var="greeting" value="{contact.email_greeting}"}{if $greeting}<p>{$greeting},</p>{/if}
+', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
 
 <p>Thank you for signing {$petition.title}.</p>
 
@@ -21878,7 +21761,7 @@ INSERT INTO civicrm_msg_template
   																	<!-- /Spacing --><!-- content -->
   																	<tr>
   																		<td style="padding:0 15px;">
-  																		<p style="font-family: Helvetica, arial, sans-serif; font-size: 16px; color: #7a6e67; text-align:left; line-height: 26px; padding-bottom:10px;">{contact.email_greeting},																		</p>
+  																		<p style="font-family: Helvetica, arial, sans-serif; font-size: 16px; color: #7a6e67; text-align:left; line-height: 26px; padding-bottom:10px;">{contact.email_greeting_display},																		</p>
   																		<p style="font-family: Helvetica, arial, sans-serif; font-size: 16px; color: #7a6e67; text-align:left; line-height: 26px; padding-bottom:10px;"><span class="padding-right15" style="font-family: Helvetica, arial, sans-serif; font-size: 14px; color: #7a6e67; text-align:left; line-height: 24px;">Replace with your text and images, and remember to link the facebook and twitter links in the footer to your pages. Have fun!</span></p>
   																		</td>
   																	</tr>
@@ -23002,18 +22885,18 @@ SELECT @option_group_id_recent := max(id) from civicrm_option_group where name =
 
 INSERT INTO civicrm_option_value (`option_group_id`, label, `value`, `name`, `grouping`, `filter`, `is_default`, `weight`, description, `is_optgroup`, `is_reserved`, `is_active`, `component_id`, `visibility_id`)
  VALUES
-    (@option_group_id_recent, 'Contacts', 'Contact', 'Contacts', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Relationships', 'Relationship', 'Relationships', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Activities', 'Activity', 'Activities', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Notes', 'Note', 'Notes', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Groups', 'Group', 'Groups', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Cases', 'Case', 'Cases', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Contributions', 'Contribution', 'Contributions', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Participants', 'Participant', 'Participants', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Memberships', 'Membership', 'Memberships', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Pledges', 'Pledge', 'Pledges', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Events', 'Event', 'Events', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, 'Campaigns', 'Campaign', 'Campaigns', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL);
+    (@option_group_id_recent, 'Contacts', 'Contact', 'Contact', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Relationships', 'Relationship', 'Relationship', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Activities', 'Activity', 'Activity', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Notes', 'Note', 'Note', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Groups', 'Group', 'Group', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Cases', 'Case', 'Case', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Contributions', 'Contribution', 'Contribution', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Participants', 'Participant', 'Participant', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Memberships', 'Membership', 'Membership', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Pledges', 'Pledge', 'Pledge', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Events', 'Event', 'Event', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, 'Campaigns', 'Campaign', 'Campaign', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL);
 -- +--------------------------------------------------------------------+
 -- | Copyright CiviCRM LLC. All rights reserved.                        |
 -- |                                                                    |
@@ -23079,11 +22962,6 @@ VALUES
     ( @domainID, 'civicrm/event/search?reset=1',                            'Find Participants',  'Find Participants',  'access CiviEvent', '',   @searchlastID, '1', NULL, 9 ),
     ( @domainID, 'civicrm/pledge/search?reset=1',                           'Find Pledges',       'Find Pledges', 'access CiviPledge', '',        @searchlastID, '1', NULL, 10 ),
     ( @domainID, 'civicrm/activity/search?reset=1',                         'Find Activities',    'Find Activities', NULL,  '',                   @searchlastID, '1', '1',  11 );
-
-INSERT INTO civicrm_navigation
-    ( domain_id, url, label, name, permission, permission_operator, parent_id, is_active, has_separator, weight )
-VALUES
-    ( @domainID, 'civicrm/contact/search/custom/list?reset=1',              'Custom Searches', 'Custom Searches', NULL, '',                 @searchlastID, '1', NULL, 12 );
 
 INSERT INTO civicrm_navigation
     ( domain_id, url, label, name, permission, permission_operator, parent_id, is_active, has_separator, weight, icon )
@@ -23301,8 +23179,7 @@ VALUES
     ( @domainID, 'civicrm/admin/setting/search?reset=1',    'Search Preferences',    'Search Preferences',                'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 10 ),
     ( @domainID, 'civicrm/admin/setting/preferences/date?reset=1', 'Date Preferences', 'Date Preferences', 'administer CiviCRM', '', @CustomizelastID, '1', NULL, 11 ),
     ( @domainID, 'civicrm/admin/menu?reset=1',              'Navigation Menu', 'Navigation Menu',                         'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 12 ),
-    ( @domainID, 'civicrm/admin/options/wordreplacements?reset=1','Word Replacements','Word Replacements',                'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 13 ),
-    ( @domainID, 'civicrm/admin/options/custom_search?reset=1', 'Manage Custom Searches', 'Manage Custom Searches', 'administer CiviCRM', '', @CustomizelastID, '1', NULL, 14 );
+    ( @domainID, 'civicrm/admin/options/wordreplacements?reset=1','Word Replacements','Word Replacements',                'administer CiviCRM', '',   @CustomizelastID, '1', NULL, 13 );
 
 INSERT INTO civicrm_navigation
     ( domain_id, url, label, name, permission, permission_operator, parent_id, is_active, has_separator, weight )
@@ -23775,4 +23652,4 @@ INSERT INTO `civicrm_report_instance`
     ( `domain_id`, `title`, `report_id`, `description`, `permission`, `form_values`)
 VALUES
     (  @domainID, 'Survey Details', 'survey/detail', 'Detailed report for canvassing, phone-banking, walk lists or other surveys.', 'access CiviReport', 'a:39:{s:6:"fields";a:2:{s:9:"sort_name";s:1:"1";s:6:"result";s:1:"1";}s:22:"assignee_contact_id_op";s:2:"eq";s:25:"assignee_contact_id_value";s:0:"";s:12:"sort_name_op";s:3:"has";s:15:"sort_name_value";s:0:"";s:17:"street_number_min";s:0:"";s:17:"street_number_max";s:0:"";s:16:"street_number_op";s:3:"lte";s:19:"street_number_value";s:0:"";s:14:"street_name_op";s:3:"has";s:17:"street_name_value";s:0:"";s:15:"postal_code_min";s:0:"";s:15:"postal_code_max";s:0:"";s:14:"postal_code_op";s:3:"lte";s:17:"postal_code_value";s:0:"";s:7:"city_op";s:3:"has";s:10:"city_value";s:0:"";s:20:"state_province_id_op";s:2:"in";s:23:"state_province_id_value";a:0:{}s:13:"country_id_op";s:2:"in";s:16:"country_id_value";a:0:{}s:12:"survey_id_op";s:2:"in";s:15:"survey_id_value";a:0:{}s:12:"status_id_op";s:2:"eq";s:15:"status_id_value";s:1:"1";s:11:"custom_1_op";s:2:"in";s:14:"custom_1_value";a:0:{}s:11:"custom_2_op";s:2:"in";s:14:"custom_2_value";a:0:{}s:17:"custom_3_relative";s:1:"0";s:13:"custom_3_from";s:0:"";s:11:"custom_3_to";s:0:"";s:11:"description";s:75:"Detailed report for canvassing, phone-banking, walk lists or other surveys.";s:13:"email_subject";s:0:"";s:8:"email_to";s:0:"";s:8:"email_cc";s:0:"";s:10:"permission";s:17:"access CiviReport";s:6:"groups";s:0:"";s:9:"domain_id";i:1;}');
-UPDATE civicrm_domain SET version = '5.53.0';
+UPDATE civicrm_domain SET version = '5.54.0';

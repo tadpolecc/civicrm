@@ -1162,7 +1162,6 @@ VALUES
  ('AuthNet',            '{ts escape="sql"}Authorize.Net{/ts}',          NULL,1,0,'{ts escape="sql"}API Login{/ts}','{ts escape="sql"}Payment Key{/ts}','{ts escape="sql"}MD5 Hash{/ts}',NULL,'Payment_AuthorizeNet','https://secure2.authorize.net/gateway/transact.dll',NULL,'https://api2.authorize.net/xml/v1/request.api',NULL,'https://test.authorize.net/gateway/transact.dll',NULL,'https://apitest.authorize.net/xml/v1/request.api',NULL,1,1),
  ('PayJunction',        '{ts escape="sql"}PayJunction{/ts}',            NULL,0,0,'User Name','Password',NULL,NULL,'Payment_PayJunction','https://payjunction.com/quick_link',NULL,NULL,NULL,'https://www.payjunctionlabs.com/quick_link',NULL,NULL,NULL,1,1),
  ('Dummy',              '{ts escape="sql"}Dummy Payment Processor{/ts}',NULL,1,1,'{ts escape="sql"}User Name{/ts}',NULL,NULL,NULL,'Payment_Dummy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,1),
- ('Elavon',             '{ts escape="sql"}Elavon Payment Processor{/ts}','{ts escape="sql"}Elavon / Nova Virtual Merchant{/ts}',0,0,'{ts escape="sql"}SSL Merchant ID {/ts}','{ts escape="sql"}SSL User ID{/ts}','{ts escape="sql"}SSL PIN{/ts}',NULL,'Payment_Elavon','https://www.myvirtualmerchant.com/VirtualMerchant/processxml.do',NULL,NULL,NULL,'https://www.myvirtualmerchant.com/VirtualMerchant/processxml.do',NULL,NULL,NULL,1,0),
  ('Realex',             '{ts escape="sql"}Realex Payment{/ts}',         NULL,0,0,'Merchant ID', 'Password', NULL, 'Account', 'Payment_Realex', 'https://epage.payandshop.com/epage.cgi', NULL, NULL, NULL, 'https://epage.payandshop.com/epage-remote.cgi', NULL, NULL, NULL, 1, 0),
  ('FirstData',          '{ts escape="sql"}FirstData (aka linkpoint){/ts}', '{ts escape="sql"}FirstData (aka linkpoint){/ts}', 0, 0, 'Store name', 'certificate path', NULL, NULL, 'Payment_FirstData', 'https://secure.linkpt.net', NULL, NULL, NULL, 'https://staging.linkpt.net', NULL, NULL, NULL, 1, 0);
 
@@ -1797,15 +1796,15 @@ SELECT @option_group_id_recent := max(id) from civicrm_option_group where name =
 
 INSERT INTO civicrm_option_value (`option_group_id`, {localize field='label'}label{/localize}, `value`, `name`, `grouping`, `filter`, `is_default`, `weight`, {localize field='description'}description{/localize}, `is_optgroup`, `is_reserved`, `is_active`, `component_id`, `visibility_id`)
  VALUES
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Contacts{/ts}'{/localize}, 'Contact', 'Contacts', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Relationships{/ts}'{/localize}, 'Relationship', 'Relationships', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Activities{/ts}'{/localize}, 'Activity', 'Activities', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Notes{/ts}'{/localize}, 'Note', 'Notes', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Groups{/ts}'{/localize}, 'Group', 'Groups', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Cases{/ts}'{/localize}, 'Case', 'Cases', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Contributions{/ts}'{/localize}, 'Contribution', 'Contributions', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Participants{/ts}'{/localize}, 'Participant', 'Participants', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Memberships{/ts}'{/localize}, 'Membership', 'Memberships', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Pledges{/ts}'{/localize}, 'Pledge', 'Pledges', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Events{/ts}'{/localize}, 'Event', 'Events', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL),
-    (@option_group_id_recent, {localize}'{ts escape="sql"}Campaigns{/ts}'{/localize}, 'Campaign', 'Campaigns', NULL, NULL, 0, 1, '', 0, 0, 1, NULL, NULL);
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Contacts{/ts}'{/localize}, 'Contact', 'Contact', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Relationships{/ts}'{/localize}, 'Relationship', 'Relationship', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Activities{/ts}'{/localize}, 'Activity', 'Activity', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Notes{/ts}'{/localize}, 'Note', 'Note', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Groups{/ts}'{/localize}, 'Group', 'Group', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Cases{/ts}'{/localize}, 'Case', 'Case', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Contributions{/ts}'{/localize}, 'Contribution', 'Contribution', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Participants{/ts}'{/localize}, 'Participant', 'Participant', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Memberships{/ts}'{/localize}, 'Membership', 'Membership', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Pledges{/ts}'{/localize}, 'Pledge', 'Pledge', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Events{/ts}'{/localize}, 'Event', 'Event', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL),
+    (@option_group_id_recent, {localize}'{ts escape="sql"}Campaigns{/ts}'{/localize}, 'Campaign', 'Campaign', NULL, NULL, 0, 1, '', 0, 1, 1, NULL, NULL);
