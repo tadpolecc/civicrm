@@ -10,7 +10,7 @@ return array(
     'TOGoS_GitIgnore_' => array($vendorDir . '/togos/gitignore/src/main/php'),
     'PHPUnit_' => array($baseDir . '/packages'),
     'Net' => array($vendorDir . '/pear/net_socket', $vendorDir . '/pear/net_smtp'),
-    'Mail' => array($vendorDir . '/pear/mail', $vendorDir . '/pear/mail_mime'),
+    'Mail' => array($vendorDir . '/pear/mail_mime', $vendorDir . '/pear/mail'),
     'Lurker' => array($vendorDir . '/totten/lurkerlite/src'),
     'Log' => array($vendorDir . '/pear/log'),
     'HTMLPurifier' => array($vendorDir . '/ezyang/htmlpurifier/library'),
