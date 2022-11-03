@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'civicrm/civicrm-core',
-        'pretty_version' => '5.54.x-dev',
-        'version' => '5.54.9999999.9999999-dev',
-        'reference' => 'fe7de90d3fc2fe8631adca2439eaa44a27db41c4',
+        'pretty_version' => '5.55.x-dev',
+        'version' => '5.55.9999999.9999999-dev',
+        'reference' => '50ba554869bfcfedc5729c7764eeb242f8e87188',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -56,9 +56,9 @@
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-core' => array(
-            'pretty_version' => '5.54.x-dev',
-            'version' => '5.54.9999999.9999999-dev',
-            'reference' => 'fe7de90d3fc2fe8631adca2439eaa44a27db41c4',
+            'pretty_version' => '5.55.x-dev',
+            'version' => '5.55.9999999.9999999-dev',
+            'reference' => '50ba554869bfcfedc5729c7764eeb242f8e87188',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -800,9 +800,9 @@
             'dev_requirement' => false,
         ),
         'tplaner/when' => array(
-            'pretty_version' => '3.0.0+php53',
-            'version' => '3.0.0.0',
-            'reference' => NULL,
+            'pretty_version' => 'v3.1.5',
+            'version' => '3.1.5.0',
+            'reference' => '8865acc235df8f57c2b229517c57c613b11ce4aa',
             'type' => 'library',
             'install_path' => __DIR__ . '/../tplaner/when',
             'aliases' => array(),

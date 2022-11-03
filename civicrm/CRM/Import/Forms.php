@@ -69,13 +69,23 @@ class CRM_Import_Forms extends CRM_Core_Form {
   protected $parser;
 
   /**
+   * Is the code being accessed in QuickForm mode.
+   *
+   * If false, ie functions being called to support the angular form, then we
+   * 'quick-form-ify' the fields with dots over to double underscores.
+   *
+   * @var bool
+   */
+  protected $isQuickFormMode = TRUE;
+
+  /**
    * Get User Job.
    *
    * API call to retrieve the userJob row.
    *
    * @return array
    *
-   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
    */
   protected function getUserJob(): array {
     if (!$this->userJob) {
@@ -91,7 +101,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * Get submitted values stored in the user job.
    *
    * @return array
-   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
    */
   protected function getUserJobSubmittedValues(): array {
     return $this->getUserJob()['metadata']['submitted_values'];
@@ -264,7 +274,6 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * - however, the sql class, for example, might realise the fields it cares
    * about are unchanged and not flush the table.
    *
-   * @throws \API_Exception
    * @throws \CRM_Core_Exception
    */
   protected function flushDataSource(): void {
@@ -361,7 +370,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
    *
    * @return int
    *
-   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
    */
   protected function createUserJob(): int {
     $id = UserJob::create(FALSE)
@@ -385,7 +394,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * @param string $key
    * @param array $data
    *
-   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
    * @throws \Civi\API\Exception\UnauthorizedException
    */
   protected function updateUserJobMetadata(string $key, array $data): void {
@@ -409,7 +418,6 @@ class CRM_Import_Forms extends CRM_Core_Form {
    *
    * @return array
    *
-   * @throws \API_Exception
    * @throws \CRM_Core_Exception
    */
   protected function getColumnHeaders(): array {
@@ -421,7 +429,6 @@ class CRM_Import_Forms extends CRM_Core_Form {
    *
    * @return int
    *
-   * @throws \API_Exception
    * @throws \CRM_Core_Exception
    */
   protected function getNumberOfColumns(): int {
@@ -443,7 +450,6 @@ class CRM_Import_Forms extends CRM_Core_Form {
    *   or [CRM_Import_Parser::ERROR, CRM_Import_Parser::VALID]
    *
    * @throws \CRM_Core_Exception
-   * @throws \API_Exception
    */
   protected function getDataRows($statuses = [], int $limit = 0): array {
     $statuses = (array) $statuses;
@@ -457,7 +463,6 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * @param int $limit
    *
    * @return array
-   * @throws \API_Exception
    * @throws \CRM_Core_Exception
    */
   protected function getOutputRows($statuses = [], int $limit = 0) {
@@ -486,7 +491,6 @@ class CRM_Import_Forms extends CRM_Core_Form {
    *
    * @return int
    *
-   * @throws \API_Exception
    * @throws \CRM_Core_Exception
    */
   protected function getRowCount($statuses = []) {
@@ -500,7 +504,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * This gets the rows from the temp table that match the relevant status
    * and output them as a csv.
    *
-   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
    * @throws \League\Csv\CannotInsertRecord
    * @throws \CRM_Core_Exception
    */
@@ -570,7 +574,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * @return array
    *   e.g ['first_name' => 'First Name', 'last_name' => 'Last Name'....
    *
-   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
    */
   protected function getAvailableFields(): array {
     $return = [];
@@ -650,7 +654,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * ['First Name', 'Employee Of - First Name', 'Home - Street Address']
    *
    * @return array
-   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
    */
   protected function getMappedFieldLabels(): array {
     $mapper = [];
@@ -670,7 +674,6 @@ class CRM_Import_Forms extends CRM_Core_Form {
   /**
    * Assign variables required for the MapField form.
    *
-   * @throws \API_Exception
    * @throws \CRM_Core_Exception
    */
   protected function assignMapFieldVariables(): void {
@@ -778,6 +781,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
       $contactTypes[] = ['id' => $contactType['name'], 'text' => $contactType['label']];
     }
     $parser = $this->getParser();
+    $this->isQuickFormMode = FALSE;
     Civi::resources()->addVars('crmImportUi', [
       'defaults' => $this->getDefaults(),
       'rows' => $this->getDataRows([], 2),

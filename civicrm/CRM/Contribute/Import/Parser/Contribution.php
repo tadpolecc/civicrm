@@ -203,7 +203,7 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
    *     'external_identifier' => 'abcd',
    *     'soft_credit' => [3 => ['external_identifier' => '123', 'soft_credit_type_id' => 1]]
    *
-   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
    */
   public function getMappedRow(array $values): array {
     $params = [];
@@ -340,7 +340,7 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
    * Get a list of entities this import supports.
    *
    * @return array
-   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
    */
   public function getImportEntities() : array {
     $softCreditTypes = ContributionSoft::getFields()
@@ -440,7 +440,7 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
       $softCreditParams = [];
       foreach ($params['SoftCreditContact'] ?? [] as $index => $softCreditContact) {
         $softCreditParams[$index]['soft_credit_type_id'] = $softCreditContact['soft_credit_type_id'];
-        $softCreditParams[$index]['contact_id'] = $this->getContactID($softCreditContact['Contact'], $softCreditContact['id'] ?? NULL, 'SoftCreditContact', $this->getDedupeRulesForEntity('SoftCreditContact'));
+        $softCreditParams[$index]['contact_id'] = $this->getContactID($softCreditContact['Contact'], $softCreditContact['Contact']['id'] ?? NULL, 'SoftCreditContact', $this->getDedupeRulesForEntity('SoftCreditContact'));
         if (empty($softCreditParams[$index]['contact_id']) && in_array($this->getActionForEntity('SoftCreditContact'), ['update', 'select'])) {
           throw new CRM_Core_Exception(ts('Soft Credit Contact not found'));
         }
@@ -674,7 +674,7 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
   /**
    * @param int $contributionID
    *
-   * @throws \CiviCRM_API3_Exception
+   * @throws \CRM_Core_Exception
    */
   protected function deleteExistingSoftCredit(int $contributionID): void {
     //Delete all existing soft Contribution from contribution_soft table for pcp_id is_null
@@ -727,7 +727,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
    * @return int
    *   Contact ID
    *
-   * @throws \API_Exception
    * @throws \CRM_Core_Exception
    */
   private function lookupMatchingContact(array $params): int {
@@ -808,7 +807,7 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
    * @param int $contactID
    * @param array $noteParams
    *
-   * @throws \API_Exception
+   * @throws \CRM_Core_Exception
    */
   protected function processNote(int $contributionID, int $contactID, array $noteParams): void {
     $noteParams = array_merge([

@@ -1,4 +1,5 @@
-{*
+<?php
+/*
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC. All rights reserved.                        |
  |                                                                    |
@@ -6,6 +7,17 @@
  | permitted exceptions and without any warranty. For full license    |
  | and copyright information, see https://civicrm.org/licensing       |
  +--------------------------------------------------------------------+
-*}
-{include file="CRM/Report/Form.tpl"}
+ */
+namespace Civi\Api4;
 
+/**
+ * JobLog entity.
+ *
+ * @searchable secondary
+ * @since 5.56
+ * @package Civi\Api4
+ */
+class JobLog extends Generic\DAOEntity {
+  use Generic\Traits\ReadOnlyEntity;
+
+}
