@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CiviCRM
  * Description: CiviCRM - Growing and Sustaining Relationships
- * Version: 5.55.2
+ * Version: 5.56.0
  * Requires at least: 4.9
  * Requires PHP:      7.2
  * Author: CiviCRM LLC
@@ -36,7 +36,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Set version here: changing it forces Javascript and CSS to reload.
-define('CIVICRM_PLUGIN_VERSION', '5.55.2');
+define('CIVICRM_PLUGIN_VERSION', '5.56.0');
 
 // Store reference to this file.
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -1358,8 +1358,8 @@ class CiviCRM_For_WordPress {
     if (CRM_Utils_Array::value('HTTP_X_REQUESTED_WITH', $_SERVER) == 'XMLHttpRequest'
         || ($argdata['args'][0] == 'civicrm' && in_array($argdata['args'][1], ['ajax', 'file']))
         || !empty($_REQUEST['snippet'])
-        || strpos($argdata['argString'], 'civicrm/event/ical') === 0 && empty($html)
-        || strpos($argdata['argString'], 'civicrm/contact/imagefile') === 0
+        || strpos($argdata['argString'] ?? '', 'civicrm/event/ical') === 0 && empty($html)
+        || strpos($argdata['argString'] ?? '', 'civicrm/contact/imagefile') === 0
     ) {
       $return = FALSE;
     }
