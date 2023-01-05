@@ -311,15 +311,6 @@ function _civicrm_api3_get_DAO($name) {
 
   // hack to deal with incorrectly named BAO/DAO - see CRM-10859
 
-  // FIXME: DAO should be renamed CRM_Mailing_DAO_MailingEventQueue
-  if ($name === 'MailingEventQueue') {
-    return 'CRM_Mailing_Event_DAO_Queue';
-  }
-  // FIXME: DAO should be renamed CRM_Mailing_DAO_MailingRecipients
-  // but am not confident mailing_recipients is tested so have not tackled.
-  if ($name === 'MailingRecipients') {
-    return 'CRM_Mailing_DAO_Recipients';
-  }
   if ($name === 'AclRole' || $name === 'ACLRole') {
     return 'CRM_ACL_DAO_ACLEntityRole';
   }
@@ -1395,7 +1386,7 @@ function _civicrm_api3_basic_create_fallback($bao_name, $params) {
 function _civicrm_api3_basic_delete($bao_name, &$params) {
   civicrm_api3_verify_mandatory($params, NULL, ['id']);
   _civicrm_api3_check_edit_permissions($bao_name, ['id' => $params['id']]);
-  if (method_exists($bao_name, 'del')) {
+  if (method_exists($bao_name, 'del') && !\Civi\Api4\Utils\ReflectionUtils::isMethodDeprecated($bao_name, 'del')) {
     $args = [&$params['id']];
     $dao = new $bao_name();
     $dao->id = $params['id'];

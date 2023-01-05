@@ -1,11 +1,11 @@
 <?php return array(
     'root' => array(
-        'pretty_version' => '5.56.x-dev',
-        'version' => '5.56.9999999.9999999-dev',
+        'pretty_version' => '5.57.x-dev',
+        'version' => '5.57.9999999.9999999-dev',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => '9ea8368ec4acaedf95fe22106dc975fcbb78a744',
+        'reference' => 'c201aeb3f7d75a32161bee17873922c3c9a88a6b',
         'name' => 'civicrm/civicrm-core',
         'dev' => true,
     ),
@@ -56,12 +56,12 @@
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-core' => array(
-            'pretty_version' => '5.56.x-dev',
-            'version' => '5.56.9999999.9999999-dev',
+            'pretty_version' => '5.57.x-dev',
+            'version' => '5.57.9999999.9999999-dev',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => '9ea8368ec4acaedf95fe22106dc975fcbb78a744',
+            'reference' => 'c201aeb3f7d75a32161bee17873922c3c9a88a6b',
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-cxn-rpc' => array(
@@ -341,12 +341,12 @@
             'dev_requirement' => false,
         ),
         'pear/mail' => array(
-            'pretty_version' => 'v1.4.1',
-            'version' => '1.4.1.0',
+            'pretty_version' => 'v1.5.0',
+            'version' => '1.5.0.0',
             'type' => 'library',
             'install_path' => __DIR__ . '/../pear/mail',
             'aliases' => array(),
-            'reference' => '9609ed5e42ac5b221dfd9af85de005c59d418ee7',
+            'reference' => 'c31b7635899a630a8ce681e5ced18cededcc15f3',
             'dev_requirement' => false,
         ),
         'pear/mail_mime' => array(
