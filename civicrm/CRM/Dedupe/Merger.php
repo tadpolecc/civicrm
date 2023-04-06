@@ -1706,9 +1706,6 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    *   api - through which it is properly tested - so can be refactored with some comfort.)
    * @param bool|int $checkPermission
    *   Either a CRM_Core_Permission constant or FALSE to disable checks
-   * @param string|int $singleRecord
-   *   holds 'new' or id if view/edit/copy form for a single record is being loaded.
-   * @param bool $showPublicOnly
    *
    * @return array
    *   Custom field 'tree'.
@@ -1724,7 +1721,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
    *
    * @throws \CRM_Core_Exception
    */
-  public static function getTree(
+  private static function getTree(
     $entityType,
     $toReturn = [],
     $entityID = NULL,
@@ -1734,9 +1731,7 @@ INNER JOIN  civicrm_membership membership2 ON membership1.membership_type_id = m
     $fromCache = TRUE,
     $onlySubType = NULL,
     $returnAll = FALSE,
-    $checkPermission = CRM_Core_Permission::EDIT,
-    $singleRecord = NULL,
-    $showPublicOnly = FALSE
+    $checkPermission = CRM_Core_Permission::EDIT
   ) {
     if ($checkPermission === TRUE) {
       CRM_Core_Error::deprecatedWarning('Unexpected TRUE passed to CustomGroup::getTree $checkPermission param.');
@@ -1905,10 +1900,6 @@ WHERE civicrm_custom_group.is_active = 1
         );
     }
 
-    if ($showPublicOnly && $is_public_version) {
-      $strWhere .= "AND civicrm_custom_group.is_public = 1";
-    }
-
     $orderBy = "
 ORDER BY civicrm_custom_group.weight,
          civicrm_custom_group.title,
@@ -1951,7 +1942,7 @@ ORDER BY civicrm_custom_group.weight,
     // add info to groupTree
 
     if (isset($groupTree['info']) && !empty($groupTree['info']) &&
-      !empty($groupTree['info']['tables']) && $singleRecord != 'new'
+      !empty($groupTree['info']['tables'])
     ) {
       $select = $from = $where = [];
       $groupTree['info']['where'] = NULL;
@@ -1985,7 +1976,7 @@ ORDER BY civicrm_custom_group.weight,
       }
       $multipleFieldTablesWithEntityData = array_keys($entityMultipleSelectClauses);
       if (!empty($multipleFieldTablesWithEntityData)) {
-        CRM_Core_BAO_CustomGroup::buildEntityTreeMultipleFields($groupTree, $entityID, $entityMultipleSelectClauses, $multipleFieldTablesWithEntityData, $singleRecord);
+        CRM_Core_BAO_CustomGroup::buildEntityTreeMultipleFields($groupTree, $entityID, $entityMultipleSelectClauses, $multipleFieldTablesWithEntityData);
       }
 
     }
@@ -2112,34 +2103,29 @@ ORDER BY civicrm_custom_group.weight,
       'groupName' => 'postal_greeting',
     ];
     CRM_Core_OptionGroup::lookupValues($submitted, $names, TRUE);
-    // fix custom fields so they're edible by createProfileContact()
-    $cFields = self::getCustomFieldMetadata($contactType);
 
     if (!isset($submitted)) {
       $submitted = [];
     }
+
+    // Move view only custom fields CRM-5362
+    $viewOnlyCustomFields = [];
     foreach ($submitted as $key => $value) {
       if (strpos($key, 'custom_') === 0) {
         $fieldID = (int) substr($key, 7);
-        if (empty($cFields[$fieldID])) {
-          $htmlType = (string) $cFields[$fieldID]['attributes']['html_type'];
-          $isSerialized = CRM_Core_BAO_CustomField::isSerialized($cFields[$fieldID]['attributes']);
-          $isView = (bool) $cFields[$fieldID]['attributes']['is_view'];
+        $fieldMetadata = CRM_Core_BAO_CustomField::getCustomFieldsForContactType($contactType, FALSE)[$fieldID] ?? NULL;
+        if ($fieldMetadata) {
+          $htmlType = (string) $fieldMetadata['html_type'];
+          $isSerialized = CRM_Core_BAO_CustomField::isSerialized($fieldMetadata);
+          $isView = (bool) $fieldMetadata['is_view'];
+          if ($isView) {
+            $viewOnlyCustomFields[$key] = $value;
+          }
           $submitted = self::processCustomFields($mainId, $key, $submitted, $value, $fieldID, $isView, $htmlType, $isSerialized);
-
         }
       }
     }
 
-    // move view only custom fields CRM-5362
-    $viewOnlyCustomFields = [];
-    foreach ($submitted as $key => $value) {
-      $fid = CRM_Core_BAO_CustomField::getKeyID($key);
-      if ($fid && array_key_exists($fid, $cFields) && !empty($cFields[$fid]['attributes']['is_view'])
-      ) {
-        $viewOnlyCustomFields[$key] = $value;
-      }
-    }
     // special case to set values for view only, CRM-5362
     if (!empty($viewOnlyCustomFields)) {
       $viewOnlyCustomFields['entityID'] = $mainId;
@@ -2156,7 +2142,7 @@ ORDER BY civicrm_custom_group.weight,
       'return' => ['created_date'],
     ])['created_date'];
     if ($otherCreatedDate < $mainCreatedDate && !empty($otherCreatedDate)) {
-      CRM_Core_DAO::executeQuery("UPDATE civicrm_contact SET created_date = %1 WHERE id = %2", [
+      CRM_Core_DAO::executeQuery('UPDATE civicrm_contact SET created_date = %1 WHERE id = %2', [
         1 => [$otherCreatedDate, 'String'],
         2 => [$mainId, 'Positive'],
       ]);
@@ -2620,43 +2606,6 @@ ORDER BY civicrm_custom_group.weight,
   }
 
   /**
-   * Get metadata for the custom fields for the merge.
-   *
-   * @param string $contactType
-   *
-   * @return array
-   * @throws \CRM_Core_Exception
-   */
-  protected static function getCustomFieldMetadata($contactType) {
-    $treeCache = [];
-    if (!array_key_exists($contactType, $treeCache)) {
-      $treeCache[$contactType] = CRM_Core_BAO_CustomGroup::getTree(
-        $contactType,
-        NULL,
-        NULL,
-        -1,
-        [],
-        NULL,
-        TRUE,
-        NULL,
-        FALSE,
-        FALSE
-      );
-    }
-
-    $cFields = [];
-    foreach ($treeCache[$contactType] as $key => $group) {
-      if (!isset($group['fields'])) {
-        continue;
-      }
-      foreach ($group['fields'] as $fid => $field) {
-        $cFields[$fid]['attributes'] = $field;
-      }
-    }
-    return $cFields;
-  }
-
-  /**
    * Get conflicts for proposed merge pair.
    *
    * @param array $migrationInfo
@@ -3018,9 +2967,6 @@ ORDER BY civicrm_custom_group.weight,
    */
   protected static function getLocksOnContacts($contacts):array {
     $locks = [];
-    if (!CRM_Utils_SQL::supportsMultipleLocks()) {
-      return $locks;
-    }
     foreach ($contacts as $contactID) {
       $lock = Civi::lockManager()->acquire("data.core.contact.{$contactID}");
       if ($lock->isAcquired()) {

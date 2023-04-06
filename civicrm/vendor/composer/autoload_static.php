@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32
+class ComposerStaticInite1ca47ea801818fa75d60df4388c9f11
 {
     public static $files = array (
         'a4a119a56e50fbb293281d9a48007e0e' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
@@ -151,7 +151,6 @@ class ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32
             'Psr\\Http\\Message\\' => 17,
             'Psr\\Http\\Client\\' => 16,
             'Psr\\Container\\' => 14,
-            'Psr\\Cache\\' => 10,
             'PhpOffice\\PhpWord\\' => 18,
             'PhpOffice\\PhpSpreadsheet\\' => 25,
             'Padaliyajay\\PHPAutoprefixer\\' => 28,
@@ -198,8 +197,6 @@ class ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32
             'Civi\\Cxn\\Rpc\\' => 13,
             'Civi\\CompilePlugin\\' => 19,
             'Civi\\' => 5,
-            'Cache\\TagInterop\\' => 17,
-            'Cache\\IntegrationTests\\' => 23,
             'CCL\\' => 4,
         ),
         'B' => 
@@ -351,10 +348,6 @@ class ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32
         array (
             0 => __DIR__ . '/..' . '/psr/container/src',
         ),
-        'Psr\\Cache\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/psr/cache/src',
-        ),
         'PhpOffice\\PhpWord\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpoffice/phpword/src/PhpWord',
@@ -458,14 +451,6 @@ class ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32
             0 => __DIR__ . '/../..' . '/',
             1 => __DIR__ . '/../..' . '/Civi',
             2 => __DIR__ . '/../..' . '/setup/src',
-        ),
-        'Cache\\TagInterop\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/cache/tag-interop',
-        ),
-        'Cache\\IntegrationTests\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/cache/integration-tests/src',
         ),
         'CCL\\' => 
         array (
@@ -744,11 +729,11 @@ class ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32::$prefixesPsr0;
-            $loader->fallbackDirsPsr0 = ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32::$fallbackDirsPsr0;
-            $loader->classMap = ComposerStaticInit85641ecafad0fd91a9bd9d9f47db5e32::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInite1ca47ea801818fa75d60df4388c9f11::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInite1ca47ea801818fa75d60df4388c9f11::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInite1ca47ea801818fa75d60df4388c9f11::$prefixesPsr0;
+            $loader->fallbackDirsPsr0 = ComposerStaticInite1ca47ea801818fa75d60df4388c9f11::$fallbackDirsPsr0;
+            $loader->classMap = ComposerStaticInite1ca47ea801818fa75d60df4388c9f11::$classMap;
 
         }, null, ClassLoader::class);
     }

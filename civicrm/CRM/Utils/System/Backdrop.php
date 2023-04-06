@@ -1116,4 +1116,84 @@ AND    u.status = 1
     ];
   }
 
+  /**
+   * @inheritdoc
+   */
+  public function viewsIntegration(): string {
+    global $databases;
+    $config = CRM_Core_Config::singleton();
+    $text = '';
+    $backdrop_prefix = '';
+    if (isset($databases['default']['default']['prefix'])) {
+      if (is_array($databases['default']['default']['prefix'])) {
+        $backdrop_prefix = $databases['default']['default']['prefix']['default'];
+      }
+      else {
+        $backdrop_prefix = $databases['default']['default']['prefix'];
+      }
+    }
+
+    if ($this->viewsExists() &&
+      (
+        $config->dsn != $config->userFrameworkDSN || !empty($backdrop_prefix)
+      )
+    ) {
+      $text = '<div>' . ts('To enable CiviCRM Views integration, add or update the following item in the <code>settings.php</code> file:') . '</div>';
+
+      $tableNames = CRM_Core_DAO::getTableNames();
+      asort($tableNames);
+
+      $text .= '<pre>$database_prefix = [';
+
+      // Add default prefix.
+      $text .= "\n  'default' => '$backdrop_prefix',";
+      $prefix = $this->getCRMDatabasePrefix();
+      foreach ($tableNames as $tableName) {
+        $text .= "\n  '" . str_pad($tableName . "'", 41) . " => '{$prefix}',";
+      }
+      $text .= "\n];</pre>";
+    }
+
+    return $text;
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public function theme(&$content, $print = FALSE, $maintenance = FALSE) {
+    $ret = FALSE;
+
+    if (!$print) {
+      if ($maintenance) {
+        backdrop_set_breadcrumb('');
+        backdrop_maintenance_theme();
+        if ($region = CRM_Core_Region::instance('html-header', FALSE)) {
+          CRM_Utils_System::addHTMLHead($region->render(''));
+        }
+        print theme('maintenance_page', ['content' => $content]);
+        exit();
+      }
+      $ret = TRUE;
+    }
+    $out = $content;
+
+    if ($ret) {
+      return $out;
+    }
+    else {
+      print $out;
+      return NULL;
+    }
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public function ipAddress():?string {
+    // Backdrop function handles the server being behind a proxy securely. We
+    // still have legacy ipn methods that reach this point without bootstrapping
+    // hence the check that the fn exists.
+    return function_exists('ip_address') ? ip_address() : ($_SERVER['REMOTE_ADDR'] ?? NULL);
+  }
+
 }

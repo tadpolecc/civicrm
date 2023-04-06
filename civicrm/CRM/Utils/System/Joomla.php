@@ -968,7 +968,7 @@ class CRM_Utils_System_Joomla extends CRM_Utils_System_Base {
    *   - url: string. ex: "http://example.com/sites/all/modules/civicrm"
    *   - path: string. ex: "/var/www/sites/all/modules/civicrm"
    */
-  public function getCiviSourceStorage() {
+  public function getCiviSourceStorage():array {
     global $civicrm_root;
     if (!defined('CIVICRM_UF_BASEURL')) {
       throw new RuntimeException('Undefined constant: CIVICRM_UF_BASEURL');
@@ -1015,6 +1015,20 @@ class CRM_Utils_System_Joomla extends CRM_Utils_System_Base {
       'ufAccessURL' => $ufAccessURL,
       'jAccessParams' => $jAccessParams,
     ];
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public function getContactDetailsFromUser($uf_match):array {
+    $contactParameters = [];
+    $user = $uf_match['user'];
+    $contactParameters['email'] = $user->email;
+    if ($user->name) {
+      CRM_Utils_String::extractName($user->name, $contactParameters);
+    }
+
+    return $contactParameters;
   }
 
 }

@@ -11,6 +11,7 @@
 
 use Civi\Api4\Activity;
 use Civi\Api4\ActivityContact;
+use Civi\Api4\Address;
 use Civi\Api4\Contribution;
 use Civi\Api4\ContributionRecur;
 use Civi\Api4\LineItem;
@@ -1458,8 +1459,10 @@ GROUP BY p.id
    * @todo - this is a confusing function called from one place. It has a test. It would be
    * nice to deprecate it.
    *
+   * @deprecated
    */
   public static function getHonorContacts($honorId) {
+    CRM_Core_Error::deprecatedFunctionWarning('apiv4');
     $params = [];
     $honorDAO = new CRM_Contribute_DAO_ContributionSoft();
     $honorDAO->contact_id = $honorId;
@@ -1698,8 +1701,7 @@ WHERE      $condition
     $dao = CRM_Core_DAO::executeQuery($query);
 
     while ($dao->fetch()) {
-      $params = ['id' => $dao->id];
-      CRM_Core_BAO_Block::blockDelete('Address', $params);
+      Address::delete(FALSE)->addWhere('id', '=', $dao->id)->execute();
     }
   }
 
@@ -1849,6 +1851,7 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
     }
 
     $contribution->loadRelatedObjects($paymentProcessorID, $ids);
+    unset($ids);
 
     $memberships = $contribution->_relatedObjects['membership'] ?? [];
     $participant = $contribution->_relatedObjects['participant'] ?? [];
@@ -2676,11 +2679,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
         // This is a call we want to use less, in favour of loading related objects.
         $values = $this->addContributionPageValuesToValuesHeavyHandedly($values);
         if ($this->contribution_page_id) {
-          // This is precautionary as there are some legacy flows, but it should really be
-          // loaded by now.
-          if (!isset($this->_relatedObjects['contributionPage'])) {
-            $this->loadRelatedEntitiesByID(['contributionPage' => $this->contribution_page_id]);
-          }
           CRM_Contribute_BAO_Contribution_Utils::overrideDefaultCurrency($values);
         }
       }
@@ -4563,9 +4561,6 @@ LIMIT 1;";
     $entities = [
       'contact' => 'CRM_Contact_BAO_Contact',
       'contributionRecur' => 'CRM_Contribute_BAO_ContributionRecur',
-      'contributionType' => 'CRM_Financial_BAO_FinancialType',
-      'financialType' => 'CRM_Financial_BAO_FinancialType',
-      'contributionPage' => 'CRM_Contribute_BAO_ContributionPage',
     ];
     foreach ($entities as $entity => $bao) {
       if (!empty($ids[$entity])) {

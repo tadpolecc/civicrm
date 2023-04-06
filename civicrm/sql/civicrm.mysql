@@ -1476,6 +1476,7 @@ CREATE TABLE `civicrm_custom_field` (
   `serialize` int unsigned NOT NULL DEFAULT 0 COMMENT 'Serialization method - a non-zero value indicates a multi-valued field.',
   `filter` varchar(255) COMMENT 'Stores Contact Get API params contact reference custom fields. May be used for other filters in the future.',
   `in_selector` tinyint NOT NULL DEFAULT 0 COMMENT 'Should the multi-record custom field values be displayed in tab table listing',
+  `fk_entity` varchar(255) DEFAULT NULL COMMENT 'Name of entity being referenced.',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `UI_label_custom_group_id`(label, custom_group_id),
   UNIQUE INDEX `UI_name_custom_group_id`(name, custom_group_id),
@@ -1614,13 +1615,14 @@ CREATE TABLE `civicrm_job_log` (
   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Job log entry ID',
   `domain_id` int unsigned NOT NULL COMMENT 'Which Domain is this scheduled job for',
   `run_time` timestamp COMMENT 'Log entry date',
-  `job_id` int unsigned COMMENT 'Pointer to job id - not a FK though, just for logging purposes',
+  `job_id` int unsigned COMMENT 'Pointer to job id',
   `name` varchar(255) COMMENT 'Title of the job',
   `command` varchar(255) COMMENT 'Full path to file containing job script',
   `description` varchar(255) COMMENT 'Title line of log entry',
   `data` longtext COMMENT 'Potential extended data for specific job run (e.g. tracebacks).',
   PRIMARY KEY (`id`),
-  CONSTRAINT FK_civicrm_job_log_domain_id FOREIGN KEY (`domain_id`) REFERENCES `civicrm_domain`(`id`)
+  CONSTRAINT FK_civicrm_job_log_domain_id FOREIGN KEY (`domain_id`) REFERENCES `civicrm_domain`(`id`),
+  CONSTRAINT FK_civicrm_job_log_job_id FOREIGN KEY (`job_id`) REFERENCES `civicrm_job`(`id`) ON DELETE SET NULL
 )
 ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 

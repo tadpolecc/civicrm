@@ -200,7 +200,7 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
    *   - url: string. ex: "http://example.com/sites/all/modules/civicrm"
    *   - path: string. ex: "/var/www/sites/all/modules/civicrm"
    */
-  public function getCiviSourceStorage() {
+  public function getCiviSourceStorage():array {
     global $civicrm_root;
 
     // Don't use $config->userFrameworkBaseURL; it has garbage on it.
@@ -1622,6 +1622,54 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     //sanity
     return [];
 
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public function canSetBasePage():bool {
+    return TRUE;
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public function theme(&$content, $print = FALSE, $maintenance = FALSE) {
+    if (!$print) {
+      if (!function_exists('is_admin')) {
+        throw new \Exception('Function "is_admin()" is missing, even though WordPress is the user framework.');
+      }
+      if (!defined('ABSPATH')) {
+        throw new \Exception('Constant "ABSPATH" is not defined, even though WordPress is the user framework.');
+      }
+      if (is_admin()) {
+        require_once ABSPATH . 'wp-admin/admin-header.php';
+      }
+      else {
+        // FIXME: we need to figure out to replace civicrm content on the frontend pages
+      }
+    }
+
+    print $content;
+    return NULL;
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public function getContactDetailsFromUser($uf_match):array {
+    $contactParameters = [];
+
+    $user = $uf_match['user'];
+    $contactParameters['email'] = $user->user_email;
+    if ($user->first_name) {
+      $contactParameters['first_name'] = $user->first_name;
+    }
+    if ($user->last_name) {
+      $contactParameters['last_name'] = $user->last_name;
+    }
+
+    return $contactParameters;
   }
 
 }

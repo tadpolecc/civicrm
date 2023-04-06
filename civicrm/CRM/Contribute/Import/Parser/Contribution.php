@@ -69,12 +69,6 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
   protected $_separator;
 
   /**
-   * Total number of lines in file
-   * @var int
-   */
-  protected $_lineCount;
-
-  /**
    * Running total number of valid soft credit rows
    * @var int
    */
@@ -238,7 +232,19 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
         $params[$entity][$this->getFieldMetadata($mappedField['name'])['name']] = $this->getTransformedFieldValue($mappedField['name'], $fieldValue);
       }
     }
-    return $params;
+    return $this->removeEmptyValues($params);
+  }
+
+  protected function removeEmptyValues($array) {
+    foreach ($array as $key => $value) {
+      if (is_array($value)) {
+        $array[$key] = $this->removeEmptyValues($value);
+      }
+      elseif ($value === '') {
+        unset($array[$key]);
+      }
+    }
+    return $array;
   }
 
   /**
@@ -465,7 +471,7 @@ class CRM_Contribute_Import_Parser_Contribution extends CRM_Import_Parser {
 
       if (!empty($softCreditParams)) {
         if (empty($contributionParams['total_amount']) || empty($contributionParams['currency'])) {
-          $contributionParams = Contribution::get()->addSelect('total_amount', 'currency')->addWhere('id', '=', $contributionID)->execute()->first();
+          $contributionParams = array_merge($contributionParams, Contribution::get()->addSelect('total_amount', 'currency')->addWhere('id', '=', $contributionID)->execute()->first());
         }
         foreach ($softCreditParams as $softCreditParam) {
           $softCreditParam['contribution_id'] = $contributionID;
