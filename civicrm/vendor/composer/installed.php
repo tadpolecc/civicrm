@@ -1,11 +1,11 @@
 <?php return array(
     'root' => array(
-        'pretty_version' => '5.60.x-dev',
-        'version' => '5.60.9999999.9999999-dev',
+        'pretty_version' => '5.61.x-dev',
+        'version' => '5.61.9999999.9999999-dev',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => 'fadbe2424f36072c5fa5dc633f11dfaf48942951',
+        'reference' => 'c01b75ee4ee5b39e63c19075fb3ced0cf1980b57',
         'name' => 'civicrm/civicrm-core',
         'dev' => true,
     ),
@@ -38,12 +38,12 @@
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-core' => array(
-            'pretty_version' => '5.60.x-dev',
-            'version' => '5.60.9999999.9999999-dev',
+            'pretty_version' => '5.61.x-dev',
+            'version' => '5.61.9999999.9999999-dev',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => 'fadbe2424f36072c5fa5dc633f11dfaf48942951',
+            'reference' => 'c01b75ee4ee5b39e63c19075fb3ced0cf1980b57',
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-cxn-rpc' => array(
@@ -146,12 +146,12 @@
             'dev_requirement' => false,
         ),
         'guzzlehttp/psr7' => array(
-            'pretty_version' => '1.9.0',
-            'version' => '1.9.0.0',
+            'pretty_version' => '1.9.1',
+            'version' => '1.9.1.0',
             'type' => 'library',
             'install_path' => __DIR__ . '/../guzzlehttp/psr7',
             'aliases' => array(),
-            'reference' => 'e98e3e6d4f86621a9b75f623996e6bbdeb4b9318',
+            'reference' => 'e4490cabc77465aaee90b20cfc9a770f8c04be6b',
             'dev_requirement' => false,
         ),
         'henrikbjorn/lurker' => array(
@@ -359,12 +359,12 @@
             'dev_requirement' => false,
         ),
         'pear/pear-core-minimal' => array(
-            'pretty_version' => 'v1.10.11',
-            'version' => '1.10.11.0',
+            'pretty_version' => 'v1.10.13',
+            'version' => '1.10.13.0',
             'type' => 'library',
             'install_path' => __DIR__ . '/../pear/pear-core-minimal',
             'aliases' => array(),
-            'reference' => '68d0d32ada737153b7e93b8d3c710ebe70ac867d',
+            'reference' => 'aed862e95fd286c53cc546734868dc38ff4b5b1d',
             'dev_requirement' => false,
         ),
         'pear/pear_exception' => array(
@@ -514,7 +514,7 @@
         'rsky/pear-core-min' => array(
             'dev_requirement' => false,
             'replaced' => array(
-                0 => 'v1.10.11',
+                0 => 'v1.10.13',
             ),
         ),
         'rubobaquero/phpquery' => array(
@@ -728,12 +728,12 @@
             ),
         ),
         'symfony/var-dumper' => array(
-            'pretty_version' => 'v3.4.47',
-            'version' => '3.4.47.0',
+            'pretty_version' => 'v4.4.47',
+            'version' => '4.4.47.0',
             'type' => 'library',
             'install_path' => __DIR__ . '/../symfony/var-dumper',
             'aliases' => array(),
-            'reference' => '0719f6cf4633a38b2c1585140998579ce23b4b7d',
+            'reference' => '1069c7a3fca74578022fab6f81643248d02f8e63',
             'dev_requirement' => false,
         ),
         'tecnickcom/tcpdf' => array(

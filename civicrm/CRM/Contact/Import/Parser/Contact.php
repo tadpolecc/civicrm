@@ -91,6 +91,7 @@ class CRM_Contact_Import_Parser_Contact extends CRM_Import_Parser {
         'name' => 'contact_import',
         'label' => ts('Contact Import'),
         'entity' => 'Contact',
+        'url' => 'civicrm/import/contact',
       ],
     ];
   }
@@ -300,26 +301,15 @@ class CRM_Contact_Import_Parser_Contact extends CRM_Import_Parser {
     $addressCustomFields = CRM_Core_BAO_CustomField::getFields('Address');
     $customFields = $customFields + $addressCustomFields;
 
-    //format date first
-    $session = CRM_Core_Session::singleton();
-    $dateType = $session->get("dateTypes");
     foreach ($params as $key => $val) {
       $customFieldID = CRM_Core_BAO_CustomField::getKeyID($key);
       if ($customFieldID &&
         !array_key_exists($customFieldID, $addressCustomFields)
       ) {
-        //we should not update Date to null, CRM-4062
-        if ($val && ($customFields[$customFieldID]['data_type'] == 'Date')) {
-          //CRM-21267
-          $this->formatCustomDate($params, $formatted, $dateType, $key);
-        }
-        elseif ($customFields[$customFieldID]['data_type'] == 'Boolean') {
+        if ($customFields[$customFieldID]['data_type'] == 'Boolean') {
           if (empty($val) && !is_numeric($val) && $this->isFillDuplicates()) {
             //retain earlier value when Import mode is `Fill`
             unset($params[$key]);
-          }
-          else {
-            $params[$key] = CRM_Utils_String::strtoboolstr($val);
           }
         }
       }
@@ -880,6 +870,8 @@ class CRM_Contact_Import_Parser_Contact extends CRM_Import_Parser {
 
     $contactParams = [
       'contact_id' => $cid,
+      // core#4269 - Don't check relationships for values.
+      'noRelationships' => TRUE,
     ];
 
     $defaults = [];
@@ -1035,24 +1027,6 @@ class CRM_Contact_Import_Parser_Contact extends CRM_Import_Parser {
 
       _civicrm_api3_store_values($fields[$values['contact_type']], $values, $params);
       return TRUE;
-    }
-
-    // Check for custom field values
-    $customFields = CRM_Core_BAO_CustomField::getFields(CRM_Utils_Array::value('contact_type', $values),
-      FALSE, FALSE, NULL, NULL, FALSE, FALSE, FALSE
-    );
-
-    foreach ($values as $key => $value) {
-      if ($customFieldID = CRM_Core_BAO_CustomField::getKeyID($key)) {
-        // check if it's a valid custom field id
-
-        if (!array_key_exists($customFieldID, $customFields)) {
-          return civicrm_api3_create_error('Invalid custom field ID');
-        }
-        else {
-          $params[$key] = $value;
-        }
-      }
     }
     return TRUE;
   }

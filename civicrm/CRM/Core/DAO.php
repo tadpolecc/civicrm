@@ -134,11 +134,6 @@ class CRM_Core_DAO extends DB_DataObject {
    * @var array
    */
   public static $_testEntitiesToSkip = [];
-  /**
-   * The factory class for this application.
-   * @var object
-   */
-  public static $_factory = NULL;
 
   /**
    * https://issues.civicrm.org/jira/browse/CRM-17748
@@ -231,8 +226,6 @@ class CRM_Core_DAO extends DB_DataObject {
     if (defined('CIVICRM_DAO_DEBUG')) {
       self::DebugLevel(CIVICRM_DAO_DEBUG);
     }
-    $factory = new CRM_Contact_DAO_Factory();
-    CRM_Core_DAO::setFactory($factory);
     CRM_Core_DAO::executeQuery('SET NAMES utf8mb4');
     CRM_Core_DAO::executeQuery('SET @uniqueID = %1', [1 => [CRM_Utils_Request::id(), 'String']]);
   }
@@ -495,30 +488,6 @@ class CRM_Core_DAO extends DB_DataObject {
 
     $this->_setDBOptions($orig_options);
     return $ret;
-  }
-
-  /**
-   * Static function to set the factory instance for this class.
-   *
-   * @param object $factory
-   *   The factory application object.
-   */
-  public static function setFactory(&$factory) {
-    self::$_factory = &$factory;
-  }
-
-  /**
-   * Factory method to instantiate a new object from a table name.
-   *
-   * @param string $table
-   * @return \DataObject|\PEAR_Error
-   */
-  public function factory($table = '') {
-    if (!isset(self::$_factory)) {
-      return parent::factory($table);
-    }
-
-    return self::$_factory->create($table);
   }
 
   /**
@@ -974,7 +943,7 @@ class CRM_Core_DAO extends DB_DataObject {
       CRM_Core_BAO_CustomValueTable::store($record['custom'], static::$_tableName, $instance->$idField, $op);
     }
 
-    \CRM_Utils_Hook::post($op, $entityName, $instance->$idField, $instance);
+    \CRM_Utils_Hook::post($op, $entityName, $instance->$idField, $instance, $record);
 
     return $instance;
   }
@@ -1026,7 +995,7 @@ class CRM_Core_DAO extends DB_DataObject {
     // For other operations this hook is passed an incomplete object and hook listeners can load if needed.
     // But that's not possible with delete because it's gone from the database by the time this hook is called.
     // So in this case the object has been pre-loaded so hook listeners have access to the complete record.
-    CRM_Utils_Hook::post('delete', $entityName, $record[$idField], $instance);
+    CRM_Utils_Hook::post('delete', $entityName, $record[$idField], $instance, $record);
 
     return $instance;
   }
@@ -1081,9 +1050,11 @@ class CRM_Core_DAO extends DB_DataObject {
   }
 
   /**
-   * Scans all the tables using a slow query and table name.
+   * Gets the names of all the tables in the schema.
    *
    * @return array
+   *
+   * @throws \CRM_Core_Exception
    */
   public static function getTableNames(): array {
     $dao = CRM_Core_DAO::executeQuery(
@@ -1625,6 +1596,8 @@ LIKE %1
    *   object that holds the results of the query
    *   NB - if this is defined as just returning a DAO phpstorm keeps pointing
    *   out all the properties that are not part of the DAO
+   *
+   * @throws \Civi\Core\Exception\DBQueryException
    */
   public static function &executeQuery(
     $query,
@@ -3075,9 +3048,11 @@ SELECT contact_id
   public function addSelectWhereClause() {
     $clauses = [];
     $fields = $this->fields();
+    // Notes should check permissions on the entity_id field, not the contact_id field
+    $skipContactCheckFor = ['Note'];
     foreach ($fields as $fieldName => $field) {
       // Clause for contact-related entities like Email, Relationship, etc.
-      if (strpos($field['name'], 'contact_id') === 0 && CRM_Utils_Array::value('FKClassName', $field) == 'CRM_Contact_DAO_Contact') {
+      if (strpos($field['name'], 'contact_id') === 0 && !in_array($field['entity'], $skipContactCheckFor) && CRM_Utils_Array::value('FKClassName', $field) == 'CRM_Contact_DAO_Contact') {
         $contactClause = CRM_Utils_SQL::mergeSubquery('Contact');
         if (!empty($contactClause)) {
           $clauses[$field['name']] = $contactClause;

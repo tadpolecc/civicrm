@@ -208,7 +208,7 @@ function civiimport_civicrm_searchKitTasks(array &$tasks, bool $checkPermissions
  * Load the angular app for our form.
  *
  * @param string $formName
- * @param \CRM_Core_Form|CRM_Contribute_Import_Form_MapField $form
+ * @param CRM_Contribute_Import_Form_MapField $form
  *
  * @throws \CRM_Core_Exception
  */
@@ -217,7 +217,7 @@ function civiimport_civicrm_buildForm(string $formName, $form) {
     // Add import-ui app
     Civi::service('angularjs.loader')->addModules('crmCiviimport');
     $form->assignCiviimportVariables();
-    $savedMappingID = (int) $form->getSubmittedValue('savedMapping');
+    $savedMappingID = (int) $form->getSavedMappingID();
     $savedMapping = [];
     if ($savedMappingID) {
       $savedMapping = Mapping::get()->addWhere('id', '=', $savedMappingID)->addSelect('id', 'name', 'description')->execute()->first();
@@ -238,7 +238,13 @@ function civiimport_civicrm_buildForm(string $formName, $form) {
     }
   }
 
-  if ($formName === 'CRM_Contact_Import_Form_Summary') {
-    $form->assign('downloadErrorRecordsUrl', '/civicrm/search#/display/Import_' . $form->getUserJobID() . '/Import_' . $form->getUserJobID() . '?_status=ERROR');
+  //@todo - do for all Preview forms - just need to fix each Preview.tpl to
+  // not open in new tab as they are not yet consolidated into one file.
+  // (Or consolidate them now).
+  if ($formName === 'CRM_Contact_Import_Form_Summary' || $formName === 'CRM_Contribute_Import_Form_Preview') {
+    $form->assign('isOpenResultsInNewTab', TRUE);
+    $form->assign('downloadErrorRecordsUrl', CRM_Utils_System::url('civicrm/search', '', TRUE, '/display/Import_' . $form->getUserJobID() . '/Import_' . $form->getUserJobID() . '?_status=ERROR', FALSE));
+    $form->assign('allRowsUrl', CRM_Utils_System::url('civicrm/search', '', TRUE, '/display/Import_' . $form->getUserJobID() . '/Import_' . $form->getUserJobID(), FALSE));
+    $form->assign('importedRowsUrl', CRM_Utils_System::url('civicrm/search', '', TRUE, '/display/Import_' . $form->getUserJobID() . '/Import_' . $form->getUserJobID() . '?_status=IMPORTED', FALSE));
   }
 }

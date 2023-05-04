@@ -131,15 +131,10 @@ class CRM_Core_BAO_UFField extends CRM_Core_DAO_UFField {
   }
 
   /**
-   * Update the is_active flag in the db.
-   *
+   * @deprecated - this bypasses hooks.
    * @param int $id
-   *   Id of the database record.
    * @param bool $is_active
-   *   Value we want to set the is_active field.
-   *
    * @return bool
-   *   true if we found and updated the object, else false
    */
   public static function setIsActive($id, $is_active) {
     //check if custom data profile field is disabled
@@ -164,6 +159,7 @@ class CRM_Core_BAO_UFField extends CRM_Core_DAO_UFField {
    * @return bool
    */
   public static function del($id) {
+    CRM_Core_Error::deprecatedFunctionWarning('deleteRecord');
     return (bool) self::deleteRecord(['id' => $id]);
   }
 
@@ -319,7 +315,7 @@ WHERE cf.id IN (" . $customFieldIds . ") AND is_multiple = 1 LIMIT 0,1";
     $ufField->find();
     while ($ufField->fetch()) {
       //enable/ disable profile
-      CRM_Core_BAO_UFField::del($ufField->id);
+      CRM_Core_BAO_UFField::deleteRecord(['id' => $ufField->id]);
     }
   }
 

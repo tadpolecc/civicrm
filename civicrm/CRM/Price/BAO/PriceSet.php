@@ -86,16 +86,13 @@ class CRM_Price_BAO_PriceSet extends CRM_Price_DAO_PriceSet {
   }
 
   /**
-   * Update the is_active flag in the db.
-   *
+   * @deprecated - this bypasses hooks.
    * @param int $id
-   *   Id of the database record.
-   * @param $isActive
-   *
+   * @param bool $isActive
    * @return bool
-   *   true if we found and updated the object, else false
    */
   public static function setIsActive($id, $isActive) {
+    CRM_Core_Error::deprecatedFunctionWarning('writeRecord');
     return CRM_Core_DAO::setFieldValue('CRM_Price_DAO_PriceSet', $id, 'is_active', $isActive);
   }
 
@@ -507,6 +504,20 @@ WHERE  id = %1";
       $setTree[$setID]['min_amount'] = $dao->min_amount;
     }
     return $setTree;
+  }
+
+  /**
+   * Is the price set 'quick config'.
+   *
+   * Quick config price sets have a simplified configuration on
+   * contribution and event pages.
+   *
+   * @param int $priceSetID
+   *
+   * @return bool
+   */
+  public static function isQuickConfig(int $priceSetID): bool {
+    return (bool) self::getCachedPriceSetDetail($priceSetID)['is_quick_config'];
   }
 
   /**
@@ -1320,8 +1331,7 @@ WHERE       ps.id = %1
   public static function copyPriceSet($baoName, $id, $newId) {
     $priceSetId = CRM_Price_BAO_PriceSet::getFor($baoName, $id);
     if ($priceSetId) {
-      $isQuickConfig = CRM_Core_DAO::getFieldValue('CRM_Price_DAO_PriceSet', $priceSetId, 'is_quick_config');
-      if ($isQuickConfig) {
+      if (self::isQuickConfig($priceSetId)) {
         $copyPriceSet = CRM_Price_BAO_PriceSet::copy($priceSetId);
         CRM_Price_BAO_PriceSet::addTo($baoName, $newId, $copyPriceSet->id);
       }

@@ -17,6 +17,7 @@ use Civi\Api4\ContributionRecur;
 use Civi\Api4\LineItem;
 use Civi\Api4\ContributionSoft;
 use Civi\Api4\PaymentProcessor;
+use Civi\Core\Event\PostEvent;
 
 /**
  *
@@ -604,9 +605,12 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution im
 
   /**
    * Event fired after modifying a contribution.
+   *
    * @param \Civi\Core\Event\PostEvent $event
+   *
+   * @throws \CRM_Core_Exception
    */
-  public static function self_hook_civicrm_post(\Civi\Core\Event\PostEvent $event) {
+  public static function self_hook_civicrm_post(PostEvent $event): void {
     if ($event->action === 'edit') {
       CRM_Contribute_BAO_ContributionRecur::updateOnTemplateUpdated($event->object);
     }
@@ -1659,7 +1663,7 @@ LEFT JOIN civicrm_option_value contribution_status ON (civicrm_contribution.cont
   public static function createAddress($params, $billingLocationTypeID) {
     [$hasBillingField, $addressParams] = self::getBillingAddressParams($params, $billingLocationTypeID);
     if ($hasBillingField) {
-      $address = CRM_Core_BAO_Address::add($addressParams, FALSE);
+      $address = CRM_Core_BAO_Address::writeRecord($addressParams);
       return $address->id;
     }
     return NULL;
@@ -2162,12 +2166,21 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
    * Gaps in the above (
    *
    * @param array $input
-   *    Keys are all optional, if not supplied the template contribution's values are used.
-   *    The template contribution is either the actual template or the latest added contribution
-   *    for the ContributionRecur specified in $contributionParams['contribution_recur_id'].
    *    - total_amount
    *    - financial_type_id
    *    - campaign_id
+   *
+   *    These keys are all optional, and are combined with the values from the contribution_recur
+   *    record to override values from the template contribution. Overrides are
+   *    subject to the following limitations
+   *    1) the campaign id & is_test always apply (is_test is available on the recurring but not as input)
+   *    2) the total amount & financial type ID overrides ONLY apply if the contribution has
+   *    only one line item.
+   *
+   *    The template contribution is derived from a contribution linked to
+   *    the recurring contribution record. A true template contribution is only used
+   *    as a template and is_template is set to TRUE. If this cannot be found the latest added contribution
+   *    is used.
    *
    * @param array $contributionParams
    *
@@ -2175,7 +2188,7 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
    * @throws \CRM_Core_Exception
    * @throws \Civi\API\Exception\UnauthorizedException
    * @todo
-   *  1) many processors still call repeattransaction with contribution_status_id = Completed
+   *
    *  2) repeattransaction code is current munged into completeTransaction code for historical bad coding reasons
    *  3) Repeat transaction duplicates rather than calls Order.create
    *  4) Use of payment.create still limited - completetransaction is more common.
@@ -2192,7 +2205,7 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
     $contributionParams['line_item'] = $templateContribution['line_item'];
     $contributionParams['status_id'] = 'Pending';
 
-    foreach (['contact_id', 'campaign_id', 'financial_type_id', 'currency', 'source', 'amount_level', 'address_id', 'on_behalf', 'source_contact_id', 'tax_amount', 'contribution_page_id', 'total_amount'] as $fieldName) {
+    foreach (['contact_id', 'campaign_id', 'financial_type_id', 'currency', 'source', 'amount_level', 'address_id', 'on_behalf', 'source_contact_id', 'contribution_page_id', 'total_amount'] as $fieldName) {
       if (isset($templateContribution[$fieldName])) {
         $contributionParams[$fieldName] = $templateContribution[$fieldName];
       }
@@ -3509,7 +3522,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    */
   public static function addActivityForPayment($targetCid, $activityType, $title, $contributionId, $totalAmount, $currency, $trxn_date) {
     $paymentAmount = CRM_Utils_Money::format($totalAmount, $currency);
-    $subject = "{$paymentAmount} - Offline {$activityType} for {$title}";
+    $subject = "{$paymentAmount} - {$activityType} for {$title}";
     $date = CRM_Utils_Date::isoToMysql($trxn_date);
     // source record id would be the contribution id
     $srcRecId = $contributionId;
