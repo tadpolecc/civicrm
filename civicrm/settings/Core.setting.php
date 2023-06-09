@@ -792,7 +792,7 @@ return [
     'default' => NULL,
     'add' => '4.4',
     'title' => ts('Enable Components'),
-    'is_domain' => '1',
+    'is_domain' => 0,
     'is_contact' => 0,
     'description' => NULL,
     'help_text' => NULL,
@@ -1005,6 +1005,24 @@ return [
     'pseudoconstant' => [
       'callback' => 'CRM_Utils_Recent::getProviders',
     ],
+  ],
+  'import_batch_size' => [
+    'name' => 'import_batch_size',
+    'type' => 'Integer',
+    'default' => 50,
+    'quick_form_type' => 'Element',
+    'html_type' => 'text',
+    'html_attributes' => [
+      'size' => 2,
+      'maxlength' => 3,
+    ],
+    'add' => '5.62',
+    'title' => ts('Import Batch Size'),
+    'is_domain' => 1,
+    'is_contact' => 0,
+    'description' => ts('Number of records to process at once during import.'),
+    'help_text' => ts('If your imports time out, reduce this number. You can increase it for better import performance on servers with longer timeouts.'),
+    'settings_pages' => 'misc',
   ],
   'dedupe_default_limit' => [
     'group_name' => 'CiviCRM Preferences',

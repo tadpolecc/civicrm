@@ -589,19 +589,22 @@ abstract class CRM_Utils_Hook {
   }
 
   /**
-   * This hook is called when composing the ACL where clause to restrict
-   * visibility of contacts to the logged in user
+   * Called when restricting access to contact-groups or custom_field-groups or profile-groups.
+   *
+   * Hook subscribers should alter the array of $currentGroups by reference.
    *
    * @param int $type
-   *   The type of permission needed.
+   *   Action type being performed e.g. CRM_ACL_API::VIEW or CRM_ACL_API::EDIT
    * @param int $contactID
-   *   The contactID for whom the check is made.
+   *   User contactID for whom the check is made.
    * @param string $tableName
-   *   The tableName which is being permissioned.
+   *   Table name of group, e.g. `civicrm_uf_group` or `civicrm_custom_group`.
+   *   Note: for some weird reason when this hook is called for contact groups, this
+   *   value will be `civicrm_saved_search` instead of `civicrm_group` as you'd expect.
    * @param array $allGroups
-   *   The set of all the objects for the above table.
-   * @param array $currentGroups
-   *   The set of objects that are currently permissioned for this contact.
+   *   All groups from the above table, keyed by id.
+   * @param int[] $currentGroups
+   *   Ids of allowed groups (corresponding to array keys of $allGroups) to be altered by reference.
    *
    * @return null
    *   the return value is ignored

@@ -1803,11 +1803,10 @@ WHERE    civicrm_participant.contact_id = {$contactID} AND
     }
     $fields = [];
     if (!empty($form->_fields)) {
-      $removeCustomFieldTypes = ['Participant'];
 
       foreach ($form->_fields as $name => $fieldInfo) {
         if ((substr($name, 0, 7) == 'custom_' && !$form->_allowConfirmation
-          && !CRM_Core_BAO_CustomGroup::checkCustomField(substr($name, 7), $removeCustomFieldTypes))
+          && !CRM_Core_BAO_CustomGroup::checkCustomField(substr($name, 7), ['Participant']))
           || substr($name, 0, 12) == 'participant_') {
           continue;
         }
@@ -1893,6 +1892,17 @@ WHERE    civicrm_participant.contact_id = {$contactID} AND
    * @throws CRM_Core_Exception
    */
   public static function self_hook_civicrm_pre(\Civi\Core\Event\PreEvent $event) {
+    // Set the default role ID on create.
+    if ($event->entity === 'Participant' && $event->action === 'create' && empty($event->params['role_id'])) {
+      if (!empty($event->params['event_id'])) {
+        $event->params['role_id'] = CRM_Core_DAO::getFieldValue('CRM_Event_DAO_Event', $event->params['event_id'], 'default_role_id');
+      }
+      else {
+        $params['role_id'] = CRM_Core_DAO::singleValueQuery('SELECT default_role_id FROM civicrm_event WHERE id = %1', [
+          1 => [$event->params['event_id'], 'Integer'],
+        ]);
+      }
+    }
     if ($event->entity === 'Participant' && $event->action === 'create' && empty($event->params['created_id'])) {
       // Set the "created_id" field if not already set.
       // The created_id should always be the person that actually did the registration.

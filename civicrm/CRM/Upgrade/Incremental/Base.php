@@ -50,7 +50,7 @@ class CRM_Upgrade_Incremental_Base {
     $revList = [];
 
     $sqlGlob = implode(DIRECTORY_SEPARATOR, [dirname(__FILE__), 'sql', $this->getMajorMinor() . '.*.mysql.tpl']);
-    $sqlFiles = glob($sqlGlob);;
+    $sqlFiles = glob($sqlGlob);
     foreach ($sqlFiles as $file) {
       $revList[] = basename($file, '.mysql.tpl');
     }
@@ -76,7 +76,6 @@ class CRM_Upgrade_Incremental_Base {
    * This method will be invoked multiple times. Implementations MUST consult the `$rev`
    * before deciding what messages to add. See the examples linked below.
    *
-   * @see \CRM_Upgrade_Incremental_php_FourSeven::setPreUpgradeMessage()
    * @see \CRM_Upgrade_Incremental_php_FiveTwenty::setPreUpgradeMessage()
    *
    * @param string $preUpgradeMessage
@@ -101,7 +100,6 @@ class CRM_Upgrade_Incremental_Base {
    * This method will be invoked multiple times. Implementations MUST consult the `$rev`
    * before deciding what messages to add. See the examples linked below.
    *
-   * @see \CRM_Upgrade_Incremental_php_FourSeven::setPostUpgradeMessage()
    * @see \CRM_Upgrade_Incremental_php_FiveTwentyOne::setPostUpgradeMessage()
    *
    * @param string $postUpgradeMessage

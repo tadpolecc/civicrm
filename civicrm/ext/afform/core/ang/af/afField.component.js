@@ -12,7 +12,7 @@
       fieldName: '@name',
       defn: '='
     },
-    controller: function($scope, $element, crmApi4, $timeout, $location) {
+    controller: function($scope, $element, crmApi4, $timeout) {
       var ts = $scope.ts = CRM.ts('org.civicrm.afform'),
         ctrl = this,
         // Prefix used for SearchKit explicit joins
@@ -98,7 +98,7 @@
           var entityName = ctrl.afFieldset.getName(),
             joinEntity = ctrl.afJoin ? ctrl.afJoin.entity : null,
             uniquePrefix = '',
-            urlArgs = $location.search();
+            urlArgs = $scope.$parent.routeParams;
           if (entityName) {
             var index = ctrl.getEntityIndex();
             uniquePrefix = entityName + (index ? index + 1 : '') + (joinEntity ? '.' + joinEntity : '') + '.';
@@ -165,7 +165,7 @@
         ) {
           value =  value.split(',');
         }
-        $scope.dataProvider.getFieldData()[ctrl.fieldName] = value;
+        $scope.getSetValue(value);
       }
 
       // Get the repeat index of the entity fieldset (not the join)
@@ -226,6 +226,26 @@
         };
       };
 
+      // Getter/Setter function for most fields (except select & entityRef)
+      $scope.getSetValue = function(val) {
+        var currentVal = $scope.dataProvider.getFieldData()[ctrl.fieldName];
+        // Setter
+        if (arguments.length) {
+          if (ctrl.defn.search_operator) {
+            if (typeof currentVal !== 'object') {
+              $scope.dataProvider.getFieldData()[ctrl.fieldName] = {};
+            }
+            return ($scope.dataProvider.getFieldData()[ctrl.fieldName][ctrl.defn.search_operator] = val);
+          }
+          return ($scope.dataProvider.getFieldData()[ctrl.fieldName] = val);
+        }
+        // Getter
+        if (ctrl.defn.search_operator) {
+          return (currentVal || {})[ctrl.defn.search_operator];
+        }
+        return currentVal;
+      };
+
       // Getter/Setter function for fields of type select or entityRef.
       $scope.getSetSelect = function(val) {
         var currentVal = $scope.dataProvider.getFieldData()[ctrl.fieldName];
@@ -241,6 +261,12 @@
           else if (ctrl.defn.search_range) {
             return ($scope.dataProvider.getFieldData()[ctrl.fieldName]['>='] = val);
           }
+          else if (ctrl.defn.search_operator) {
+            if (typeof currentVal !== 'object') {
+              $scope.dataProvider.getFieldData()[ctrl.fieldName] = {};
+            }
+            return ($scope.dataProvider.getFieldData()[ctrl.fieldName][ctrl.defn.search_operator] = val);
+          }
           return ($scope.dataProvider.getFieldData()[ctrl.fieldName] = val);
         }
         // Getter
@@ -250,6 +276,9 @@
         // If search_range, this select is the "low" value (the high value uses ng-model without a getterSetter fn)
         else if (ctrl.defn.search_range) {
           return currentVal['>='];
+        }
+        else if (ctrl.defn.search_operator) {
+          return (currentVal || {})[ctrl.defn.search_operator];
         }
         return currentVal;
       };

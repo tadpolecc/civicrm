@@ -1688,7 +1688,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
           break;
         }
       }
-      $label = $props['label'] ?? $fieldSpec['title'];
+      $label = $props['label'] ?? $fieldSpec['html']['label'] ?? $fieldSpec['title'];
       if (CRM_Utils_Array::value('context', $props) != 'search') {
         $props['data-option-edit-path'] = array_key_exists('option_url', $props) ? $props['option_url'] : CRM_Core_PseudoConstant::getOptionEditUrl($fieldSpec);
       }
@@ -1785,8 +1785,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     // Core field - get metadata.
     $fieldSpec = civicrm_api3($props['entity'], 'getfield', $props);
     $fieldSpec = $fieldSpec['values'];
-    $fieldSpecLabel = $fieldSpec['html']['label'] ?? CRM_Utils_Array::value('title', $fieldSpec);
-    $label = CRM_Utils_Array::value('label', $props, $fieldSpecLabel);
+    $label = $props['label'] ?? $fieldSpec['html']['label'] ?? $fieldSpec['title'];
 
     $widget = $props['type'] ?? $fieldSpec['html']['type'];
     if ($widget == 'TextArea' && $context == 'search') {
@@ -2260,8 +2259,13 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     ];
     $props['api'] += [
       'formName' => 'qf:' . get_class($this),
-      'fieldName' => $name,
     ];
+    // If fieldName is missing and no default entity is set for the form, this will throw an excption.
+    // In that case, you should explicitly supply api.fieldName in the format `EntityName.field_name`
+    // because without it autocompleteSubscribers can't do their job.
+    if (empty($props['api']['fieldName'])) {
+      $props['api']['fieldName'] = $this->getDefaultEntity() . '.' . $name;
+    }
     $props['class'] = ltrim(($props['class'] ?? '') . ' crm-form-autocomplete');
     $props['placeholder'] = $props['placeholder'] ?? self::selectOrAnyPlaceholder($props, $required);
     $props['data-select-params'] = json_encode($props['select']);

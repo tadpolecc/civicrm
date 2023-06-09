@@ -105,12 +105,8 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
       'icon',
       'extends_entity_column_id',
       'extends',
+      'is_public',
     ];
-    $current_db_version = CRM_Core_BAO_Domain::version();
-    $is_public_version = version_compare($current_db_version, '4.7.19', '>=');
-    if ($is_public_version) {
-      $fields[] = 'is_public';
-    }
     foreach ($fields as $field) {
       if (isset($params[$field])) {
         $group->$field = $params[$field];
@@ -218,17 +214,10 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
   }
 
   /**
-   * Retrieve DB object and copy to defaults array.
-   *
-   * @param array $params
-   *   Array of criteria values.
-   * @param array $defaults
-   *   Array to be populated with found values.
-   *
-   * @return self|null
-   *   The DAO object, if found.
-   *
    * @deprecated
+   * @param array $params
+   * @param array $defaults
+   * @return self|null
    */
   public static function retrieve($params, &$defaults) {
     return self::commonRetrieve(self::class, $params, $defaults);
@@ -434,14 +423,11 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
         'extends_entity_column_id',
         'extends_entity_column_value',
         'max_multiple',
+        'is_public',
       ],
     ];
     $current_db_version = CRM_Core_BAO_Domain::version();
-    $is_public_version = version_compare($current_db_version, '4.7.19', '>=');
     $serialize_version = version_compare($current_db_version, '5.27.alpha1', '>=');
-    if ($is_public_version) {
-      $tableData['custom_group'][] = 'is_public';
-    }
     if ($serialize_version) {
       $tableData['custom_field'][] = 'serialize';
     }
@@ -541,16 +527,16 @@ WHERE civicrm_custom_group.is_active = 1
         );
     }
 
-    if ($showPublicOnly && $is_public_version) {
-      $strWhere .= "AND civicrm_custom_group.is_public = 1";
+    if ($showPublicOnly) {
+      $strWhere .= 'AND civicrm_custom_group.is_public = 1';
     }
 
-    $orderBy = "
+    $orderBy = '
 ORDER BY civicrm_custom_group.weight,
          civicrm_custom_group.title,
          civicrm_custom_field.weight,
          civicrm_custom_field.label
-";
+';
 
     // final query string
     $queryString = "$strSelect $strFrom $strWhere $orderBy";
@@ -1690,7 +1676,7 @@ ORDER BY civicrm_custom_group.weight,
    *
    * @throws \CRM_Core_Exception
    */
-  public static function checkCustomField($customFieldId, &$removeCustomFieldTypes) {
+  public static function checkCustomField($customFieldId, $removeCustomFieldTypes) {
     $query = 'SELECT cg.extends as extends
                   FROM civicrm_custom_group as cg, civicrm_custom_field as cf
                   WHERE cg.id = cf.custom_group_id

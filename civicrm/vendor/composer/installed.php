@@ -1,11 +1,11 @@
 <?php return array(
     'root' => array(
-        'pretty_version' => '5.61.x-dev',
-        'version' => '5.61.9999999.9999999-dev',
+        'pretty_version' => '5.62.x-dev',
+        'version' => '5.62.9999999.9999999-dev',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => '8f6a77f8002176cffad9211a21da9dee65e6dd0c',
+        'reference' => 'da223dafffa4a8b232f9551b1d5662f875a2ec3b',
         'name' => 'civicrm/civicrm-core',
         'dev' => true,
     ),
@@ -38,12 +38,12 @@
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-core' => array(
-            'pretty_version' => '5.61.x-dev',
-            'version' => '5.61.9999999.9999999-dev',
+            'pretty_version' => '5.62.x-dev',
+            'version' => '5.62.9999999.9999999-dev',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => '8f6a77f8002176cffad9211a21da9dee65e6dd0c',
+            'reference' => 'da223dafffa4a8b232f9551b1d5662f875a2ec3b',
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-cxn-rpc' => array(
@@ -188,12 +188,12 @@
             'dev_requirement' => false,
         ),
         'league/csv' => array(
-            'pretty_version' => '9.6.2',
-            'version' => '9.6.2.0',
+            'pretty_version' => '9.7.4',
+            'version' => '9.7.4.0',
             'type' => 'library',
             'install_path' => __DIR__ . '/../league/csv',
             'aliases' => array(),
-            'reference' => 'f28da6e483bf979bac10e2add384c90ae9983e4e',
+            'reference' => '002f55f649e7511710dc7154ff44c7be32c8195c',
             'dev_requirement' => false,
         ),
         'league/oauth2-client' => array(

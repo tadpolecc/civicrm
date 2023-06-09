@@ -246,17 +246,10 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
   }
 
   /**
-   * Retrieve DB object and copy to defaults array.
-   *
-   * @param array $params
-   *   Array of criteria values.
-   * @param array $defaults
-   *   Array to be populated with found values.
-   *
-   * @return self|null
-   *   The DAO object, if found.
-   *
    * @deprecated
+   * @param array $params
+   * @param array $defaults
+   * @return self|null
    */
   public static function retrieve($params, &$defaults) {
     return self::commonRetrieve(self::class, $params, $defaults);
@@ -1065,6 +1058,7 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
         }
         elseif ($field->data_type == 'EntityReference') {
           $fieldAttributes['entity'] = $field->fk_entity;
+          $fieldAttributes['api']['fieldName'] = $field->getEntity() . '.' . $groupName . '.' . $field->name;
           $element = $qf->addAutocomplete($elementName, $label, $fieldAttributes, $useRequired && !$search);
         }
         else {
