@@ -13,6 +13,7 @@ return [
         'name' => 'Administer_Custom_Fields',
         'label' => E::ts('Administer Custom Fields'),
         'form_values' => NULL,
+        'mapping_id' => NULL,
         'search_custom_id' => NULL,
         'api_entity' => 'CustomField',
         'api_params' => [
@@ -35,7 +36,9 @@ return [
         ],
         'expires_date' => NULL,
         'description' => NULL,
-        'mapping_id' => NULL,
+      ],
+      'match' => [
+        'name',
       ],
     ],
   ],
@@ -61,6 +64,7 @@ return [
           'pager' => [
             'show_count' => TRUE,
             'expose_limit' => TRUE,
+            'hide_single' => TRUE,
           ],
           'sort' => [],
           'columns' => [
@@ -127,7 +131,7 @@ return [
               'alignment' => 'text-right',
             ],
             [
-              'text' => E::ts('Actions'),
+              'text' => '',
               'style' => 'default',
               'size' => 'btn-xs',
               'icon' => 'fa-bars',
@@ -198,8 +202,13 @@ return [
             'text' => E::ts('Add Custom Field'),
             'icon' => 'fa-plus',
           ],
+          'placeholder' => 5,
         ],
         'acl_bypass' => FALSE,
+      ],
+      'match' => [
+        'name',
+        'saved_search_id',
       ],
     ],
   ],

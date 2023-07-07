@@ -334,6 +334,10 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
    *   The new group BAO (if created)
    */
   public static function create(&$params) {
+
+    // only check if we need to remove parents if a params was provided
+    $parentsParamProvided = array_key_exists('parents', $params);
+
     $params += [
       'group_type' => NULL,
       'parents' => NULL,
@@ -357,8 +361,8 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
       }
     }
 
-    // dev/core#287 Disable child groups if all parents are disabled.
     if (!empty($params['id'])) {
+      // dev/core#287 Disable child groups if all parents are disabled.
       $allChildGroupIds = self::getChildGroupIds($params['id']);
       foreach ($allChildGroupIds as $childKey => $childValue) {
         $parentIds = CRM_Contact_BAO_GroupNesting::getParentGroupIds($childValue);
@@ -370,15 +374,24 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
           self::setIsActive($childValue, (int) ($params['is_active'] ?? 1));
         }
       }
+
+      // get current parents for removal if not in the list anymore
+      $parents = CRM_Core_DAO::getFieldValue('CRM_Contact_DAO_Group', $params['id'], 'parents');
+      $currentParentGroupIDs = $parents ? explode(',', $parents) : [];
     }
+
     // form the name only if missing: CRM-627
     $nameParam = $params['name'] ?? NULL;
     if (!$nameParam && empty($params['id'])) {
       $params['name'] = CRM_Utils_String::titleToVar($params['title']);
     }
 
-    if (!CRM_Utils_System::isNull($params['parents'])) {
+    if ($parentsParamProvided) {
       $params['parents'] = CRM_Utils_Array::convertCheckboxFormatToArray((array) $params['parents']);
+      // failsafe: forbid adding itself as parent
+      if (!empty($params['id']) && ($key = array_search($params['id'], $params['parents'])) !== FALSE) {
+        unset($params['parents'][$key]);
+      }
     }
 
     // convert params if array type
@@ -442,7 +455,17 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
         $params['parents'] = [$domainGroupID];
       }
 
-      // FIXME: Only allows adding parents, cannot remove them
+      // first deal with removed parents
+      if ($parentsParamProvided && !empty($currentParentGroupIDs)) {
+        foreach ($currentParentGroupIDs as $parentGroupId) {
+          // no more parents or not in the new list, let's remove
+          if (empty($params['parents']) || !in_array($parentGroupId, $params['parents'])) {
+            CRM_Contact_BAO_GroupNesting::remove($parentGroupId, $params['id']);
+          }
+        }
+      }
+
+      // then add missing parents
       if (!CRM_Utils_System::isNull($params['parents'])) {
         foreach ($params['parents'] as $parentId) {
           if ($parentId && !CRM_Contact_BAO_GroupNesting::isParentChild($parentId, $group->id)) {
@@ -451,9 +474,10 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
         }
       }
 
-      // this is always required, since we don't know when a
-      // parent group is removed
-      CRM_Contact_BAO_GroupNestingCache::update();
+      // refresh cache if parents param was provided
+      if ($parentsParamProvided || !empty($params['parents'])) {
+        CRM_Contact_BAO_GroupNestingCache::update();
+      }
 
       // update group contact cache for all parent groups
       $parentIds = CRM_Contact_BAO_GroupNesting::getParentGroupIds($group->id);

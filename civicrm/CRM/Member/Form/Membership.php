@@ -549,7 +549,7 @@ DESC limit 1");
       $this->add('number', 'num_terms', ts('Number of Terms'), ['size' => 6]);
     }
 
-    $this->add('text', 'source', ts('Source'),
+    $this->add('text', 'source', ts('Membership Source'),
       CRM_Core_DAO::getAttribute('CRM_Member_DAO_Membership', 'source')
     );
 
@@ -576,7 +576,7 @@ DESC limit 1");
       $this->add('text', 'total_amount', ts('Amount'));
       $this->addRule('total_amount', ts('Please enter a valid amount.'), 'money');
 
-      $this->add('datepicker', 'receive_date', ts('Received'), [], FALSE, ['time' => TRUE]);
+      $this->add('datepicker', 'receive_date', ts('Contribution Date'), [], FALSE, ['time' => TRUE]);
 
       $this->add('select', 'payment_instrument_id',
         ts('Payment Method'),
@@ -737,9 +737,7 @@ DESC limit 1");
       CRM_Core_Payment_Form::validatePaymentInstrument($params['payment_processor_id'], $params, $errors, NULL);
     }
 
-    $joinDate = NULL;
     if (!empty($params['join_date'])) {
-
       $joinDate = CRM_Utils_Date::processDate($params['join_date']);
 
       foreach ($selectedMemberships as $memType) {
@@ -981,8 +979,8 @@ DESC limit 1");
         'isTest' => (bool) ($this->_action & CRM_Core_Action::PREVIEW),
         'modelProps' => [
           'receiptText' => $this->getSubmittedValue('receipt_text'),
-          'contributionId' => $formValues['contribution_id'],
-          'contactId' => $this->_receiptContactId,
+          'contributionID' => $formValues['contribution_id'],
+          'contactID' => $this->_receiptContactId,
           'membershipID' => $this->getMembershipID(),
         ],
       ]
@@ -1000,15 +998,14 @@ DESC limit 1");
     $this->storeContactFields($this->_params);
     $this->beginPostProcess();
 
-    $params = $softParams = $ids = [];
+    $params = $softParams = [];
 
-    $mailSend = FALSE;
     $this->processBillingAddress();
     $formValues = $this->_params;
     $formValues = $this->setPriceSetParameters($formValues);
 
     if ($this->_id) {
-      $ids['membership'] = $params['id'] = $this->_id;
+      $params['id'] = $this->_id;
     }
 
     // Set variables that we normally get from context.
@@ -1066,7 +1063,7 @@ DESC limit 1");
 
       $completedContributionStatusId = CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_Contribution', 'contribution_status_id', 'Completed');
       if (empty($params['is_override']) &&
-        CRM_Utils_Array::value('contribution_status_id', $params) != $completedContributionStatusId
+        ($params['contribution_status_id'] ?? NULL) != $completedContributionStatusId
       ) {
         $params['status_id'] = $pendingMembershipStatusId;
         $params['skipStatusCal'] = TRUE;
@@ -1208,13 +1205,12 @@ DESC limit 1");
       if ($paymentStatus !== 'Completed') {
         $params['status_id'] = $pendingMembershipStatusId;
         $params['skipStatusCal'] = TRUE;
-        //as membership is pending set dates to null.
+        // as membership is pending set dates to null.
         foreach ($this->_memTypeSelected as $memType) {
           $membershipTypeValues[$memType]['joinDate'] = NULL;
           $membershipTypeValues[$memType]['startDate'] = NULL;
           $membershipTypeValues[$memType]['endDate'] = NULL;
         }
-        $startDate = NULL;
       }
       $now = CRM_Utils_Time::date('YmdHis');
       $params['receive_date'] = CRM_Utils_Time::date('Y-m-d H:i:s');
@@ -1239,8 +1235,7 @@ DESC limit 1");
       // required for creating membership for related contacts
       $params['action'] = $this->_action;
 
-      //create membership record.
-      $count = 0;
+      // create membership record
       foreach ($this->_memTypeSelected as $memType) {
         $membershipParams = array_merge($membershipTypeValues[$memType], $params);
         if (isset($result['fee_amount'])) {
@@ -1257,7 +1252,6 @@ DESC limit 1");
         // of a single path!
         unset($membershipParams['lineItems']);
         $membershipParams['payment_instrument_id'] = $this->getPaymentInstrumentID();
-        // @todo stop passing $ids (membership and userId only are set above)
         $params['contribution'] = $membershipParams['contribution'] ?? NULL;
         unset($params['lineItems']);
       }
@@ -1282,8 +1276,7 @@ DESC limit 1");
         unset($membershipParams['contribution_status_id']);
         $membershipParams['skipLineItem'] = TRUE;
         unset($membershipParams['lineItems']);
-        // @todo stop passing $ids (membership and userId only are set above)
-        $this->setMembership((array) CRM_Member_BAO_Membership::create($membershipParams, $ids));
+        $this->setMembership((array) CRM_Member_BAO_Membership::create($membershipParams));
         $lineItem[$this->_priceSetId][$id]['entity_id'] = $this->membership['id'];
         $lineItem[$this->_priceSetId][$id]['entity_table'] = 'civicrm_membership';
 
@@ -1317,7 +1310,7 @@ DESC limit 1");
       }
       if (Civi::settings()->get('invoicing')) {
         $dataArray = [];
-        foreach ($lineItem[$this->_priceSetId] as $key => $value) {
+        foreach ($lineItem[$this->_priceSetId] as $value) {
           if (isset($value['tax_amount']) && isset($value['tax_rate'])) {
             if (isset($dataArray[$value['tax_rate']])) {
               $dataArray[$value['tax_rate']] = $dataArray[$value['tax_rate']] + CRM_Utils_Array::value('tax_amount', $value);
@@ -1333,12 +1326,10 @@ DESC limit 1");
     }
     $this->assign('lineItem', !empty($lineItem) && !$isQuickConfig ? $lineItem : FALSE);
 
-    $receiptSend = FALSE;
     $contributionId = $this->ids['Contribution'] ?? CRM_Member_BAO_Membership::getMembershipContributionId($this->getMembershipID());
     $membershipIds = $this->_membershipIDs;
     if ($this->getSubmittedValue('send_receipt') && $contributionId && !empty($membershipIds)) {
-      $contributionDetails = CRM_Contribute_BAO_Contribution::getContributionDetails(
-        CRM_Export_Form_Select::MEMBER_EXPORT, $this->_membershipIDs);
+      $contributionDetails = CRM_Contribute_BAO_Contribution::getContributionDetails(CRM_Export_Form_Select::MEMBER_EXPORT, $this->_membershipIDs);
       if ($contributionDetails[$this->getMembershipID()]['contribution_status'] === 'Completed') {
         $formValues['contact_id'] = $this->_contactID;
         $formValues['contribution_id'] = $contributionId;

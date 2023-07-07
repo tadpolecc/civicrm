@@ -25,7 +25,7 @@ trait Api4TestTrait {
    *
    * @var array
    */
-  private $testRecords = [];
+  protected $testRecords = [];
 
   /**
    * Inserts a test record, supplying all required values if not provided.
@@ -66,6 +66,10 @@ trait Api4TestTrait {
    * @noinspection PhpUnhandledExceptionInspection
    */
   public function saveTestRecords(string $entityName, array $saveParams): Result {
+    // Shortcut for creating a bunch of records
+    if (is_int($saveParams['records'])) {
+      $saveParams['records'] = array_fill(0, $saveParams['records'], []);
+    }
     $saveParams += [
       'checkPermissions' => FALSE,
       'defaults' => [],

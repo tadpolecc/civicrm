@@ -61,6 +61,7 @@ class CRM_Event_WorkflowMessage_EventExamples extends WorkflowMessageExample {
   private function addExampleData(GenericWorkflowMessage $messageTemplate, $example): void {
     $messageTemplate->setContact(\Civi\Test::example('entity/Contact/Barb'));
     $messageTemplate->setEventID($example['event_id']);
+    $messageTemplate->setContribution(['total_amount' => 50, 'balance_amount' => 20, 'currency' => 'USD']);
   }
 
   /**
@@ -71,7 +72,6 @@ class CRM_Event_WorkflowMessage_EventExamples extends WorkflowMessageExample {
    * @throws \CRM_Core_Exception
    */
   private function getPriceSets(): ?array {
-    // Permission check defaults to true - likely implicitly OK but may need to be false.
     $quickConfigPriceSet = $this->getPriceSet(TRUE);
     $nonQuickConfigPriceSet = $this->getPriceSet(FALSE);
 

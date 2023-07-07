@@ -74,6 +74,7 @@ return [
           'pager' => [
             'show_count' => TRUE,
             'expose_limit' => TRUE,
+            'hide_single' => TRUE,
           ],
           'placeholder' => 5,
           'sort' => [],
@@ -177,7 +178,7 @@ return [
             ],
             [
               'text' => '',
-              'style' => 'default-outline',
+              'style' => 'default',
               'size' => 'btn-xs',
               'icon' => 'fa-bars',
               'links' => [

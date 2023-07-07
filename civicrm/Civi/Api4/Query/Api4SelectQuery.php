@@ -29,8 +29,8 @@ use Civi\Api4\Utils\SelectUtil;
  *
  * * '=', '<=', '>=', '>', '<', 'LIKE', "<>", "!=",
  * * 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN',
- * * 'IS NOT NULL', 'IS NULL', 'CONTAINS', 'IS EMPTY', 'IS NOT EMPTY',
- * * 'REGEXP', 'NOT REGEXP'.
+ * * 'IS NOT NULL', 'IS NULL', 'CONTAINS', 'NOT CONTAINS',
+ * * 'IS EMPTY', 'IS NOT EMPTY', 'REGEXP', 'NOT REGEXP'.
  */
 class Api4SelectQuery {
 
@@ -42,11 +42,6 @@ class Api4SelectQuery {
    * @var \CRM_Utils_SQL_Select
    */
   protected $query;
-
-  /**
-   * @var array
-   */
-  protected $joins = [];
 
   /**
    * Used to keep track of implicit join table aliases
@@ -597,22 +592,43 @@ class Api4SelectQuery {
       }
       return $sql ? implode(' AND ', $sql) : NULL;
     }
-    if ($operator === 'CONTAINS') {
+
+    // The CONTAINS and NOT CONTAINS operators match a substring for strings.
+    // For arrays & serialized fields, they only match a complete (not partial) string within the array.
+    if ($operator === 'CONTAINS' || $operator === 'NOT CONTAINS') {
+      $sep = \CRM_Core_DAO::VALUE_SEPARATOR;
       switch ($field['serialize'] ?? NULL) {
+
         case \CRM_Core_DAO::SERIALIZE_JSON:
-          $operator = 'LIKE';
+          $operator = ($operator === 'CONTAINS') ? 'LIKE' : 'NOT LIKE';
           $value = '%"' . $value . '"%';
           // FIXME: Use this instead of the above hack once MIN_INSTALL_MYSQL_VER is bumped to 5.7.
           // return sprintf('JSON_SEARCH(%s, "one", "%s") IS NOT NULL', $fieldAlias, \CRM_Core_DAO::escapeString($value));
           break;
 
         case \CRM_Core_DAO::SERIALIZE_SEPARATOR_BOOKEND:
-          $operator = 'LIKE';
-          $value = '%' . \CRM_Core_DAO::VALUE_SEPARATOR . $value . \CRM_Core_DAO::VALUE_SEPARATOR . '%';
+          $operator = ($operator === 'CONTAINS') ? 'LIKE' : 'NOT LIKE';
+          // This is easy to query because the string is always bookended by separators.
+          $value = '%' . $sep . $value . $sep . '%';
+          break;
+
+        case \CRM_Core_DAO::SERIALIZE_SEPARATOR_TRIMMED:
+          $operator = ($operator === 'CONTAINS') ? 'REGEXP' : 'NOT REGEXP';
+          // This is harder to query because there's no bookend.
+          // Use regex to match string within separators or content boundary
+          // Escaping regex per https://stackoverflow.com/questions/3782379/whats-the-best-way-to-escape-user-input-for-regular-expressions-in-mysql
+          $value = "(^|$sep)" . preg_quote($value, '&') . "($sep|$)";
+          break;
+
+        case \CRM_Core_DAO::SERIALIZE_COMMA:
+          $operator = ($operator === 'CONTAINS') ? 'REGEXP' : 'NOT REGEXP';
+          // Match string within commas or content boundary
+          // Escaping regex per https://stackoverflow.com/questions/3782379/whats-the-best-way-to-escape-user-input-for-regular-expressions-in-mysql
+          $value = '(^|,)' . preg_quote($value, '&') . '(,|$)';
           break;
 
         default:
-          $operator = 'LIKE';
+          $operator = ($operator === 'CONTAINS') ? 'LIKE' : 'NOT LIKE';
           $value = '%' . $value . '%';
           break;
       }
@@ -870,11 +886,9 @@ class Api4SelectQuery {
   }
 
   /**
-   * Join via a Bridge table
+   * Join via a Bridge table using a join within a join
    *
    * This creates a double-join in sql that appears to the API user like a single join.
-   *
-   * LEFT joins use a subquery so that the bridge + joined-entity can be treated like a single table.
    *
    * @param array $joinTree
    * @param string $joinEntity
@@ -886,52 +900,30 @@ class Api4SelectQuery {
     $bridgeEntity = array_shift($joinTree);
     $this->explicitJoins[$alias]['bridge'] = $bridgeEntity;
 
-    // INNER joins require unique aliases, whereas left joins will be inside a subquery and short aliases are more readable
-    $bridgeAlias = $side === 'INNER' ? $alias . '_via_' . strtolower($bridgeEntity) : 'b';
-    $joinAlias = $side === 'INNER' ? $alias : 'c';
+    $bridgeAlias = $alias . '_via_' . strtolower($bridgeEntity);
 
     $joinTable = CoreUtil::getTableName($joinEntity);
     [$bridgeTable, $baseRef, $joinRef] = $this->getBridgeRefs($bridgeEntity, $joinEntity);
 
-    $bridgeFields = $this->registerBridgeJoinFields($bridgeEntity, $joinRef, $baseRef, $alias, $bridgeAlias, $side);
+    $this->registerBridgeJoinFields($bridgeEntity, $joinRef, $baseRef, $alias, $bridgeAlias);
 
-    $linkConditions = $this->getBridgeLinkConditions($bridgeAlias, $joinAlias, $joinTable, $joinRef);
+    $linkConditions = $this->getBridgeLinkConditions($bridgeAlias, $alias, $joinTable, $joinRef);
 
     $bridgeConditions = $this->getBridgeJoinConditions($joinTree, $baseRef, $alias, $bridgeAlias, $bridgeEntity, $side);
 
-    $acls = array_values($this->getAclClause($joinAlias, CoreUtil::getBAOFromApiName($joinEntity), [NULL, NULL]));
+    $acls = array_values($this->getAclClause($alias, CoreUtil::getBAOFromApiName($joinEntity), [NULL, NULL]));
 
     $joinConditions = [];
     foreach (array_filter($joinTree) as $clause) {
       $joinConditions[] = $this->treeWalkClauses($clause, 'ON');
     }
 
-    // INNER joins are done with 2 joins
-    if ($side === 'INNER') {
-      // Info needed for joining custom fields extending the bridge entity
-      $this->explicitJoins[$alias]['bridge_table_alias'] = $bridgeAlias;
-      $this->explicitJoins[$alias]['bridge_id_alias'] = 'id';
-      $this->join('INNER', $bridgeTable, $bridgeAlias, $bridgeConditions);
-      $this->join('INNER', $joinTable, $alias, array_merge($linkConditions, $acls, $joinConditions));
-    }
-    // For LEFT joins, construct a subquery to link the bridge & join tables as one
-    else {
-      $joinEntityClass = CoreUtil::getApiClass($joinEntity);
-      foreach ($joinEntityClass::get($this->getCheckPermissions())->entityFields() as $name => $field) {
-        if ($field['type'] === 'Field') {
-          $bridgeFields[$field['column_name']] = '`' . $joinAlias . '`.`' . $field['column_name'] . '`';
-        }
-      }
-      // Info needed for joining custom fields extending the bridge entity
-      $this->explicitJoins[$alias]['bridge_table_alias'] = $alias;
-      $this->explicitJoins[$alias]['bridge_id_alias'] = 'bridge_entity_id_key';
-      $bridgeFields[] = "`$bridgeAlias`.`id` AS `bridge_entity_id_key`";
-      $select = implode(',', $bridgeFields);
-      $joinConditions = array_merge($joinConditions, $bridgeConditions);
-      $innerConditions = array_merge($linkConditions, $acls);
-      $subquery = "SELECT $select FROM `$bridgeTable` `$bridgeAlias`, `$joinTable` `$joinAlias` WHERE " . implode(' AND ', $innerConditions);
-      $this->query->join($alias, "$side JOIN ($subquery) `$alias` ON " . implode(' AND ', $joinConditions));
-    }
+    // Info needed for joining custom fields extending the bridge entity
+    $this->explicitJoins[$alias]['bridge_table_alias'] = $bridgeAlias;
+
+    $outerConditions = array_merge($joinConditions, $bridgeConditions);
+    $innerConditions = array_merge($linkConditions, $acls);
+    $this->query->join($alias, "$side JOIN (`$bridgeTable` AS `$bridgeAlias` INNER JOIN `$joinTable` AS `$alias` ON (" . implode(' AND ', $innerConditions) . ")) ON " . implode(' AND ', $outerConditions));
   }
 
   /**
@@ -995,27 +987,20 @@ class Api4SelectQuery {
    * @param $baseRef
    * @param string $alias
    * @param string $bridgeAlias
-   * @param string $side
-   * @return array
    */
-  private function registerBridgeJoinFields($bridgeEntity, $joinRef, $baseRef, string $alias, string $bridgeAlias, string $side): array {
-    $fakeFields = [];
+  private function registerBridgeJoinFields($bridgeEntity, $joinRef, $baseRef, string $alias, string $bridgeAlias): void {
     $bridgeFkFields = [$joinRef->getReferenceKey(), $joinRef->getTypeColumn(), $baseRef->getReferenceKey(), $baseRef->getTypeColumn()];
     $bridgeEntityClass = CoreUtil::getApiClass($bridgeEntity);
+    $bridgeIdColumn = CoreUtil::getIdFieldName($bridgeEntity);
     foreach ($bridgeEntityClass::get($this->getCheckPermissions())->entityFields() as $name => $field) {
-      if ($name === 'id' || ($side === 'INNER' && in_array($name, $bridgeFkFields, TRUE))) {
+      if ($name === $bridgeIdColumn || in_array($name, $bridgeFkFields, TRUE)) {
         continue;
       }
-      // For INNER joins, these fields get a sql alias pointing to the bridge entity,
-      // but an api alias pretending they belong to the join entity.
-      $field['sql_name'] = '`' . ($side === 'LEFT' ? $alias : $bridgeAlias) . '`.`' . $field['column_name'] . '`';
+      // Fields get a sql alias pointing to the bridge entity,
+      $field['sql_name'] = '`' . $bridgeAlias . '`.`' . $field['column_name'] . '`';
       $field['explicit_join'] = $alias;
       $this->addSpecField($alias . '.' . $name, $field);
-      if ($field['type'] === 'Field') {
-        $fakeFields[$field['column_name']] = '`' . $bridgeAlias . '`.`' . $field['column_name'] . '`';
-      }
     }
-    return $fakeFields;
   }
 
   /**
@@ -1026,13 +1011,11 @@ class Api4SelectQuery {
    * @param string $alias
    * @param string $bridgeAlias
    * @param string $bridgeEntity
-   * @param string $side
    * @return string[]
    * @throws \CRM_Core_Exception
    */
-  private function getBridgeJoinConditions(array &$joinTree, $baseRef, string $alias, string $bridgeAlias, string $bridgeEntity, string $side): array {
+  private function getBridgeJoinConditions(array &$joinTree, $baseRef, string $alias, string $bridgeAlias, string $bridgeEntity): array {
     $bridgeConditions = [];
-    $bridgeAlias = $side === 'INNER' ? $bridgeAlias : $alias;
     // Find explicit bridge join conditions and move them out of the joinTree
     $joinTree = array_filter($joinTree, function ($clause) use ($baseRef, $alias, $bridgeAlias, &$bridgeConditions) {
       [$sideA, $op, $sideB] = array_pad((array) $clause, 3, NULL);
@@ -1148,9 +1131,6 @@ class Api4SelectQuery {
         if ($useBridgeTable) {
           // When joining custom fields that directly extend the bridge entity
           $baseTableAlias = $explicitJoin['bridge_table_alias'];
-          if ($link->getBaseColumn() === 'id') {
-            $link->setBaseColumn($explicitJoin['bridge_id_alias']);
-          }
         }
 
         // Cache field info for retrieval by $this->getField()
@@ -1194,12 +1174,8 @@ class Api4SelectQuery {
    * @param string $tableAlias
    * @param array $conditions
    */
-  public function join($side, $tableName, $tableAlias, $conditions) {
-    // INNER JOINs take precedence over LEFT JOINs
-    if ($side != 'LEFT' || !isset($this->joins[$tableAlias])) {
-      $this->joins[$tableAlias] = $side;
-      $this->query->join($tableAlias, "$side JOIN `$tableName` `$tableAlias` ON " . implode(' AND ', $conditions));
-    }
+  private function join(string $side, string $tableName, string $tableAlias, array $conditions): void {
+    $this->query->join($tableAlias, "$side JOIN `$tableName` `$tableAlias` ON " . implode(' AND ', $conditions));
   }
 
   /**

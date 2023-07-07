@@ -2119,21 +2119,23 @@ ORDER BY   civicrm_email.is_bulkmail DESC
 
         case 'opened':
           // do not use group by clause in report, because same report used for total and unique open
-          $reportFilter .= "&distinct=0";
+          $reportFilter .= '&distinct=0';
         case 'opened_unique':
-          $url = "mailing/opened";
-          $searchFilter .= "&mailing_open_status=Y";
+          $url = 'mailing/opened';
+          $searchFilter .= '&mailing_open_status=Y';
           break;
 
         case 'clicks':
         case 'clicks_unique':
-          $url = "mailing/clicks";
-          $searchFilter .= "&mailing_click_status=Y";
+          $url = 'mailing/clicks';
+          $searchFilter .= '&mailing_click_status=Y';
           break;
       }
       $actionLinks[CRM_Core_Action::VIEW]['url'] = CRM_Report_Utils_Report::getNextUrl($url, $reportFilter, FALSE, TRUE);
+      $actionLinks[CRM_Core_Action::VIEW]['weight'] = -20;
       if (array_key_exists(CRM_Core_Action::ADVANCED, $actionLinks)) {
         $actionLinks[CRM_Core_Action::ADVANCED]['qs'] = $searchFilter;
+        $actionLinks[CRM_Core_Action::ADVANCED]['weight'] = 10;
       }
       $report['event_totals']['actionlinks'][$key] = CRM_Core_Action::formLink(
         $actionLinks,
@@ -2554,7 +2556,7 @@ LEFT JOIN civicrm_mailing_group g ON g.mailing_id   = m.id
 
         $form->add('select', "{$prefix}template", ts('Use Template'),
           ['' => ts('- select -')] + $templates[$prefix], FALSE,
-          ['onChange' => "selectValue( this.value, '{$prefix}');"]
+          ['onChange' => "selectValue( this.value, '{$prefix}');", 'class' => 'crm-select2 huge']
         );
       }
       $form->add('checkbox', "{$prefix}updateTemplate", ts('Update Template'), NULL);
@@ -2785,7 +2787,7 @@ AND    e.id NOT IN ( SELECT email_id FROM civicrm_mailing_recipients mr WHERE ma
 SELECT civicrm_mailing.id, civicrm_mailing.name, civicrm_mailing_job.end_date
 FROM   civicrm_mailing
 INNER JOIN civicrm_mailing_job ON civicrm_mailing.id = civicrm_mailing_job.mailing_id {$where}
-ORDER BY civicrm_mailing.name";
+ORDER BY civicrm_mailing.id DESC";
       $mailing = CRM_Core_DAO::executeQuery($query);
 
       while ($mailing->fetch()) {

@@ -782,7 +782,7 @@ class CRM_Core_Permission {
 
       'view all notes' => [
         $prefix . ts('view all notes'),
-        ts("View notes (for visible contacts) even if they're marked admin only"),
+        ts("View notes (for visible contacts) even if they're marked author only"),
       ],
       'add contact notes' => [
         $prefix . ts('add contact notes'),
@@ -1245,7 +1245,7 @@ class CRM_Core_Permission {
     ];
 
     // Price sets are shared by several components, user needs access to at least one of them
-    $permissions['price_set'] = [
+    $permissions['price_set'] = $permissions['price_field'] = $permissions['price_field_value'] = $permissions['price_set_entity'] = [
       'default' => [
         ['access CiviEvent', 'access CiviContribute', 'access CiviMember'],
       ],
@@ -1516,6 +1516,12 @@ class CRM_Core_Permission {
         'access CiviCRM',
       ],
     ];
+    $permissions['mapping'] = [
+      'default' => [
+        'access CiviCRM',
+      ],
+    ];
+    $permissions['mapping_field'] = $permissions['mapping'];
 
     $permissions['saved_search'] = [
       'default' => ['administer CiviCRM data'],

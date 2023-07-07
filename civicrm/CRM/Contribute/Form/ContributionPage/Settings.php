@@ -120,7 +120,7 @@ class CRM_Contribute_Form_ContributionPage_Settings extends CRM_Contribute_Form_
 
     // name
     $this->add('text', 'title', ts('Title'), $attributes['title'], TRUE);
-    $this->addField('contribution_page_frontend_title', ['entity' => 'ContributionPage']);
+    $this->addField('frontend_title', ['entity' => 'ContributionPage'], TRUE);
 
     //CRM-7362 --add campaigns.
     CRM_Campaign_BAO_Campaign::addCampaign($this, CRM_Utils_Array::value('campaign_id', $this->_values));
@@ -234,10 +234,6 @@ class CRM_Contribute_Form_ContributionPage_Settings extends CRM_Contribute_Form_
   public static function formRule($values, $files, $self) {
     $errors = [];
     $contributionPageId = $self->_id;
-    //CRM-4286
-    if (strstr($values['title'], '/')) {
-      $errors['title'] = ts("Please do not use '/' in Title");
-    }
 
     // ensure on-behalf-of profile meets minimum requirements
     if (!empty($values['is_organization'])) {
