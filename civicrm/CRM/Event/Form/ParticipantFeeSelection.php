@@ -246,8 +246,7 @@ class CRM_Event_Form_ParticipantFeeSelection extends CRM_Core_Form {
     $params = $this->controller->exportValues($this->_name);
 
     $feeBlock = $this->_values['fee'];
-    $lineItems = $this->_values['line_items'];
-    CRM_Price_BAO_LineItem::changeFeeSelections($params, $this->_participantId, 'participant', $this->getContributionID(), $feeBlock, $lineItems);
+    CRM_Price_BAO_LineItem::changeFeeSelections($params, $this->_participantId, 'participant', $this->getContributionID(), $feeBlock);
     $this->contributionAmt = CRM_Core_DAO::getFieldValue('CRM_Contribute_BAO_Contribution', $this->getContributionID(), 'total_amount');
     // email sending
     if (!empty($params['send_receipt'])) {
@@ -326,7 +325,7 @@ class CRM_Event_Form_ParticipantFeeSelection extends CRM_Core_Form {
     $this->assign('event', $event);
 
     $this->assign('isShowLocation', $event['is_show_location']);
-    if (CRM_Utils_Array::value('is_show_location', $event) == 1) {
+    if (($event['is_show_location'] ?? NULL) == 1) {
       $locationParams = [
         'entity_id' => $params['event_id'],
         'entity_table' => 'civicrm_event',

@@ -676,14 +676,12 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
     CRM_Campaign_BAO_Campaign::addCampaign($this, $campaignId);
     $this->add('datepicker', 'register_date', ts('Registration Date'), [], TRUE, ['time' => TRUE]);
 
-    if ($this->_id) {
-      $this->assign('entityID', $this->_id);
-    }
+    $this->assign('entityID', $this->_id);
 
     $this->addSelect('role_id', ['multiple' => TRUE, 'class' => 'huge'], TRUE);
 
     // CRM-4395
-    $checkCancelledJs = ['onchange' => "return sendNotification( );"];
+    $checkCancelledJs = ['onchange' => 'return sendNotification( );'];
     $confirmJS = NULL;
     if ($this->_onlinePendingContributionId) {
       $cancelledparticipantStatusId = array_search('Cancelled', CRM_Event_PseudoConstant::participantStatus());
@@ -870,11 +868,11 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
     $params = $this->controller->exportValues($this->_name);
 
     if ($this->_action & CRM_Core_Action::DELETE) {
-      if (CRM_Utils_Array::value('delete_participant', $params) == 2) {
+      if (($params['delete_participant'] ?? NULL) == 2) {
         $additionalId = (CRM_Event_BAO_Participant::getAdditionalParticipantIds($this->_id));
         $participantLinks = (CRM_Event_BAO_Participant::getAdditionalParticipantUrl($additionalId));
       }
-      if (CRM_Utils_Array::value('delete_participant', $params) == 1) {
+      if (($params['delete_participant'] ?? NULL) == 1) {
         $additionalIds = CRM_Event_BAO_Participant::getAdditionalParticipantIds($this->_id);
         foreach ($additionalIds as $value) {
           CRM_Event_BAO_Participant::deleteParticipant($value);
@@ -1341,7 +1339,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
     $updateStatusMsg = NULL;
     //send mail when participant status changed, CRM-4326
     if ($this->_id && $this->_statusId &&
-      $this->_statusId != CRM_Utils_Array::value('status_id', $params) && !empty($params['is_notify'])
+      $this->_statusId != ($params['status_id'] ?? NULL) && !empty($params['is_notify'])
     ) {
 
       $updateStatusMsg = CRM_Event_BAO_Participant::updateStatusMessage($this->_id,
@@ -1478,7 +1476,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
       }
       if (CRM_Financial_BAO_FinancialType::isACLFinancialTypeStatus()
         && empty($form->_values['fee'])
-        && CRM_Utils_Array::value('snippet', $_REQUEST) == CRM_Core_Smarty::PRINT_NOFORM
+        && ($_REQUEST['snippet'] ?? NULL) == CRM_Core_Smarty::PRINT_NOFORM
       ) {
         CRM_Core_Session::setStatus(ts('You do not have all the permissions needed for this page.'), 'Permission Denied', 'error');
         return FALSE;
@@ -1494,7 +1492,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
           CRM_Financial_BAO_FinancialType::getAvailableFinancialTypes($financialTypes, $form->_action);
         }
         else {
-          $financialTypes = CRM_Contribute_PseudoConstant::financialType();
+          $financialTypes = CRM_Contribute_BAO_Contribution::buildOptions('financial_type_id', 'create');
         }
 
         $form->add('select', 'financial_type_id',
@@ -1506,7 +1504,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
 
         $form->add('select', 'payment_instrument_id',
           ts('Payment Method'),
-          ['' => ts('- select -')] + CRM_Contribute_PseudoConstant::paymentInstrument(),
+          ['' => ts('- select -')] + CRM_Contribute_BAO_Contribution::buildOptions('payment_instrument_id', 'create'),
           FALSE, ['onChange' => "return showHideByValue('payment_instrument_id','4','checkNumber','table-row','select',false);"]
         );
         // don't show transaction id in batch update mode
@@ -1712,7 +1710,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
     }
     $this->assign('event', $event);
     $this->assign('isShowLocation', $event['is_show_location']);
-    if (CRM_Utils_Array::value('is_show_location', $event) == 1) {
+    if (($event['is_show_location'] ?? NULL) == 1) {
       $locationParams = [
         'entity_id' => $eventID,
         'entity_table' => 'civicrm_event',
@@ -1789,7 +1787,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
     }
 
     $contribParams['is_test'] = 0;
-    if ($form->_action & CRM_Core_Action::PREVIEW || CRM_Utils_Array::value('mode', $params) == 'test') {
+    if ($form->_action & CRM_Core_Action::PREVIEW || ($params['mode'] ?? NULL) == 'test') {
       $contribParams['is_test'] = 1;
     }
 
@@ -1863,7 +1861,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
       'campaign_id' => $params['campaign_id'] ?? NULL,
     ];
 
-    if ($form->_action & CRM_Core_Action::PREVIEW || CRM_Utils_Array::value('mode', $params) == 'test') {
+    if ($form->_action & CRM_Core_Action::PREVIEW || ($params['mode'] ?? NULL) == 'test') {
       $participantParams['is_test'] = 1;
     }
     else {

@@ -12,8 +12,8 @@
     templateUrl: '~/crmSearchAdmin/resultsTable/crmSearchAdminResultsTable.html',
     controller: function($scope, $element, searchMeta, searchDisplayBaseTrait, searchDisplayTasksTrait, searchDisplaySortableTrait) {
       var ts = $scope.ts = CRM.ts('org.civicrm.search_kit'),
-        // Mix in traits to this controller
-        ctrl = angular.extend(this, searchDisplayBaseTrait, searchDisplayTasksTrait, searchDisplaySortableTrait);
+        // Mix in copies of traits to this controller
+        ctrl = angular.extend(this, _.cloneDeep(searchDisplayBaseTrait), _.cloneDeep(searchDisplayTasksTrait), _.cloneDeep(searchDisplaySortableTrait));
 
       function buildSettings() {
         ctrl.apiEntity = ctrl.search.api_entity;
@@ -25,6 +25,9 @@
         }).concat(ctrl.settings.columns);
         ctrl.debug = {
           apiParams: JSON.stringify(ctrl.search.api_params, null, 2)
+        };
+        ctrl.perm = {
+          viewDebugOutput: CRM.checkPerm('view debug output'),
         };
         ctrl.results = null;
         ctrl.rowCount = null;

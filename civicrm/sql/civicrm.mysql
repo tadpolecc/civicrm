@@ -157,7 +157,6 @@ DROP TABLE IF EXISTS `civicrm_acl_entity_role`;
 DROP TABLE IF EXISTS `civicrm_acl_cache`;
 DROP TABLE IF EXISTS `civicrm_acl`;
 DROP TABLE IF EXISTS `civicrm_recurring_entity`;
-DROP TABLE IF EXISTS `civicrm_action_mapping`;
 DROP TABLE IF EXISTS `civicrm_prevnext_cache`;
 DROP TABLE IF EXISTS `civicrm_component`;
 DROP TABLE IF EXISTS `civicrm_worldregion`;
@@ -416,27 +415,6 @@ ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMA
 
 -- /*******************************************************
 -- *
--- * civicrm_action_mapping
--- *
--- * Table to store mapping for the reminder.
--- *
--- *******************************************************/
-CREATE TABLE `civicrm_action_mapping` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `entity` varchar(64) COMMENT 'Entity for which the reminder is created',
-  `entity_value` varchar(64) COMMENT 'Entity value',
-  `entity_value_label` varchar(64) COMMENT 'Entity value label',
-  `entity_status` varchar(64) COMMENT 'Entity status',
-  `entity_status_label` varchar(64) COMMENT 'Entity status label',
-  `entity_date_start` varchar(64) COMMENT 'Entity date',
-  `entity_date_end` varchar(64) COMMENT 'Entity date',
-  `entity_recipient` varchar(64) COMMENT 'Entity recipient',
-  PRIMARY KEY (`id`)
-)
-ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
-
--- /*******************************************************
--- *
 -- * civicrm_recurring_entity
 -- *
 -- *******************************************************/
@@ -469,8 +447,10 @@ CREATE TABLE `civicrm_acl` (
   `acl_table` varchar(64) COMMENT 'If this is a grant/revoke entry, what table are we granting?',
   `acl_id` int unsigned COMMENT 'ID of the ACL or ACL group being granted/revoked',
   `is_active` tinyint COMMENT 'Is this property active?',
+  `priority` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  INDEX `index_acl_id`(acl_id)
+  INDEX `index_acl_id`(acl_id),
+  INDEX `index_priority`(priority)
 )
 ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
@@ -2819,14 +2799,14 @@ CREATE TABLE `civicrm_uf_group` (
   `help_pre` text COMMENT 'Description and/or help text to display before fields in form.',
   `help_post` text COMMENT 'Description and/or help text to display after fields in form.',
   `limit_listings_group_id` int unsigned COMMENT 'Group id, foreign key from civicrm_group',
-  `post_URL` varchar(255) COMMENT 'Redirect to URL.',
+  `post_url` varchar(255) COMMENT 'Redirect to URL on submit.',
   `add_to_group_id` int unsigned COMMENT 'foreign key to civicrm_group_id',
   `add_captcha` tinyint NOT NULL DEFAULT 0 COMMENT 'Should a CAPTCHA widget be included this Profile form.',
   `is_map` tinyint NOT NULL DEFAULT 0 COMMENT 'Do we want to map results from this profile.',
   `is_edit_link` tinyint NOT NULL DEFAULT 0 COMMENT 'Should edit link display in profile selector',
   `is_uf_link` tinyint NOT NULL DEFAULT 0 COMMENT 'Should we display a link to the website profile in profile selector',
   `is_update_dupe` tinyint NOT NULL DEFAULT 0 COMMENT 'Should we update the contact record if we find a duplicate',
-  `cancel_URL` varchar(255) COMMENT 'Redirect to URL when Cancle button clik .',
+  `cancel_url` varchar(255) COMMENT 'Redirect to URL when Cancel button clicked.',
   `is_cms_user` tinyint NOT NULL DEFAULT 0 COMMENT 'Should we create a cms user for this profile ',
   `notify` text,
   `is_reserved` tinyint NOT NULL DEFAULT 0 COMMENT 'Is this group reserved for use by some other CiviCRM functionality?',
@@ -3564,7 +3544,7 @@ CREATE TABLE `civicrm_activity` (
   INDEX `index_is_current_revision`(is_current_revision),
   INDEX `index_is_deleted`(is_deleted),
   CONSTRAINT FK_civicrm_activity_phone_id FOREIGN KEY (`phone_id`) REFERENCES `civicrm_phone`(`id`) ON DELETE SET NULL,
-  CONSTRAINT FK_civicrm_activity_parent_id FOREIGN KEY (`parent_id`) REFERENCES `civicrm_activity`(`id`) ON DELETE CASCADE,
+  CONSTRAINT FK_civicrm_activity_parent_id FOREIGN KEY (`parent_id`) REFERENCES `civicrm_activity`(`id`) ON DELETE SET NULL,
   CONSTRAINT FK_civicrm_activity_relationship_id FOREIGN KEY (`relationship_id`) REFERENCES `civicrm_relationship`(`id`) ON DELETE SET NULL,
   CONSTRAINT FK_civicrm_activity_original_id FOREIGN KEY (`original_id`) REFERENCES `civicrm_activity`(`id`) ON DELETE SET NULL,
   CONSTRAINT FK_civicrm_activity_campaign_id FOREIGN KEY (`campaign_id`) REFERENCES `civicrm_campaign`(`id`) ON DELETE SET NULL

@@ -2146,6 +2146,11 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
   /**
    * Repeat a transaction as part of a recurring series.
    *
+   * @internal NOT supported to be called from outside of core. Note this function
+   * was made public to be called from the v3 api which IS supported so we can
+   * amend it without regards to possible external callers as this warning
+   * was added in the same commit as it was made public rather than protected.
+   *
    * The ideal flow is
    * 1) Processor calls contribution.repeattransaction with contribution_status_id = Pending
    * 2) The repeattransaction loads the 'template contribution' and calls a hook to allow altering of it .
@@ -2173,18 +2178,55 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
    *    as a template and is_template is set to TRUE. If this cannot be found the latest added contribution
    *    is used.
    *
-   * @param array $contributionParams
+   * @param int $recurringContributionID
    *
    * @return bool|array
    * @throws \CRM_Core_Exception
    * @throws \Civi\API\Exception\UnauthorizedException
    * @todo
    *
-   *  2) repeattransaction code is current munged into completeTransaction code for historical bad coding reasons
+   *  2) repeattransaction code is callable from completeTransaction code for historical bad coding reasons
    *  3) Repeat transaction duplicates rather than calls Order.create
    *  4) Use of payment.create still limited - completetransaction is more common.
    */
-  protected static function repeatTransaction(array $input, array $contributionParams) {
+  public static function repeatTransaction(array $input, int $recurringContributionID) {
+    // @todo - this was shared with `completeOrder` and not all necessarily apply.
+    $inputContributionWhiteList = [
+      'fee_amount',
+      'net_amount',
+      'trxn_id',
+      'check_number',
+      'payment_instrument_id',
+      'is_test',
+      'campaign_id',
+      'receive_date',
+      'receipt_date',
+      'contribution_status_id',
+      'card_type_id',
+      'pan_truncation',
+    ];
+
+    $paymentProcessorId = $input['payment_processor_id'] ?? NULL;
+
+    $completedContributionStatusID = CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_Contribution', 'contribution_status_id', 'Completed');
+
+    // @todo this was taken from completeContribution - it may be this just duplicates
+    // upcoming filtering & can go.
+    $contributionParams = array_merge([
+      'contribution_status_id' => $completedContributionStatusID,
+    ], array_intersect_key($input, array_fill_keys($inputContributionWhiteList, 1)
+    ));
+
+    $contributionParams['payment_processor'] = $paymentProcessorId;
+
+    if (empty($contributionParams['payment_instrument_id']) && $paymentProcessorId) {
+      $contributionParams['payment_instrument_id'] = PaymentProcessor::get(FALSE)->addWhere('id', '=', $paymentProcessorId)->addSelect('payment_instrument_id')->execute()->first()['payment_instrument_id'];
+    }
+
+    if ($recurringContributionID) {
+      $contributionParams['contribution_recur_id'] = $recurringContributionID;
+    }
+    $isCompleted = CRM_Core_PseudoConstant::getName('CRM_Contribute_BAO_Contribution', 'contribution_status_id', $contributionParams['contribution_status_id']) === 'Completed';
     $templateContribution = CRM_Contribute_BAO_ContributionRecur::getTemplateContribution(
       (int) $contributionParams['contribution_recur_id'],
       [
@@ -2212,6 +2254,10 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
     CRM_Contribute_BAO_ContributionRecur::updateRecurLinkedPledge($createContribution['id'], $contributionParams['contribution_recur_id'],
       $contributionParams['status_id'], $contributionParams['total_amount']);
 
+    if ($isCompleted) {
+      // Ideally add deprecation notice here & only accept pending for repeattransaction.
+      return self::completeOrder($input, NULL, $createContribution['id']);
+    }
     return $createContribution;
   }
 
@@ -3063,7 +3109,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     $additionalParticipantId = [];
     $contributionStatus = CRM_Core_PseudoConstant::getName('CRM_Contribute_BAO_Contribution', 'contribution_status_id', $params['contribution_status_id'] ?? NULL);
 
-    if (CRM_Utils_Array::value('contribution_mode', $params) === 'participant') {
+    if (($params['contribution_mode'] ?? NULL) === 'participant') {
       $entityId = $params['participant_id'];
       $entityTable = 'civicrm_participant';
       $additionalParticipantId = CRM_Event_BAO_Participant::getAdditionalParticipantIds($entityId);
@@ -3769,6 +3815,10 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    * @throws \CRM_Core_Exception
    */
   public static function completeOrder($input, $recurringContributionID, $contributionID, $isPostPaymentCreate = FALSE) {
+    if (!$contributionID) {
+      CRM_Core_Error::deprecatedFunctionWarning('v3api Contribution.repeattransaction. This handling will be removed around 5.70 (calling this function directly has never been supported outside core anyway)');
+      return self::repeatTransaction($input, $recurringContributionID);
+    }
     $transaction = new CRM_Core_Transaction();
 
     $inputContributionWhiteList = [
@@ -3805,16 +3855,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       $contributionParams['contribution_recur_id'] = $recurringContributionID;
     }
 
-    if (!$contributionID) {
-      $contributionResult = self::repeatTransaction($input, $contributionParams);
-      $contributionID = $contributionResult['id'];
-      if ($contributionParams['contribution_status_id'] === $completedContributionStatusID) {
-        // Ideally add deprecation notice here & only accept pending for repeattransaction.
-        return self::completeOrder($input, NULL, $contributionID);
-      }
-      return $contributionResult;
-    }
-
     if ($contributionParams['contribution_status_id'] === $completedContributionStatusID) {
       self::updateMembershipBasedOnCompletionOfContribution(
         $contributionID,
@@ -3834,9 +3874,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     $contributionParams['id'] = $contributionID;
     $contributionParams['is_post_payment_create'] = $isPostPaymentCreate;
 
-    if (empty($contributionResult)) {
-      $contributionResult = civicrm_api3('Contribution', 'create', $contributionParams);
-    }
+    $contributionResult = civicrm_api3('Contribution', 'create', $contributionParams);
 
     $transaction->commit();
     \Civi::log()->info("Contribution {$contributionParams['id']} updated successfully");

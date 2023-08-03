@@ -21,11 +21,7 @@
   <tr>
    <td>
     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
-    {if !empty($formValues.receipt_text)}
-     <p>{$formValues.receipt_text|htmlize}</p>
-    {else}
      <p>{ts}Below you will find a receipt for this contribution.{/ts}</p>
-    {/if}
    </td>
   </tr>
   <tr>
@@ -113,7 +109,7 @@
            {ts} Amount before Tax : {/ts}
          </td>
          <td {$valueStyle}>
-           {$formValues.total_amount-$totalTaxAmount|crmMoney:'{contribution.currency}'}
+           {contribution.tax_exclusive_amount}
          </td>
        </tr>
 

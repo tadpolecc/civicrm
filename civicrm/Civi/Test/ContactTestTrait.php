@@ -15,6 +15,8 @@ namespace Civi\Test;
  */
 trait ContactTestTrait {
 
+  use EntityTrait;
+
   /**
    * API version to use for any api calls.
    *
@@ -34,11 +36,11 @@ trait ContactTestTrait {
   public function createLoggedInUser(): int {
     $params = [
       'first_name' => 'Logged In',
-      'last_name' => 'User ' . rand(),
+      'last_name' => 'User ' . mt_rand(),
       'contact_type' => 'Individual',
       'domain_id' => \CRM_Core_Config::domainID(),
     ];
-    $contactID = $this->individualCreate($params);
+    $contactID = $this->individualCreate($params, 'logged_in');
     $this->callAPISuccess('UFMatch', 'get', ['uf_id' => 6, 'api.UFMatch.delete' => []]);
     $this->callAPISuccess('UFMatch', 'create', [
       'contact_id' => $contactID,
@@ -201,11 +203,12 @@ trait ContactTestTrait {
    * Add a Group.
    *
    * @param array $params
+   * @param string $identifier
    *
    * @return int
    *   groupId of created group
    */
-  public function groupCreate(array $params = []): int {
+  public function groupCreate(array $params = [], string $identifier = 'group'): int {
     $params = array_merge([
       'name' => 'Test Group 1',
       'domain_id' => 1,
@@ -219,7 +222,7 @@ trait ContactTestTrait {
       ],
     ], $params);
 
-    $result = $this->callAPISuccess('Group', 'create', $params);
+    $result = $this->createTestEntity('Group', $params, $identifier);
     return $result['id'];
   }
 

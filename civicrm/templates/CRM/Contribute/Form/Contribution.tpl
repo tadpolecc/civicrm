@@ -22,7 +22,7 @@
       {elseif $contactId}
         {ts 1=$displayName}Use this form to submit a new contribution on behalf of %1.{/ts}
       {else}
-        {ts 1=$displayName}Use this form to submit a new contribution.{/ts}
+        {ts}Use this form to submit a new contribution.{/ts}
       {/if}
       {if $contributionMode == 'live'}
         {ts}<strong>A LIVE transaction will be submitted</strong> using the selected payment processor.{/ts}
@@ -103,13 +103,12 @@
             <tr id='recurringPaymentBlock'>
               <td></td>
               <td>
-                <strong>{$form.is_recur.html} {ts}every{/ts}
-                  &nbsp;{$form.frequency_interval.html}
-                  &nbsp;{$form.frequency_unit.html}&nbsp;
-                  {ts}for{/ts}
-                  &nbsp;{$form.installments.html}
-                  &nbsp;{$form.installments.label}
-                </strong>
+                {$form.is_recur.html} {ts}every{/ts}
+                &nbsp;{$form.frequency_interval.html}
+                &nbsp;{$form.frequency_unit.html}&nbsp;
+                {ts}for{/ts}
+                &nbsp;{$form.installments.html}
+                &nbsp;{$form.installments.label}
                 <br />
                 <span class="description">
             {ts}You can leave the number of installments blank if you want to make an open-ended commitment. In either case, you can choose to cancel at any time.{/ts}

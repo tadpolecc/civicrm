@@ -4887,8 +4887,9 @@ FROM civicrm_option_group
 WHERE (name = "acl_role")
 ;
 INSERT INTO civicrm_option_value (`color`,`component_id`,`description`,`domain_id`,`filter`,`grouping`,`icon`,`is_active`,`is_default`,`is_optgroup`,`is_reserved`,`label`,`name`,`option_group_id`,`value`,`visibility_id`,`weight`) VALUES
-(NULL,NULL,NULL,NULL,"0",NULL,NULL,"1","0","0","0","Administrator","Admin",@this_option_group_id,"1",NULL,"1"),
-(NULL,NULL,NULL,NULL,"0",NULL,NULL,"1","0","0","1","Authenticated","Auth",@this_option_group_id,"2",NULL,"2")
+(NULL,NULL,NULL,NULL,"0",NULL,NULL,"1","0","0","1","Everyone","Everyone",@this_option_group_id,"0",NULL,"1"),
+(NULL,NULL,NULL,NULL,"0",NULL,NULL,"1","0","0","0","Administrator","Admin",@this_option_group_id,"1",NULL,"2"),
+(NULL,NULL,NULL,NULL,"0",NULL,NULL,"1","0","0","1","Authenticated","Auth",@this_option_group_id,"2",NULL,"3")
 ;
 INSERT INTO civicrm_option_group (`description`,`is_active`,`is_reserved`,`name`,`option_value_fields`,`title`) VALUES
 ("The following credit card options will be offered to contributors using Online Contribution pages. You will need to verify which cards are accepted by your chosen Payment Processor and update these entries accordingly.IMPORTANT: These options do not control credit card/payment method choices for sites and/or contributors using the PayPal Express service (e.g. where billing information is collected on the Payment Processor\\\'s website).","1","1","accept_creditcard","name,label,description","Accepted Credit Cards")
@@ -6350,7 +6351,7 @@ INSERT INTO civicrm_dedupe_rule (`dedupe_rule_group_id`,`rule_field`,`rule_table
 (@drgid,"email","civicrm_email","10")
 ;
 INSERT INTO civicrm_dedupe_rule_group (`contact_type`,`is_reserved`,`name`,`threshold`,`title`,`used`) VALUES
-("Organization","0","OrganizationSupervised","10","Name and Email","Supervised")
+("Organization","0","OrganizationSupervised","10","Name or Email","Supervised")
 ;
 SELECT @drgid := max(id)
 FROM civicrm_dedupe_rule_group
@@ -6361,7 +6362,7 @@ INSERT INTO civicrm_dedupe_rule (`dedupe_rule_group_id`,`rule_field`,`rule_table
 (@drgid,"email","civicrm_email","10")
 ;
 INSERT INTO civicrm_dedupe_rule_group (`contact_type`,`is_reserved`,`name`,`threshold`,`title`,`used`) VALUES
-("Household","0","HouseholdSupervised","10","Name and Email","Supervised")
+("Household","0","HouseholdSupervised","10","Name or Email","Supervised")
 ;
 SELECT @drgid := max(id)
 FROM civicrm_dedupe_rule_group
@@ -6382,7 +6383,7 @@ INSERT INTO civicrm_dedupe_rule (`dedupe_rule_group_id`,`rule_field`,`rule_table
 (@drgid,"email","civicrm_email","10")
 ;
 INSERT INTO civicrm_dedupe_rule_group (`contact_type`,`is_reserved`,`name`,`threshold`,`title`,`used`) VALUES
-("Organization","0","OrganizationUnsupervised","10","Name and Email","Unsupervised")
+("Organization","0","OrganizationUnsupervised","10","Name or Email","Unsupervised")
 ;
 SELECT @drgid := max(id)
 FROM civicrm_dedupe_rule_group
@@ -6393,7 +6394,7 @@ INSERT INTO civicrm_dedupe_rule (`dedupe_rule_group_id`,`rule_field`,`rule_table
 (@drgid,"email","civicrm_email","10")
 ;
 INSERT INTO civicrm_dedupe_rule_group (`contact_type`,`is_reserved`,`name`,`threshold`,`title`,`used`) VALUES
-("Household","0","HouseholdUnsupervised","10","Name and Email","Unsupervised")
+("Household","0","HouseholdUnsupervised","10","Name or Email","Unsupervised")
 ;
 SELECT @drgid := max(id)
 FROM civicrm_dedupe_rule_group
@@ -6808,14 +6809,6 @@ INSERT INTO civicrm_participant_status_type (`class`,`is_active`,`is_counted`,`i
 ("Positive","1","1","1","Partially paid","Partially paid","2","14"),
 ("Positive","1","1","1","Pending refund","Pending refund","2","15"),
 ("Negative","1","0","1","Transferred","Transferred","2","16")
-;
-INSERT INTO civicrm_action_mapping (`entity`,`entity_date_end`,`entity_date_start`,`entity_recipient`,`entity_status`,`entity_status_label`,`entity_value`,`entity_value_label`) VALUES
-("civicrm_activity",NULL,"activity_date_time","activity_contacts","activity_status","Activity Status","activity_type","Activity Type"),
-("civicrm_participant","event_end_date","event_start_date","event_contacts","civicrm_participant_status_type","Participant Status","event_type","Event Type"),
-("civicrm_participant","event_end_date","event_start_date","event_contacts","civicrm_participant_status_type","Participant Status","civicrm_event","Event Name"),
-("civicrm_membership","membership_end_date","membership_join_date",NULL,"auto_renew_options","Auto Renew Options","civicrm_membership_type","Membership Type"),
-("civicrm_participant","event_end_date","event_start_date","event_contacts","civicrm_participant_status_type","Participant Status","event_template","Event Template"),
-("civicrm_contact",NULL,"date_field",NULL,"contact_date_reminder_options","Annual Options","civicrm_contact","Date Field")
 ;
 INSERT INTO civicrm_contact_type (`icon`,`id`,`image_URL`,`is_active`,`is_reserved`,`label`,`name`,`parent_id`) VALUES
 ("fa-user","1",NULL,"1","1","Individual","Individual",NULL),
@@ -7390,9 +7383,7 @@ INSERT INTO civicrm_msg_template
       ('Contributions - Receipt (off-line)', '{ts}Contribution Receipt{/ts} - {contact.display_name}
 ', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
-{if !empty($formValues.receipt_text)}
-{$formValues.receipt_text}
-{else}{ts}Below you will find a receipt for this contribution.{/ts}{/if}
+{ts}Below you will find a receipt for this contribution.{/ts}
 
 ===========================================================
 {ts}Contribution Information{/ts}
@@ -7422,7 +7413,7 @@ INSERT INTO civicrm_msg_template
 
 
 {if $isShowTax && {contribution.tax_amount|boolean}}
-{ts}Amount before Tax{/ts} : {$formValues.total_amount-$totalTaxAmount|crmMoney:$currency}
+{ts}Amount before Tax{/ts} : {contribution.tax_exclusive_amount}
 {/if}
 {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
 {if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if} : {$taxDetail.amount|crmMoney:\'{contribution.currency}\'}
@@ -7525,11 +7516,7 @@ INSERT INTO civicrm_msg_template
   <tr>
    <td>
     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
-    {if !empty($formValues.receipt_text)}
-     <p>{$formValues.receipt_text|htmlize}</p>
-    {else}
      <p>{ts}Below you will find a receipt for this contribution.{/ts}</p>
-    {/if}
    </td>
   </tr>
   <tr>
@@ -7617,7 +7604,7 @@ INSERT INTO civicrm_msg_template
            {ts} Amount before Tax : {/ts}
          </td>
          <td {$valueStyle}>
-           {$formValues.total_amount-$totalTaxAmount|crmMoney:\'{contribution.currency}\'}
+           {contribution.tax_exclusive_amount}
          </td>
        </tr>
 
@@ -7824,9 +7811,7 @@ INSERT INTO civicrm_msg_template
       ('Contributions - Receipt (off-line)', '{ts}Contribution Receipt{/ts} - {contact.display_name}
 ', '{assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}{$greeting},{/if}
 
-{if !empty($formValues.receipt_text)}
-{$formValues.receipt_text}
-{else}{ts}Below you will find a receipt for this contribution.{/ts}{/if}
+{ts}Below you will find a receipt for this contribution.{/ts}
 
 ===========================================================
 {ts}Contribution Information{/ts}
@@ -7856,7 +7841,7 @@ INSERT INTO civicrm_msg_template
 
 
 {if $isShowTax && {contribution.tax_amount|boolean}}
-{ts}Amount before Tax{/ts} : {$formValues.total_amount-$totalTaxAmount|crmMoney:$currency}
+{ts}Amount before Tax{/ts} : {contribution.tax_exclusive_amount}
 {/if}
 {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
 {if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if} : {$taxDetail.amount|crmMoney:\'{contribution.currency}\'}
@@ -7959,11 +7944,7 @@ INSERT INTO civicrm_msg_template
   <tr>
    <td>
     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
-    {if !empty($formValues.receipt_text)}
-     <p>{$formValues.receipt_text|htmlize}</p>
-    {else}
      <p>{ts}Below you will find a receipt for this contribution.{/ts}</p>
-    {/if}
    </td>
   </tr>
   <tr>
@@ -8051,7 +8032,7 @@ INSERT INTO civicrm_msg_template
            {ts} Amount before Tax : {/ts}
          </td>
          <td {$valueStyle}>
-           {$formValues.total_amount-$totalTaxAmount|crmMoney:\'{contribution.currency}\'}
+           {contribution.tax_exclusive_amount}
          </td>
        </tr>
 
@@ -9598,6 +9579,11 @@ INSERT INTO civicrm_msg_template
       </table>
     {/if}
     <table style="font-family: Arial, Verdana, sans-serif;" width="100%" height="100" border="0" cellpadding="5" cellspacing="0">
+      {if $email_comment}
+        <tr>
+          <td><font size="1" colspan="3">{$email_comment}</font></td>
+        </tr>
+      {/if}
       <tr>
         <td width="30%"><b><font size="4" align="center">{ts}INVOICE{/ts}</font></b></td>
         <td width="50%" valign="bottom"><b><font size="1" align="center">{ts}Invoice Date:{/ts}</font></b></td>
@@ -9982,6 +9968,11 @@ INSERT INTO civicrm_msg_template
       </table>
     {/if}
     <table style="font-family: Arial, Verdana, sans-serif;" width="100%" height="100" border="0" cellpadding="5" cellspacing="0">
+      {if $email_comment}
+        <tr>
+          <td><font size="1" colspan="3">{$email_comment}</font></td>
+        </tr>
+      {/if}
       <tr>
         <td width="30%"><b><font size="4" align="center">{ts}INVOICE{/ts}</font></b></td>
         <td width="50%" valign="bottom"><b><font size="1" align="center">{ts}Invoice Date:{/ts}</font></b></td>
@@ -12805,8 +12796,6 @@ INSERT INTO civicrm_msg_template
 {foreach from=$dataArray item=value key=priceset}
 {if $priceset || $priceset == 0}
 {$taxTerm} {$priceset|string_format:"%.2f"}%: {$value|crmMoney:$currency}
-{else}
-{ts}No{/ts} {$taxTerm}: {$value|crmMoney:$currency}
 {/if}
 {/foreach}
 {/if}
@@ -13222,9 +13211,6 @@ INSERT INTO civicrm_msg_template
           <tr>
            {if $priceset || $priceset == 0}
             <td>&nbsp;{$taxTerm} {$priceset|string_format:"%.2f"}%</td>
-            <td>&nbsp;{$value|crmMoney:$currency}</td>
-           {else}
-            <td>&nbsp;{ts}No{/ts} {$taxTerm}</td>
             <td>&nbsp;{$value|crmMoney:$currency}</td>
            {/if}
           </tr>
@@ -13634,8 +13620,6 @@ INSERT INTO civicrm_msg_template
 {foreach from=$dataArray item=value key=priceset}
 {if $priceset || $priceset == 0}
 {$taxTerm} {$priceset|string_format:"%.2f"}%: {$value|crmMoney:$currency}
-{else}
-{ts}No{/ts} {$taxTerm}: {$value|crmMoney:$currency}
 {/if}
 {/foreach}
 {/if}
@@ -14052,9 +14036,6 @@ INSERT INTO civicrm_msg_template
            {if $priceset || $priceset == 0}
             <td>&nbsp;{$taxTerm} {$priceset|string_format:"%.2f"}%</td>
             <td>&nbsp;{$value|crmMoney:$currency}</td>
-           {else}
-            <td>&nbsp;{ts}No{/ts} {$taxTerm}</td>
-            <td>&nbsp;{$value|crmMoney:$currency}</td>
            {/if}
           </tr>
         {/foreach}
@@ -14350,7 +14331,7 @@ INSERT INTO civicrm_msg_template
 
 {ts}You have been added to the WAIT LIST for this event.{/ts}
 
-{if !empty($isPrimary)}
+{if $isPrimary}
 {ts}If space becomes available you will receive an email with a link to a web page where you can complete your registration.{/ts}
 {/if}
 ==========================================================={if !empty($pricesetFieldsCount)}===================={/if}
@@ -14360,7 +14341,7 @@ INSERT INTO civicrm_msg_template
 
 {ts}Your registration has been submitted.{/ts}
 
-{if !empty($isPrimary)}
+{if $isPrimary}
 {ts}Once your registration has been reviewed, you will receive an email with a link to a web page where you can complete the registration process.{/ts}
 
 {/if}
@@ -14410,21 +14391,19 @@ INSERT INTO civicrm_msg_template
 {$location.address.1.display|strip_tags:false}
 {/if}{*End of isShowLocation condition*}
 
-{if !empty($location.phone.1.phone) || !empty($location.email.1.email)}
+{if {event.loc_block_id.phone_id.phone|boolean} || {event.loc_block_id.email_id.email|boolean}}
 
 {ts}Event Contacts:{/ts}
-{foreach from=$location.phone item=phone}
-{if $phone.phone}
-
-{if $phone.phone_type}{$phone.phone_type_display}{else}{ts}Phone{/ts}{/if}: {$phone.phone}{/if} {if $phone.phone_ext} {ts}ext.{/ts} {$phone.phone_ext}{/if}
-{/foreach}
+{if {event.loc_block_id.phone_id.phone|boolean}}
+  {if {event.loc_block_id.phone_id.phone_type_id|boolean}}{event.loc_block_id.phone_id.phone_type_id:label}{else}{ts}Phone{/ts}{/if} {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}} {ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
+{/if}
 {foreach from=$location.email item=eventEmail}
 {if $eventEmail.email}
 
 {ts}Email{/ts}: {$eventEmail.email}{/if}{/foreach}
 {/if}
 
-{if !empty($event.is_public)}
+{if {event.is_public|boolean}}
 {capture assign=icalFeed}{crmURL p=\'civicrm/event/ical\' q="reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
 {ts}Download iCalendar entry for this event.{/ts} {$icalFeed}
 {capture assign=gCalendar}{crmURL p=\'civicrm/event/ical\' q="gCalendar=1&reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
@@ -14444,7 +14423,7 @@ You were registered by: {$payer.name}
 {if !empty($lineItem)}{foreach from=$lineItem item=value key=priceset}
 
 {if $value neq \'skip\'}
-{if !empty($isPrimary)}
+{if $isPrimary}
 {if $lineItem|@count GT 1} {* Header for multi participant registration cases. *}
 {ts 1=$priceset+1}Participant %1{/ts} {if !empty($part.$priceset)}{$part.$priceset.info}{/if}
 
@@ -14455,19 +14434,19 @@ You were registered by: {$payer.name}
 {capture assign=ts_item}{ts}Item{/ts}{/capture}
 {capture assign=ts_qty}{ts}Qty{/ts}{/capture}
 {capture assign=ts_each}{ts}Each{/ts}{/capture}
-{if !empty($dataArray)}
+{if $isShowTax && {contribution.tax_amount|boolean}}
 {capture assign=ts_subtotal}{ts}Subtotal{/ts}{/capture}
 {capture assign=ts_taxRate}{ts}Tax Rate{/ts}{/capture}
 {capture assign=ts_taxAmount}{ts}Tax Amount{/ts}{/capture}
 {/if}
 {capture assign=ts_total}{ts}Total{/ts}{/capture}
 {if !empty($pricesetFieldsCount) }{capture assign=ts_participant_total}{ts}Total Participants{/ts}{/capture}{/if}
-{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if !empty($dataArray)} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate|string_format:"%10s"} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"} {if !empty($ts_participant_total)}{$ts_participant_total|string_format:"%10s"}{/if}
+{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if $isShowTax && {contribution.tax_amount|boolean}} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate|string_format:"%10s"} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"} {if !empty($ts_participant_total)}{$ts_participant_total|string_format:"%10s"}{/if}
 -----------------------------------------------------------{if !empty($pricesetFieldsCount)}-----------------------------------------------------{/if}
 
 {foreach from=$value item=line}
 {if !empty($pricesetFieldsCount) }{capture assign=ts_participant_count}{$line.participant_count}{/capture}{/if}
-{capture assign=ts_item}{if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description} {$line.description}{/if}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:$currency|string_format:"%10s"} {if !empty($dataArray)} {$line.unit_price*$line.qty|crmMoney:$currency|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""}  {$line.tax_rate|string_format:"%.2f"} %  {$line.tax_amount|crmMoney:$currency|string_format:"%10s"} {else}                  {/if}  {/if} {$line.line_total+$line.tax_amount|crmMoney:$currency|string_format:"%10s"}{if !empty($ts_participant_count)}{$ts_participant_count|string_format:"%10s"}{/if}
+{capture assign=ts_item}{if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description} {$line.description}{/if}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:$currency|string_format:"%10s"} {if $isShowTax && {contribution.tax_amount|boolean}} {$line.unit_price*$line.qty|crmMoney:$currency|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""}  {$line.tax_rate|string_format:"%.2f"} %  {$line.tax_amount|crmMoney:$currency|string_format:"%10s"} {else}                  {/if}  {/if} {$line.line_total+$line.tax_amount|crmMoney:$currency|string_format:"%10s"}{if !empty($ts_participant_count)}{$ts_participant_count|string_format:"%10s"}{/if}
 {/foreach}
 ----------------------------------------------------------------------------------------------------------------
 {if !empty($individual)}{ts}Participant Total{/ts} {$individual.$priceset.totalAmtWithTax-$individual.$priceset.totalTaxAmt|crmMoney:$currency|string_format:"%29s"} {$individual.$priceset.totalTaxAmt|crmMoney:$currency|string_format:"%33s"} {$individual.$priceset.totalAmtWithTax|crmMoney:$currency|string_format:"%12s"}{/if}
@@ -14476,17 +14455,11 @@ You were registered by: {$payer.name}
 {/foreach}
 {""|string_format:"%120s"}
 
-{if !empty($dataArray)}
-{if isset($totalAmount) and isset($totalTaxAmount)}
-{ts}Amount before Tax:{/ts} {$totalAmount-$totalTaxAmount|crmMoney:$currency}
-{/if}
-
-{foreach from=$dataArray item=value key=priceset}
-{if $priceset || $priceset == 0}
-{$taxTerm} {$priceset|string_format:"%.2f"}%: {$value|crmMoney:$currency}
-{else}
-{ts}No{/ts} {$taxTerm}: {$value|crmMoney:$currency}
-{/if}
+{if $isShowTax && {contribution.tax_amount|boolean}}
+{ts}Amount before Tax:{/ts} {if $isPrimary}{contribution.tax_exclusive_amount}{else}{$participant.totals.total_amount_exclusive|crmMoney}{/if}
+{if !$isPrimary}{* Use the participant specific tax rate breakdown *}{assign var=taxRateBreakdown value=$participant.tax_rate_breakdown}{/if}
+{foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+{if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if}   {$valueStyle}>{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}
 {/foreach}
 {/if}
 {/if}
@@ -14496,10 +14469,10 @@ You were registered by: {$payer.name}
 {/foreach}
 {/if}
 
-{if isset($totalTaxAmount)}
-{ts}Total Tax Amount{/ts}: {$totalTaxAmount|crmMoney:$currency}
+{if $isShowTax && {contribution.tax_amount|boolean}}
+{ts}Total Tax Amount{/ts}: {if $isPrimary}{contribution.tax_amount}{else}{$participant.totals.tax_amount|crmMoney}{/if}
 {/if}
-{if !empty($isPrimary) }
+{if $isPrimary}
 
 {ts}Total Amount{/ts}: {if !empty($totalAmount)}{$totalAmount|crmMoney:$currency}{/if} {if !empty($hookDiscount.message)}({$hookDiscount.message}){/if}
 
@@ -14664,12 +14637,12 @@ You were registered by: {$payer.name}
     <p>
     {if !empty($isOnWaitlist)}
      <p>{ts}You have been added to the WAIT LIST for this event.{/ts}</p>
-     {if !empty($isPrimary)}
+     {if $isPrimary}
        <p>{ts}If space becomes available you will receive an email with a link to a web page where you can complete your registration.{/ts}</p>
      {/if}
     {elseif !empty($isRequireApproval)}
      <p>{ts}Your registration has been submitted.{/ts}</p>
-     {if !empty($isPrimary)}
+     {if $isPrimary}
       <p>{ts}Once your registration has been reviewed, you will receive an email with a link to a web page where you can complete the registration process.{/ts}</p>
      {/if}
     {elseif !empty($is_pay_later) && empty($isAmountzero) && empty($isAdditionalParticipant)}
@@ -14770,28 +14743,28 @@ You were registered by: {$payer.name}
       {/foreach}
      {/if}
 
-     {if !empty($event.is_public)}
+     {if {event.is_public|boolean}}
       <tr>
        <td colspan="2" {$valueStyle}>
-        {capture assign=icalFeed}{crmURL p=\'civicrm/event/ical\' q="reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
+        {capture assign=icalFeed}{crmURL p=\'civicrm/event/ical\' q="reset=1&id={event.id}" h=0 a=1 fe=1}{/capture}
         <a href="{$icalFeed}">{ts}Download iCalendar entry for this event.{/ts}</a>
        </td>
       </tr>
       <tr>
        <td colspan="2" {$valueStyle}>
-        {capture assign=gCalendar}{crmURL p=\'civicrm/event/ical\' q="gCalendar=1&reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
+        {capture assign=gCalendar}{crmURL p=\'civicrm/event/ical\' q="gCalendar=1&reset=1&id={event.id}" h=0 a=1 fe=1}{/capture}
         <a href="{$gCalendar}">{ts}Add event to Google Calendar{/ts}</a>
        </td>
       </tr>
      {/if}
 
-    {if !empty($event.is_share)}
-        <tr>
-            <td colspan="2" {$valueStyle}>
-                {capture assign=eventUrl}{crmURL p=\'civicrm/event/info\' q="id=`$event.id`&reset=1" a=true fe=1 h=1}{/capture}
-                {include file="CRM/common/SocialNetwork.tpl" emailMode=true url=$eventUrl title=$event.title pageURL=$eventUrl}
-            </td>
-        </tr>
+    {if $event.is_share}
+      <tr>
+        <td colspan="2" {$valueStyle}>
+          {capture assign=eventUrl}{crmURL p=\'civicrm/event/info\' q="id={event.id}&reset=1" a=true fe=1 h=1}{/capture}
+          {include file="CRM/common/SocialNetwork.tpl" emailMode=true url=$eventUrl pageURL=$eventUrl title=\'{event.title}\'}
+        </td>
+      </tr>
     {/if}
     {if !empty($payer.name)}
      <tr>
@@ -14805,111 +14778,92 @@ You were registered by: {$payer.name}
        </td>
      </tr>
     {/if}
-    {if !empty($event.is_monetary) and empty($isRequireApproval)}
+    {if {event.is_monetary|boolean} and empty($isRequireApproval)}
 
       <tr>
        <th {$headerStyle}>
-        {if !empty($event.fee_label)}{$event.fee_label}{/if}
+        {event.fee_label}
        </th>
       </tr>
 
-      {if !empty($lineItem)}
-       {foreach from=$lineItem item=value key=priceset}
-        {if $value neq \'skip\'}
-         {if !empty($isPrimary)}
-          {if $lineItem|@count GT 1} {* Header for multi participant registration cases. *}
-           <tr>
-            <td colspan="2" {$labelStyle}>
-             {ts 1=$priceset+1}Participant %1{/ts} {if !empty($part.$priceset)}{$part.$priceset.info}{/if}
-            </td>
-           </tr>
-          {/if}
-         {/if}
-         <tr>
-          <td colspan="2" {$valueStyle}>
-           <table>
+      {if $isShowLineItems}
+        {foreach from=$participants key=index item=participant}
+          {if $isPrimary || {participant.id} === $participant.id}
+          {if $isPrimary && $lineItems|@count GT 1} {* Header for multi participant registration cases. *}
             <tr>
-             <th>{ts}Item{/ts}</th>
-             <th>{ts}Qty{/ts}</th>
-             <th>{ts}Each{/ts}</th>
-             {if !empty($dataArray)}
-              <th>{ts}SubTotal{/ts}</th>
-              <th>{ts}Tax Rate{/ts}</th>
-              <th>{ts}Tax Amount{/ts}</th>
-             {/if}
-             <th>{ts}Total{/ts}</th>
-       {if  !empty($pricesetFieldsCount) }<th>{ts}Total Participants{/ts}</th>{/if}
+              <td colspan="2" {$labelStyle}>
+                {ts 1=$participant.index}Participant %1{/ts} {$participant.contact.display_name}
+              </td>
             </tr>
-            {foreach from=$value item=line}
-             <tr>
-              <td {$tdfirstStyle}>
-              {if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description}<div>{$line.description|truncate:30:"..."}</div>{/if}
-              </td>
-              <td {$tdStyle} align="middle">
-               {$line.qty}
-              </td>
-              <td {$tdStyle}>
-               {$line.unit_price|crmMoney:$currency}
-              </td>
-              {if !empty($dataArray)}
-               <td {$tdStyle}>
-                {$line.unit_price*$line.qty|crmMoney}
-               </td>
-               {if $line.tax_rate || $line.tax_amount != ""}
-                <td {$tdStyle}>
-                 {$line.tax_rate|string_format:"%.2f"}%
-                </td>
-                <td {$tdStyle}>
-                 {$line.tax_amount|crmMoney}
-                </td>
-               {else}
-                <td></td>
-                <td></td>
-               {/if}
-              {/if}
-              <td {$tdStyle}>
-               {$line.line_total+$line.tax_amount|crmMoney:$currency}
-              </td>
-        {if !empty($pricesetFieldsCount) }<td {$tdStyle}>{$line.participant_count}</td> {/if}
-             </tr>
-            {/foreach}
-            {if !empty($individual)}
-              <tr {$participantTotal}>
-                <td colspan=3>{ts}Participant Total{/ts}</td>
-                <td colspan=2>{$individual.$priceset.totalAmtWithTax-$individual.$priceset.totalTaxAmt|crmMoney}</td>
-                <td colspan=1>{$individual.$priceset.totalTaxAmt|crmMoney}</td>
-                <td colspan=2>{$individual.$priceset.totalAmtWithTax|crmMoney}</td>
-              </tr>
-            {/if}
-           </table>
-          </td>
-         </tr>
-        {/if}
-       {/foreach}
-       {if !empty($dataArray)}
-        {if isset($totalAmount) and isset($totalTaxAmount)}
-        <tr>
-         <td {$labelStyle}>
-          {ts} Amount Before Tax: {/ts}
-         </td>
-         <td {$valueStyle}>
-          {$totalAmount-$totalTaxAmount|crmMoney}
-         </td>
-        </tr>
-        {/if}
-        {foreach from=$dataArray item=value key=priceset}
-         <tr>
-          {if $priceset || $priceset == 0}
-           <td>&nbsp;{$taxTerm} {$priceset|string_format:"%.2f"}%</td>
-           <td>&nbsp;{$value|crmMoney:$currency}</td>
-          {else}
-           <td>&nbsp;{ts}No{/ts} {$taxTerm}</td>
-           <td>&nbsp;{$value|crmMoney:$currency}</td>
           {/if}
-         </tr>
+            <tr>
+              <td colspan="2" {$valueStyle}>
+                <table>
+                  <tr>
+                    <th>{ts}Item{/ts}</th>
+                    <th>{ts}Qty{/ts}</th>
+                    <th>{ts}Each{/ts}</th>
+                      {if $isShowTax && {contribution.tax_amount|boolean}}
+                        <th>{ts}Subtotal{/ts}</th>
+                        <th>{ts}Tax Rate{/ts}</th>
+                        <th>{ts}Tax Amount{/ts}</th>
+                      {/if}
+                    <th>{ts}Total{/ts}</th>
+                      {if !empty($pricesetFieldsCount)}<th>{ts}Total Participants{/ts}</th>{/if}
+                  </tr>
+                  {foreach from=$participant.line_items item=line}
+                    <tr>
+                      <td {$tdfirstStyle}>{$line.title}</td>
+                      <td {$tdStyle} align="middle">{$line.qty}</td>
+                      <td {$tdStyle}>{$line.unit_price|crmMoney:$currency}</td>
+                      {if $line.tax_rate || $line.tax_amount != ""}
+                        <td>{$line.tax_rate|string_format:"%.2f"}%</td>
+                        <td>{$line.tax_amount|crmMoney:$currency}</td>
+                      {else}
+                        <td></td>
+                        <td></td>
+                      {/if}
+                      <td {$tdStyle}>
+                        {$line.line_total+$line.tax_amount|crmMoney:$currency}
+                      </td>
+                      {if !empty($pricesetFieldsCount)}<td {$tdStyle}>{$line.participant_count}</td> {/if}
+                    </tr>
+                  {/foreach}
+                  {if $isShowTax}
+                    <tr {$participantTotal}>
+                      <td colspan=3>{ts}Participant Total{/ts}</td>
+                      <td colspan=2>{$participant.totals.total_amount_exclusive|crmMoney}</td>
+                      <td colspan=1>{$participant.totals.tax_amount|crmMoney}</td>
+                      <td colspan=2>{$participant.totals.total_amount_inclusive|crmMoney}</td>
+                    </tr>
+                  {/if}
+                </table>
+              </td>
+            </tr>
+          {/if}
         {/foreach}
-       {/if}
-      {/if}
+        {/if}
+        {if $isShowTax && {contribution.tax_amount|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Amount Before Tax:{/ts}
+            </td>
+            <td {$valueStyle}>
+              {if $isPrimary}{contribution.tax_exclusive_amount}{else}{$participant.totals.total_amount_exclusive|crmMoney}{/if}
+            </td>
+        </tr>
+
+            {if !$isPrimary}
+              {* Use the participant specific tax rate breakdown *}
+              {assign var=taxRateBreakdown value=$participant.tax_rate_breakdown}
+            {/if}
+            {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+              <tr>
+                <td {$labelStyle}>{if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if}</td>
+                <td {$valueStyle}>{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}</td>
+              </tr>
+            {/foreach}
+        {/if}
 
       {if !empty($amounts) && empty($lineItem)}
        {foreach from=$amounts item=amnt key=level}
@@ -14921,23 +14875,23 @@ You were registered by: {$payer.name}
        {/foreach}
       {/if}
 
-    {if isset($totalTaxAmount)}
+      {if $isShowTax && {contribution.tax_amount|boolean}}
        <tr>
         <td {$labelStyle}>
          {ts}Total Tax Amount{/ts}
         </td>
         <td {$valueStyle}>
-         {$totalTaxAmount|crmMoney:$currency}
+          {if $isPrimary}{contribution.tax_amount}{else}{$participant.totals.tax_amount|crmMoney}{/if}
         </td>
        </tr>
       {/if}
-      {if !empty($isPrimary)}
+      {if $isPrimary}
        <tr>
         <td {$labelStyle}>
          {ts}Total Amount{/ts}
         </td>
         <td {$valueStyle}>
-         {if !empty($totalAmount)}{$totalAmount|crmMoney:$currency}{/if} {if !empty($hookDiscount.message)}({$hookDiscount.message}){/if}
+          {contribution.total_amount} {if !empty($hookDiscount.message)}({$hookDiscount.message}){/if}
         </td>
        </tr>
        {if !empty($pricesetFieldsCount) }
@@ -15111,7 +15065,7 @@ You were registered by: {$payer.name}
      <tr>
       <td colspan="2" {$valueStyle}>
         {ts 1=$selfcancelxfer_time 2=$selfservice_preposition}You may transfer your registration to another participant or cancel your registration up to %1 hours %2 the event.{/ts} {if !empty($totalAmount)}{ts}Cancellations are not refundable.{/ts}{/if}<br />
-        {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid=`$participant.id`&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
+        {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid=`{participant.id}`&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
         <a href="{$selfService}">{ts}Click here to transfer or cancel your registration.{/ts}</a>
       </td>
      </tr>
@@ -15138,7 +15092,7 @@ You were registered by: {$payer.name}
 
 {ts}You have been added to the WAIT LIST for this event.{/ts}
 
-{if !empty($isPrimary)}
+{if $isPrimary}
 {ts}If space becomes available you will receive an email with a link to a web page where you can complete your registration.{/ts}
 {/if}
 ==========================================================={if !empty($pricesetFieldsCount)}===================={/if}
@@ -15148,7 +15102,7 @@ You were registered by: {$payer.name}
 
 {ts}Your registration has been submitted.{/ts}
 
-{if !empty($isPrimary)}
+{if $isPrimary}
 {ts}Once your registration has been reviewed, you will receive an email with a link to a web page where you can complete the registration process.{/ts}
 
 {/if}
@@ -15198,21 +15152,19 @@ You were registered by: {$payer.name}
 {$location.address.1.display|strip_tags:false}
 {/if}{*End of isShowLocation condition*}
 
-{if !empty($location.phone.1.phone) || !empty($location.email.1.email)}
+{if {event.loc_block_id.phone_id.phone|boolean} || {event.loc_block_id.email_id.email|boolean}}
 
 {ts}Event Contacts:{/ts}
-{foreach from=$location.phone item=phone}
-{if $phone.phone}
-
-{if $phone.phone_type}{$phone.phone_type_display}{else}{ts}Phone{/ts}{/if}: {$phone.phone}{/if} {if $phone.phone_ext} {ts}ext.{/ts} {$phone.phone_ext}{/if}
-{/foreach}
+{if {event.loc_block_id.phone_id.phone|boolean}}
+  {if {event.loc_block_id.phone_id.phone_type_id|boolean}}{event.loc_block_id.phone_id.phone_type_id:label}{else}{ts}Phone{/ts}{/if} {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}} {ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
+{/if}
 {foreach from=$location.email item=eventEmail}
 {if $eventEmail.email}
 
 {ts}Email{/ts}: {$eventEmail.email}{/if}{/foreach}
 {/if}
 
-{if !empty($event.is_public)}
+{if {event.is_public|boolean}}
 {capture assign=icalFeed}{crmURL p=\'civicrm/event/ical\' q="reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
 {ts}Download iCalendar entry for this event.{/ts} {$icalFeed}
 {capture assign=gCalendar}{crmURL p=\'civicrm/event/ical\' q="gCalendar=1&reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
@@ -15232,7 +15184,7 @@ You were registered by: {$payer.name}
 {if !empty($lineItem)}{foreach from=$lineItem item=value key=priceset}
 
 {if $value neq \'skip\'}
-{if !empty($isPrimary)}
+{if $isPrimary}
 {if $lineItem|@count GT 1} {* Header for multi participant registration cases. *}
 {ts 1=$priceset+1}Participant %1{/ts} {if !empty($part.$priceset)}{$part.$priceset.info}{/if}
 
@@ -15243,19 +15195,19 @@ You were registered by: {$payer.name}
 {capture assign=ts_item}{ts}Item{/ts}{/capture}
 {capture assign=ts_qty}{ts}Qty{/ts}{/capture}
 {capture assign=ts_each}{ts}Each{/ts}{/capture}
-{if !empty($dataArray)}
+{if $isShowTax && {contribution.tax_amount|boolean}}
 {capture assign=ts_subtotal}{ts}Subtotal{/ts}{/capture}
 {capture assign=ts_taxRate}{ts}Tax Rate{/ts}{/capture}
 {capture assign=ts_taxAmount}{ts}Tax Amount{/ts}{/capture}
 {/if}
 {capture assign=ts_total}{ts}Total{/ts}{/capture}
 {if !empty($pricesetFieldsCount) }{capture assign=ts_participant_total}{ts}Total Participants{/ts}{/capture}{/if}
-{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if !empty($dataArray)} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate|string_format:"%10s"} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"} {if !empty($ts_participant_total)}{$ts_participant_total|string_format:"%10s"}{/if}
+{$ts_item|string_format:"%-30s"} {$ts_qty|string_format:"%5s"} {$ts_each|string_format:"%10s"} {if $isShowTax && {contribution.tax_amount|boolean}} {$ts_subtotal|string_format:"%10s"} {$ts_taxRate|string_format:"%10s"} {$ts_taxAmount|string_format:"%10s"} {/if} {$ts_total|string_format:"%10s"} {if !empty($ts_participant_total)}{$ts_participant_total|string_format:"%10s"}{/if}
 -----------------------------------------------------------{if !empty($pricesetFieldsCount)}-----------------------------------------------------{/if}
 
 {foreach from=$value item=line}
 {if !empty($pricesetFieldsCount) }{capture assign=ts_participant_count}{$line.participant_count}{/capture}{/if}
-{capture assign=ts_item}{if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description} {$line.description}{/if}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:$currency|string_format:"%10s"} {if !empty($dataArray)} {$line.unit_price*$line.qty|crmMoney:$currency|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""}  {$line.tax_rate|string_format:"%.2f"} %  {$line.tax_amount|crmMoney:$currency|string_format:"%10s"} {else}                  {/if}  {/if} {$line.line_total+$line.tax_amount|crmMoney:$currency|string_format:"%10s"}{if !empty($ts_participant_count)}{$ts_participant_count|string_format:"%10s"}{/if}
+{capture assign=ts_item}{if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description} {$line.description}{/if}{/capture}{$ts_item|truncate:30:"..."|string_format:"%-30s"} {$line.qty|string_format:"%5s"} {$line.unit_price|crmMoney:$currency|string_format:"%10s"} {if $isShowTax && {contribution.tax_amount|boolean}} {$line.unit_price*$line.qty|crmMoney:$currency|string_format:"%10s"} {if $line.tax_rate || $line.tax_amount != ""}  {$line.tax_rate|string_format:"%.2f"} %  {$line.tax_amount|crmMoney:$currency|string_format:"%10s"} {else}                  {/if}  {/if} {$line.line_total+$line.tax_amount|crmMoney:$currency|string_format:"%10s"}{if !empty($ts_participant_count)}{$ts_participant_count|string_format:"%10s"}{/if}
 {/foreach}
 ----------------------------------------------------------------------------------------------------------------
 {if !empty($individual)}{ts}Participant Total{/ts} {$individual.$priceset.totalAmtWithTax-$individual.$priceset.totalTaxAmt|crmMoney:$currency|string_format:"%29s"} {$individual.$priceset.totalTaxAmt|crmMoney:$currency|string_format:"%33s"} {$individual.$priceset.totalAmtWithTax|crmMoney:$currency|string_format:"%12s"}{/if}
@@ -15264,17 +15216,11 @@ You were registered by: {$payer.name}
 {/foreach}
 {""|string_format:"%120s"}
 
-{if !empty($dataArray)}
-{if isset($totalAmount) and isset($totalTaxAmount)}
-{ts}Amount before Tax:{/ts} {$totalAmount-$totalTaxAmount|crmMoney:$currency}
-{/if}
-
-{foreach from=$dataArray item=value key=priceset}
-{if $priceset || $priceset == 0}
-{$taxTerm} {$priceset|string_format:"%.2f"}%: {$value|crmMoney:$currency}
-{else}
-{ts}No{/ts} {$taxTerm}: {$value|crmMoney:$currency}
-{/if}
+{if $isShowTax && {contribution.tax_amount|boolean}}
+{ts}Amount before Tax:{/ts} {if $isPrimary}{contribution.tax_exclusive_amount}{else}{$participant.totals.total_amount_exclusive|crmMoney}{/if}
+{if !$isPrimary}{* Use the participant specific tax rate breakdown *}{assign var=taxRateBreakdown value=$participant.tax_rate_breakdown}{/if}
+{foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+{if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if}   {$valueStyle}>{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}
 {/foreach}
 {/if}
 {/if}
@@ -15284,10 +15230,10 @@ You were registered by: {$payer.name}
 {/foreach}
 {/if}
 
-{if isset($totalTaxAmount)}
-{ts}Total Tax Amount{/ts}: {$totalTaxAmount|crmMoney:$currency}
+{if $isShowTax && {contribution.tax_amount|boolean}}
+{ts}Total Tax Amount{/ts}: {if $isPrimary}{contribution.tax_amount}{else}{$participant.totals.tax_amount|crmMoney}{/if}
 {/if}
-{if !empty($isPrimary) }
+{if $isPrimary}
 
 {ts}Total Amount{/ts}: {if !empty($totalAmount)}{$totalAmount|crmMoney:$currency}{/if} {if !empty($hookDiscount.message)}({$hookDiscount.message}){/if}
 
@@ -15452,12 +15398,12 @@ You were registered by: {$payer.name}
     <p>
     {if !empty($isOnWaitlist)}
      <p>{ts}You have been added to the WAIT LIST for this event.{/ts}</p>
-     {if !empty($isPrimary)}
+     {if $isPrimary}
        <p>{ts}If space becomes available you will receive an email with a link to a web page where you can complete your registration.{/ts}</p>
      {/if}
     {elseif !empty($isRequireApproval)}
      <p>{ts}Your registration has been submitted.{/ts}</p>
-     {if !empty($isPrimary)}
+     {if $isPrimary}
       <p>{ts}Once your registration has been reviewed, you will receive an email with a link to a web page where you can complete the registration process.{/ts}</p>
      {/if}
     {elseif !empty($is_pay_later) && empty($isAmountzero) && empty($isAdditionalParticipant)}
@@ -15558,28 +15504,28 @@ You were registered by: {$payer.name}
       {/foreach}
      {/if}
 
-     {if !empty($event.is_public)}
+     {if {event.is_public|boolean}}
       <tr>
        <td colspan="2" {$valueStyle}>
-        {capture assign=icalFeed}{crmURL p=\'civicrm/event/ical\' q="reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
+        {capture assign=icalFeed}{crmURL p=\'civicrm/event/ical\' q="reset=1&id={event.id}" h=0 a=1 fe=1}{/capture}
         <a href="{$icalFeed}">{ts}Download iCalendar entry for this event.{/ts}</a>
        </td>
       </tr>
       <tr>
        <td colspan="2" {$valueStyle}>
-        {capture assign=gCalendar}{crmURL p=\'civicrm/event/ical\' q="gCalendar=1&reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
+        {capture assign=gCalendar}{crmURL p=\'civicrm/event/ical\' q="gCalendar=1&reset=1&id={event.id}" h=0 a=1 fe=1}{/capture}
         <a href="{$gCalendar}">{ts}Add event to Google Calendar{/ts}</a>
        </td>
       </tr>
      {/if}
 
-    {if !empty($event.is_share)}
-        <tr>
-            <td colspan="2" {$valueStyle}>
-                {capture assign=eventUrl}{crmURL p=\'civicrm/event/info\' q="id=`$event.id`&reset=1" a=true fe=1 h=1}{/capture}
-                {include file="CRM/common/SocialNetwork.tpl" emailMode=true url=$eventUrl title=$event.title pageURL=$eventUrl}
-            </td>
-        </tr>
+    {if $event.is_share}
+      <tr>
+        <td colspan="2" {$valueStyle}>
+          {capture assign=eventUrl}{crmURL p=\'civicrm/event/info\' q="id={event.id}&reset=1" a=true fe=1 h=1}{/capture}
+          {include file="CRM/common/SocialNetwork.tpl" emailMode=true url=$eventUrl pageURL=$eventUrl title=\'{event.title}\'}
+        </td>
+      </tr>
     {/if}
     {if !empty($payer.name)}
      <tr>
@@ -15593,111 +15539,92 @@ You were registered by: {$payer.name}
        </td>
      </tr>
     {/if}
-    {if !empty($event.is_monetary) and empty($isRequireApproval)}
+    {if {event.is_monetary|boolean} and empty($isRequireApproval)}
 
       <tr>
        <th {$headerStyle}>
-        {if !empty($event.fee_label)}{$event.fee_label}{/if}
+        {event.fee_label}
        </th>
       </tr>
 
-      {if !empty($lineItem)}
-       {foreach from=$lineItem item=value key=priceset}
-        {if $value neq \'skip\'}
-         {if !empty($isPrimary)}
-          {if $lineItem|@count GT 1} {* Header for multi participant registration cases. *}
-           <tr>
-            <td colspan="2" {$labelStyle}>
-             {ts 1=$priceset+1}Participant %1{/ts} {if !empty($part.$priceset)}{$part.$priceset.info}{/if}
-            </td>
-           </tr>
-          {/if}
-         {/if}
-         <tr>
-          <td colspan="2" {$valueStyle}>
-           <table>
+      {if $isShowLineItems}
+        {foreach from=$participants key=index item=participant}
+          {if $isPrimary || {participant.id} === $participant.id}
+          {if $isPrimary && $lineItems|@count GT 1} {* Header for multi participant registration cases. *}
             <tr>
-             <th>{ts}Item{/ts}</th>
-             <th>{ts}Qty{/ts}</th>
-             <th>{ts}Each{/ts}</th>
-             {if !empty($dataArray)}
-              <th>{ts}SubTotal{/ts}</th>
-              <th>{ts}Tax Rate{/ts}</th>
-              <th>{ts}Tax Amount{/ts}</th>
-             {/if}
-             <th>{ts}Total{/ts}</th>
-       {if  !empty($pricesetFieldsCount) }<th>{ts}Total Participants{/ts}</th>{/if}
+              <td colspan="2" {$labelStyle}>
+                {ts 1=$participant.index}Participant %1{/ts} {$participant.contact.display_name}
+              </td>
             </tr>
-            {foreach from=$value item=line}
-             <tr>
-              <td {$tdfirstStyle}>
-              {if $line.html_type eq \'Text\'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description}<div>{$line.description|truncate:30:"..."}</div>{/if}
-              </td>
-              <td {$tdStyle} align="middle">
-               {$line.qty}
-              </td>
-              <td {$tdStyle}>
-               {$line.unit_price|crmMoney:$currency}
-              </td>
-              {if !empty($dataArray)}
-               <td {$tdStyle}>
-                {$line.unit_price*$line.qty|crmMoney}
-               </td>
-               {if $line.tax_rate || $line.tax_amount != ""}
-                <td {$tdStyle}>
-                 {$line.tax_rate|string_format:"%.2f"}%
-                </td>
-                <td {$tdStyle}>
-                 {$line.tax_amount|crmMoney}
-                </td>
-               {else}
-                <td></td>
-                <td></td>
-               {/if}
-              {/if}
-              <td {$tdStyle}>
-               {$line.line_total+$line.tax_amount|crmMoney:$currency}
-              </td>
-        {if !empty($pricesetFieldsCount) }<td {$tdStyle}>{$line.participant_count}</td> {/if}
-             </tr>
-            {/foreach}
-            {if !empty($individual)}
-              <tr {$participantTotal}>
-                <td colspan=3>{ts}Participant Total{/ts}</td>
-                <td colspan=2>{$individual.$priceset.totalAmtWithTax-$individual.$priceset.totalTaxAmt|crmMoney}</td>
-                <td colspan=1>{$individual.$priceset.totalTaxAmt|crmMoney}</td>
-                <td colspan=2>{$individual.$priceset.totalAmtWithTax|crmMoney}</td>
-              </tr>
-            {/if}
-           </table>
-          </td>
-         </tr>
-        {/if}
-       {/foreach}
-       {if !empty($dataArray)}
-        {if isset($totalAmount) and isset($totalTaxAmount)}
-        <tr>
-         <td {$labelStyle}>
-          {ts} Amount Before Tax: {/ts}
-         </td>
-         <td {$valueStyle}>
-          {$totalAmount-$totalTaxAmount|crmMoney}
-         </td>
-        </tr>
-        {/if}
-        {foreach from=$dataArray item=value key=priceset}
-         <tr>
-          {if $priceset || $priceset == 0}
-           <td>&nbsp;{$taxTerm} {$priceset|string_format:"%.2f"}%</td>
-           <td>&nbsp;{$value|crmMoney:$currency}</td>
-          {else}
-           <td>&nbsp;{ts}No{/ts} {$taxTerm}</td>
-           <td>&nbsp;{$value|crmMoney:$currency}</td>
           {/if}
-         </tr>
+            <tr>
+              <td colspan="2" {$valueStyle}>
+                <table>
+                  <tr>
+                    <th>{ts}Item{/ts}</th>
+                    <th>{ts}Qty{/ts}</th>
+                    <th>{ts}Each{/ts}</th>
+                      {if $isShowTax && {contribution.tax_amount|boolean}}
+                        <th>{ts}Subtotal{/ts}</th>
+                        <th>{ts}Tax Rate{/ts}</th>
+                        <th>{ts}Tax Amount{/ts}</th>
+                      {/if}
+                    <th>{ts}Total{/ts}</th>
+                      {if !empty($pricesetFieldsCount)}<th>{ts}Total Participants{/ts}</th>{/if}
+                  </tr>
+                  {foreach from=$participant.line_items item=line}
+                    <tr>
+                      <td {$tdfirstStyle}>{$line.title}</td>
+                      <td {$tdStyle} align="middle">{$line.qty}</td>
+                      <td {$tdStyle}>{$line.unit_price|crmMoney:$currency}</td>
+                      {if $line.tax_rate || $line.tax_amount != ""}
+                        <td>{$line.tax_rate|string_format:"%.2f"}%</td>
+                        <td>{$line.tax_amount|crmMoney:$currency}</td>
+                      {else}
+                        <td></td>
+                        <td></td>
+                      {/if}
+                      <td {$tdStyle}>
+                        {$line.line_total+$line.tax_amount|crmMoney:$currency}
+                      </td>
+                      {if !empty($pricesetFieldsCount)}<td {$tdStyle}>{$line.participant_count}</td> {/if}
+                    </tr>
+                  {/foreach}
+                  {if $isShowTax}
+                    <tr {$participantTotal}>
+                      <td colspan=3>{ts}Participant Total{/ts}</td>
+                      <td colspan=2>{$participant.totals.total_amount_exclusive|crmMoney}</td>
+                      <td colspan=1>{$participant.totals.tax_amount|crmMoney}</td>
+                      <td colspan=2>{$participant.totals.total_amount_inclusive|crmMoney}</td>
+                    </tr>
+                  {/if}
+                </table>
+              </td>
+            </tr>
+          {/if}
         {/foreach}
-       {/if}
-      {/if}
+        {/if}
+        {if $isShowTax && {contribution.tax_amount|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Amount Before Tax:{/ts}
+            </td>
+            <td {$valueStyle}>
+              {if $isPrimary}{contribution.tax_exclusive_amount}{else}{$participant.totals.total_amount_exclusive|crmMoney}{/if}
+            </td>
+        </tr>
+
+            {if !$isPrimary}
+              {* Use the participant specific tax rate breakdown *}
+              {assign var=taxRateBreakdown value=$participant.tax_rate_breakdown}
+            {/if}
+            {foreach from=$taxRateBreakdown item=taxDetail key=taxRate}
+              <tr>
+                <td {$labelStyle}>{if $taxRate == 0}{ts}No{/ts} {$taxTerm}{else}{$taxTerm} {$taxDetail.percentage}%{/if}</td>
+                <td {$valueStyle}>{$taxDetail.amount|crmMoney:\'{contribution.currency}\'}</td>
+              </tr>
+            {/foreach}
+        {/if}
 
       {if !empty($amounts) && empty($lineItem)}
        {foreach from=$amounts item=amnt key=level}
@@ -15709,23 +15636,23 @@ You were registered by: {$payer.name}
        {/foreach}
       {/if}
 
-    {if isset($totalTaxAmount)}
+      {if $isShowTax && {contribution.tax_amount|boolean}}
        <tr>
         <td {$labelStyle}>
          {ts}Total Tax Amount{/ts}
         </td>
         <td {$valueStyle}>
-         {$totalTaxAmount|crmMoney:$currency}
+          {if $isPrimary}{contribution.tax_amount}{else}{$participant.totals.tax_amount|crmMoney}{/if}
         </td>
        </tr>
       {/if}
-      {if !empty($isPrimary)}
+      {if $isPrimary}
        <tr>
         <td {$labelStyle}>
          {ts}Total Amount{/ts}
         </td>
         <td {$valueStyle}>
-         {if !empty($totalAmount)}{$totalAmount|crmMoney:$currency}{/if} {if !empty($hookDiscount.message)}({$hookDiscount.message}){/if}
+          {contribution.total_amount} {if !empty($hookDiscount.message)}({$hookDiscount.message}){/if}
         </td>
        </tr>
        {if !empty($pricesetFieldsCount) }
@@ -15899,7 +15826,7 @@ You were registered by: {$payer.name}
      <tr>
       <td colspan="2" {$valueStyle}>
         {ts 1=$selfcancelxfer_time 2=$selfservice_preposition}You may transfer your registration to another participant or cancel your registration up to %1 hours %2 the event.{/ts} {if !empty($totalAmount)}{ts}Cancellations are not refundable.{/ts}{/if}<br />
-        {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid=`$participant.id`&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
+        {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid=`{participant.id}`&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
         <a href="{$selfService}">{ts}Click here to transfer or cancel your registration.{/ts}</a>
       </td>
      </tr>
@@ -24025,4 +23952,4 @@ INSERT INTO `civicrm_report_instance`
     ( `domain_id`, `title`, `report_id`, `description`, `permission`, `form_values`)
 VALUES
     (  @domainID, 'Survey Details', 'survey/detail', 'Detailed report for canvassing, phone-banking, walk lists or other surveys.', 'access CiviReport', 'a:39:{s:6:"fields";a:2:{s:9:"sort_name";s:1:"1";s:6:"result";s:1:"1";}s:22:"assignee_contact_id_op";s:2:"eq";s:25:"assignee_contact_id_value";s:0:"";s:12:"sort_name_op";s:3:"has";s:15:"sort_name_value";s:0:"";s:17:"street_number_min";s:0:"";s:17:"street_number_max";s:0:"";s:16:"street_number_op";s:3:"lte";s:19:"street_number_value";s:0:"";s:14:"street_name_op";s:3:"has";s:17:"street_name_value";s:0:"";s:15:"postal_code_min";s:0:"";s:15:"postal_code_max";s:0:"";s:14:"postal_code_op";s:3:"lte";s:17:"postal_code_value";s:0:"";s:7:"city_op";s:3:"has";s:10:"city_value";s:0:"";s:20:"state_province_id_op";s:2:"in";s:23:"state_province_id_value";a:0:{}s:13:"country_id_op";s:2:"in";s:16:"country_id_value";a:0:{}s:12:"survey_id_op";s:2:"in";s:15:"survey_id_value";a:0:{}s:12:"status_id_op";s:2:"eq";s:15:"status_id_value";s:1:"1";s:11:"custom_1_op";s:2:"in";s:14:"custom_1_value";a:0:{}s:11:"custom_2_op";s:2:"in";s:14:"custom_2_value";a:0:{}s:17:"custom_3_relative";s:1:"0";s:13:"custom_3_from";s:0:"";s:11:"custom_3_to";s:0:"";s:11:"description";s:75:"Detailed report for canvassing, phone-banking, walk lists or other surveys.";s:13:"email_subject";s:0:"";s:8:"email_to";s:0:"";s:8:"email_cc";s:0:"";s:10:"permission";s:17:"access CiviReport";s:6:"groups";s:0:"";s:9:"domain_id";i:1;}');
-UPDATE civicrm_domain SET version = '5.63.2';
+UPDATE civicrm_domain SET version = '5.64.0';
