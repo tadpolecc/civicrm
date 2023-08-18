@@ -449,8 +449,7 @@ CREATE TABLE `civicrm_acl` (
   `is_active` tinyint COMMENT 'Is this property active?',
   `priority` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  INDEX `index_acl_id`(acl_id),
-  INDEX `index_priority`(priority)
+  INDEX `index_acl_id`(acl_id)
 )
 ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
