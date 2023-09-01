@@ -5,7 +5,7 @@
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => '23b392e44f489a56415e9c304fa9bd0309455583',
+        'reference' => '445c6c9c1d4886ba64ea46805ee201f30cbf29ff',
         'name' => 'civicrm/civicrm-core',
         'dev' => true,
     ),
@@ -43,7 +43,7 @@
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => '23b392e44f489a56415e9c304fa9bd0309455583',
+            'reference' => '445c6c9c1d4886ba64ea46805ee201f30cbf29ff',
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-cxn-rpc' => array(
