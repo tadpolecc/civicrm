@@ -183,7 +183,7 @@ class CRM_Event_BAO_Event extends CRM_Event_DAO_Event implements \Civi\Core\Hook
       foreach ($groupTree as $values) {
         $query = "DELETE FROM %1 WHERE entity_id = %2";
         CRM_Core_DAO::executeQuery($query, [
-          1 => [$values['table_name'], 'String', CRM_Core_DAO::QUERY_FORMAT_NO_QUOTES],
+          1 => [$values['table_name'], 'MysqlColumnNameOrAlias'],
           2 => [$event->id, 'Integer'],
         ]);
       }
@@ -449,9 +449,6 @@ $event_summary_limit
     ];
 
     $params = [1 => [$optionGroupId, 'Integer']];
-    $mapping = CRM_Utils_Array::first(CRM_Core_BAO_ActionSchedule::getMappings([
-      'id' => CRM_Event_ActionMapping::EVENT_NAME_MAPPING_ID,
-    ]));
     $dao = CRM_Core_DAO::executeQuery($query, $params);
     while ($dao->fetch()) {
       foreach ($properties as $property => $name) {
@@ -473,7 +470,7 @@ $event_summary_limit
               $ids = [];
               $params = ['entity_id' => $dao->id, 'entity_table' => 'civicrm_event'];
               $values['location'] = CRM_Core_BAO_Location::getValues($params, TRUE);
-              if (is_numeric(CRM_Utils_Array::value('geo_code_1', $values['location']['address'][1])) ||
+              if (is_numeric($values['location']['address'][1]['geo_code_1'] ?? '') ||
                 (
                   !empty($values['location']['address'][1]['city']) &&
                   !empty($values['location']['address'][1]['state_province_id'])
@@ -556,7 +553,7 @@ $event_summary_limit
       $eventSummary['events'][$dao->id]['is_show_location'] = $dao->is_show_location;
       $eventSummary['events'][$dao->id]['is_subevent'] = $dao->slot_label_id;
       $eventSummary['events'][$dao->id]['is_pcp_enabled'] = $dao->is_pcp_enabled;
-      $eventSummary['events'][$dao->id]['reminder'] = CRM_Core_BAO_ActionSchedule::isConfigured($dao->id, $mapping->getId());
+      $eventSummary['events'][$dao->id]['reminder'] = CRM_Core_BAO_ActionSchedule::isConfigured($dao->id, CRM_Event_ActionMapping::EVENT_NAME_MAPPING_ID);
       $eventSummary['events'][$dao->id]['is_repeating_event'] = $dao->is_repeating_event;
 
       $statusTypes = CRM_Event_PseudoConstant::participantStatus();
@@ -997,12 +994,8 @@ WHERE civicrm_event.is_active = 1
       ['replace' => ['target_entity_id' => $copyEvent->id]]
     );
 
-    $oldMapping = CRM_Utils_Array::first(CRM_Core_BAO_ActionSchedule::getMappings([
-      'id' => ($eventValues['is_template'] ? CRM_Event_ActionMapping::EVENT_TPL_MAPPING_ID : CRM_Event_ActionMapping::EVENT_NAME_MAPPING_ID),
-    ]));
-    $copyMapping = CRM_Utils_Array::first(CRM_Core_BAO_ActionSchedule::getMappings([
-      'id' => ($copyEvent->is_template == 1 ? CRM_Event_ActionMapping::EVENT_TPL_MAPPING_ID : CRM_Event_ActionMapping::EVENT_NAME_MAPPING_ID),
-    ]));
+    $oldMapping = CRM_Core_BAO_ActionSchedule::getMapping($eventValues['is_template'] ? CRM_Event_ActionMapping::EVENT_TPL_MAPPING_ID : CRM_Event_ActionMapping::EVENT_NAME_MAPPING_ID);
+    $copyMapping = CRM_Core_BAO_ActionSchedule::getMapping($copyEvent->is_template == 1 ? CRM_Event_ActionMapping::EVENT_TPL_MAPPING_ID : CRM_Event_ActionMapping::EVENT_NAME_MAPPING_ID);
     CRM_Core_DAO::copyGeneric('CRM_Core_DAO_ActionSchedule',
       ['entity_value' => $id, 'mapping_id' => $oldMapping->getId()],
       ['entity_value' => $copyEvent->id, 'mapping_id' => $copyMapping->getId()]
@@ -1024,7 +1017,7 @@ WHERE civicrm_event.is_active = 1
     }
 
     CRM_Utils_System::flushCache();
-    CRM_Utils_Hook::copy('Event', $copyEvent);
+    CRM_Utils_Hook::copy('Event', $copyEvent, $id);
 
     return $copyEvent;
   }
@@ -1213,14 +1206,16 @@ WHERE civicrm_event.is_active = 1
         ];
 
         // address required during receipt processing (pdf and email receipt)
-        if ($displayAddress = CRM_Utils_Array::value('address', $values)) {
+        $displayAddress = $values['address'] ?? NULL;
+        if ($displayAddress) {
           $sendTemplateParams['tplParams']['address'] = $displayAddress;
           // The concept of contributeMode is deprecated.
           $sendTemplateParams['tplParams']['contributeMode'] = NULL;
         }
 
         // set lineItem details
-        if ($lineItem = CRM_Utils_Array::value('lineItem', $values)) {
+        $lineItem = $values['lineItem'] ?? NULL;
+        if ($lineItem) {
           // check if additional participant, if so filter only to relevant ones
           // CRM-9902
           if (!empty($values['params']['additionalParticipant'])) {
@@ -1251,7 +1246,7 @@ WHERE civicrm_event.is_active = 1
           ];
         }
         else {
-          $sendTemplateParams['from'] = CRM_Utils_Array::value('confirm_from_name', $values['event']) . " <" . CRM_Utils_Array::value('confirm_from_email', $values['event']) . ">";
+          $sendTemplateParams['from'] = ($values['event']['confirm_from_name'] ?? '') . " <" . ($values['event']['confirm_from_email'] ?? '') . ">";
           $sendTemplateParams['toName'] = $displayName;
           $sendTemplateParams['toEmail'] = $notifyEmail;
           $sendTemplateParams['autoSubmitted'] = TRUE;
@@ -1961,9 +1956,9 @@ WHERE  ce.loc_block_id = $locBlockId";
   public static function validRegistrationDate(&$values) {
     // make sure that we are between registration start date and end dates
     // and that if the event has ended, registration is still specifically open
-    $startDate = CRM_Utils_Date::unixTime(CRM_Utils_Array::value('registration_start_date', $values));
-    $endDate = CRM_Utils_Date::unixTime(CRM_Utils_Array::value('registration_end_date', $values));
-    $eventEnd = CRM_Utils_Date::unixTime(CRM_Utils_Array::value('end_date', $values));
+    $startDate = CRM_Utils_Date::unixTime($values['registration_start_date'] ?? '');
+    $endDate = CRM_Utils_Date::unixTime($values['registration_end_date'] ?? '');
+    $eventEnd = CRM_Utils_Date::unixTime($values['end_date'] ?? '');
     $now = time();
     $validDate = TRUE;
     if ($startDate && $startDate >= $now) {
@@ -2001,10 +1996,12 @@ WHERE  ce.loc_block_id = $locBlockId";
     if ($contactID) {
       $params = ['contact_id' => $contactID];
 
-      if ($eventId = CRM_Utils_Array::value('id', $values['event'])) {
+      $eventId = $values['event']['id'] ?? NULL;
+      if ($eventId) {
         $params['event_id'] = $eventId;
       }
-      if ($roleId = CRM_Utils_Array::value('default_role_id', $values['event'])) {
+      $roleId = $values['event']['default_role_id'] ?? NULL;
+      if ($roleId) {
         $params['role_id'] = $roleId;
       }
       $alreadyRegistered = self::checkRegistration($params);

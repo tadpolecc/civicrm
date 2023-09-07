@@ -1,4 +1,5 @@
-{*
+<?php
+/*
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC. All rights reserved.                        |
  |                                                                    |
@@ -6,13 +7,21 @@
  | permitted exceptions and without any warranty. For full license    |
  | and copyright information, see https://civicrm.org/licensing       |
  +--------------------------------------------------------------------+
-*}
-{htxt id="id-label_format-text"}
-  {ts}Label Formats{/ts}
-{/htxt}
-{htxt id="id-label_format"}
-  {capture assign=labelURL}{crmURL p='civicrm/admin/labelFormats' q='reset=1&action=browse'}{/capture}
-  <p>
-    {ts 1=$labelURL}Select a pre-defined name badge label format from the list. Label formats control paper size and page configuration (e.g. 2 labels per row, 4 per column). New label formats may require additional programming to produce expected results for event badges.{/ts}
-  </p>
-{/htxt}
+ */
+namespace Civi\Core\Service;
+
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+
+/**
+ * AutoSubscriber allows child classes to listen to events.
+ *
+ * Child classes must implement the `getSubscribedEvents` method, and the callbacks
+ * it returns will be automatically registered.
+ *
+ * This class implies @service @internal on all subclasses.
+ */
+abstract class AutoSubscriber implements AutoServiceInterface, EventSubscriberInterface {
+
+  use AutoServiceTrait;
+
+}

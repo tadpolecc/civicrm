@@ -302,7 +302,8 @@ WHERE     cpf.price_set_id = %1";
   public static function getSetId(&$params) {
     $fid = NULL;
 
-    if ($oid = CRM_Utils_Array::value('oid', $params)) {
+    $oid = $params['oid'] ?? NULL;
+    if ($oid) {
       $fieldValue = new CRM_Price_DAO_PriceFieldValue();
       $fieldValue->id = $oid;
       if ($fieldValue->find(TRUE)) {
@@ -822,9 +823,6 @@ WHERE  id = %1";
     }
 
     $form->assign('quickConfig', $quickConfig);
-    if ($className == 'CRM_Contribute_Form_Contribution_Main') {
-      $form->_quickConfig = $quickConfig;
-    }
 
     // Mark which field should have the auto-renew checkbox, if any. CRM-18305
     if (!empty($form->_membershipTypeValues) && is_array($form->_membershipTypeValues)) {
@@ -1060,7 +1058,7 @@ WHERE  id = %1";
     }
     $copy->save();
 
-    CRM_Utils_Hook::copy('Set', $copy);
+    CRM_Utils_Hook::copy('Set', $copy, $id);
     unset(\Civi::$statics['CRM_Core_PseudoConstant']);
     return $copy;
   }

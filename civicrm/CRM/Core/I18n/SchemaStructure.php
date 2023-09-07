@@ -30,7 +30,7 @@ class CRM_Core_I18n_SchemaStructure {
     if (!$result) {
       $result = [
         'civicrm_location_type' => [
-          'display_name' => "varchar(64) COMMENT 'Location Type Display Name.'",
+          'display_name' => "varchar(64) NOT NULL COMMENT 'Location Type Display Name.'",
         ],
         'civicrm_option_group' => [
           'title' => "varchar(255) COMMENT 'Option Group title.'",
@@ -92,8 +92,8 @@ class CRM_Core_I18n_SchemaStructure {
           'description' => "text COMMENT 'Optional description.'",
         ],
         'civicrm_group' => [
-          'title' => "varchar(255) COMMENT 'Name of Group.'",
-          'frontend_title' => "varchar(255) DEFAULT NULL COMMENT 'Alternative public title for this Group.'",
+          'title' => "varchar(255) NOT NULL COMMENT 'Name of Group.'",
+          'frontend_title' => "varchar(255) NOT NULL COMMENT 'Alternative public title for this Group.'",
           'frontend_description' => "text DEFAULT NULL COMMENT 'Alternative public description of the group.'",
         ],
         'civicrm_contribution_page' => [
@@ -266,6 +266,7 @@ class CRM_Core_I18n_SchemaStructure {
         'civicrm_location_type' => [
           'display_name' => [
             'type' => "Text",
+            'required' => "true",
           ],
         ],
         'civicrm_option_group' => [
@@ -416,9 +417,11 @@ class CRM_Core_I18n_SchemaStructure {
         'civicrm_group' => [
           'title' => [
             'type' => "Text",
+            'required' => "true",
           ],
           'frontend_title' => [
             'type' => "Text",
+            'required' => "TRUE",
           ],
           'frontend_description' => [
             'type' => "TextArea",
@@ -710,7 +713,7 @@ class CRM_Core_I18n_SchemaStructure {
             'type' => "RichTextEditor",
           ],
           'pay_later_receipt' => [
-            'type' => "Text",
+            'type' => "RichTextEditor",
           ],
           'initial_amount_label' => [
             'type' => "Text",

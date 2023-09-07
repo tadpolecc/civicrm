@@ -217,13 +217,13 @@ ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMA
 -- *******************************************************/
 CREATE TABLE `civicrm_location_type` (
   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Location Type ID',
-  `name` varchar(64) COMMENT 'Location Type Name.',
-  `display_name` varchar(64) COMMENT 'Location Type Display Name.',
+  `name` varchar(64) NOT NULL COMMENT 'Location Type Name.',
+  `display_name` varchar(64) NOT NULL COMMENT 'Location Type Display Name.',
   `vcard_name` varchar(64) COMMENT 'vCard Location Type Name.',
   `description` varchar(255) COMMENT 'Location Type Description.',
-  `is_reserved` tinyint COMMENT 'Is this location type a predefined system location?',
-  `is_active` tinyint COMMENT 'Is this property active?',
-  `is_default` tinyint COMMENT 'Is this location type the default?',
+  `is_reserved` tinyint NOT NULL DEFAULT 0 COMMENT 'Is this location type a predefined system location?',
+  `is_active` tinyint NOT NULL DEFAULT 1 COMMENT 'Is this property active?',
+  `is_default` tinyint NOT NULL DEFAULT 0 COMMENT 'Is this location type the default?',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `UI_name`(name)
 )
@@ -2082,8 +2082,8 @@ ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMA
 -- *******************************************************/
 CREATE TABLE `civicrm_group` (
   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Group ID',
-  `name` varchar(64) COMMENT 'Internal name of Group.',
-  `title` varchar(255) COMMENT 'Name of Group.',
+  `name` varchar(64) NOT NULL COMMENT 'Internal name of Group.',
+  `title` varchar(255) NOT NULL COMMENT 'Name of Group.',
   `description` text COMMENT 'Optional verbose description of the group.',
   `source` varchar(64) COMMENT 'Module or process which created this group.',
   `saved_search_id` int unsigned COMMENT 'FK to saved search table.',
@@ -2101,7 +2101,7 @@ CREATE TABLE `civicrm_group` (
   `is_reserved` tinyint NOT NULL DEFAULT 0,
   `created_id` int unsigned COMMENT 'FK to contact table.',
   `modified_id` int unsigned COMMENT 'FK to contact table.',
-  `frontend_title` varchar(255) DEFAULT NULL COMMENT 'Alternative public title for this Group.',
+  `frontend_title` varchar(255) NOT NULL COMMENT 'Alternative public title for this Group.',
   `frontend_description` text DEFAULT NULL COMMENT 'Alternative public description of the group.',
   PRIMARY KEY (`id`),
   INDEX `UI_cache_date`(cache_date),
@@ -2892,7 +2892,7 @@ CREATE TABLE `civicrm_action_schedule` (
   `name` varchar(64) COMMENT 'Name of the action(reminder)',
   `title` varchar(64) COMMENT 'Title of the action(reminder)',
   `recipient` varchar(64) COMMENT 'Recipient',
-  `limit_to` tinyint COMMENT 'Is this the recipient criteria limited to OR in addition to?',
+  `limit_to` int COMMENT 'Is this the recipient criteria limited to OR in addition to?',
   `entity_value` varchar(255) COMMENT 'Entity value',
   `entity_status` varchar(64) COMMENT 'Entity status',
   `start_action_offset` int unsigned DEFAULT 0 COMMENT 'Reminder Interval.',

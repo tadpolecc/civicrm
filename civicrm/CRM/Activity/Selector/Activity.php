@@ -398,7 +398,7 @@ class CRM_Activity_Selector_Activity extends CRM_Core_Selector_Base implements C
       $row = &$rows[$k];
 
       // add class to this row if overdue
-      if (CRM_Utils_Date::overdue(CRM_Utils_Array::value('activity_date_time', $row))
+      if (CRM_Utils_Date::overdue($row['activity_date_time'] ?? '')
         && ($row['status_id'] ?? NULL) == 1
       ) {
         $row['overdue'] = 1;
@@ -411,7 +411,8 @@ class CRM_Activity_Selector_Activity extends CRM_Core_Selector_Base implements C
 
       $row['status'] = $row['status_id'] ? $activityStatus[$row['status_id']] : NULL;
 
-      if ($engagementLevel = CRM_Utils_Array::value('engagement_level', $row)) {
+      $engagementLevel = $row['engagement_level'] ?? NULL;
+      if ($engagementLevel) {
         $row['engagement_level'] = CRM_Utils_Array::value($engagementLevel, $engagementLevels, $engagementLevel);
       }
 

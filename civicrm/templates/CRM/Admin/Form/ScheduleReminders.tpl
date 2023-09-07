@@ -9,7 +9,6 @@
 *}
 {* This template is used for adding/scheduling reminders.  *}
 <div class="crm-block crm-form-block crm-scheduleReminder-form-block">
- <div class="crm-submit-buttons">{include file="CRM/common/formButtons.tpl" location="top"}</div>
 
 {if $action eq 8}
   <div class="messages status no-popup">
@@ -225,11 +224,11 @@
         $('#limit_to', $form).toggle(!($('#entity_0', $form).val() == '1'));
         if ($('#entity_0', $form).val() != '1' || !($('#entity_0').length)) {
           // Some Event entity is selected.
-          if (['2', '3', '5'].includes($('#entity_0', $form).val())) {
-            $('#limit_to option[value="0"]', $form).attr('disabled','disabled').removeAttr('selected');
+          if (['2', '3', '5'].includes($('#entity_0', $form).val()) || {/literal}'{$context}'{literal} === 'event') {
+            $('#limit_to option[value="2"]', $form).attr('disabled','disabled').removeAttr('selected');
           }
           else {
-            $('#limit_to option[value="0"]', $form).removeAttr('disabled');
+            $('#limit_to option[value="2"]', $form).removeAttr('disabled');
           }
           // Anything but Activity is selected.
           if ($('#limit_to', $form).val() == '') {

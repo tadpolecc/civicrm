@@ -233,6 +233,157 @@ class SearchRunTest extends Api4TestBase implements TransactionalInterface {
     $this->assertEquals($lastName, $result->first()['data']['last_name']);
   }
 
+  public function testActionAndTaskLinks():void {
+    $contributions = $this->saveTestRecords('Contribution', [
+      'records' => [
+        ['total_amount' => 100],
+      ],
+    ]);
+    $params = [
+      'checkPermissions' => FALSE,
+      'return' => 'page:1',
+      'savedSearch' => [
+        'api_entity' => 'Contribution',
+        'api_params' => [
+          'version' => 4,
+          'select' => ['contact_id.display_name'],
+          'where' => [['id', 'IN', $contributions->column('id')]],
+        ],
+      ],
+      'display' => [
+        'type' => 'table',
+        'label' => '',
+        'settings' => [
+          'actions' => TRUE,
+          'pager' => [],
+          'columns' => [
+            [
+              'key' => 'contact_id.display_name',
+              'label' => 'Contact',
+              'dataType' => 'String',
+              'type' => 'field',
+            ],
+            [
+              'type' => 'buttons',
+              'links' => [
+                [
+                  'entity' => 'Contribution',
+                  'task' => 'contribution.' . \CRM_Contribute_Task::PDF_RECEIPT,
+                  'icon' => 'fa-external-link',
+                ],
+                [
+                  'entity' => 'Contribution',
+                  'task' => 'update',
+                  'icon' => 'fa-pencil',
+                ],
+                [
+                  'entity' => 'Contribution',
+                  'action' => 'delete',
+                  'icon' => 'fa-pencil',
+                  'target' => 'crm-popup',
+                ],
+              ],
+            ],
+          ],
+          'sort' => [
+            ['id', 'ASC'],
+          ],
+        ],
+      ],
+    ];
+    $result = civicrm_api4('SearchDisplay', 'run', $params);
+    // TODO: This test may need to be updated as core tasks evolve
+    $this->assertEquals(1, $result->count());
+    // 1st link is to a quickform-based search task (CRM_Contribute_Task::PDF_RECEIPT)
+    $this->assertArrayNotHasKey('task', $result[0]['columns'][1]['links'][0]);
+    $this->assertStringContainsString('id=' . $contributions[0]['id'] . '&qfKey=', $result[0]['columns'][1]['links'][0]['url']);
+    // 2nd link is to the native SK bulk-update task
+    $this->assertArrayNotHasKey('url', $result[0]['columns'][1]['links'][1]);
+    $this->assertEquals('update', $result[0]['columns'][1]['links'][1]['task']);
+    // 3rd link is a popup link to the delete contribution quickform
+    $this->assertStringContainsString('action=delete&id=' . $contributions[0]['id'], $result[0]['columns'][1]['links'][2]['url']);
+    $this->assertEquals('crm-popup', $result[0]['columns'][1]['links'][2]['target']);
+  }
+
+  public function testRelationshipCacheLinks():void {
+    $relationships = $this->saveTestRecords('Relationship', [
+      'records' => [
+        ['contact_id_a' => $this->createTestRecord('Contact')['id'], 'is_active' => TRUE],
+        ['contact_id_a' => $this->createTestRecord('Contact')['id'], 'is_active' => FALSE],
+      ],
+    ]);
+    $params = [
+      'checkPermissions' => FALSE,
+      'return' => 'page:1',
+      'savedSearch' => [
+        'api_entity' => 'RelationshipCache',
+        'api_params' => [
+          'version' => 4,
+          'select' => ['near_contact_id.display_name'],
+          'where' => [['relationship_id', 'IN', $relationships->column('id')]],
+        ],
+      ],
+      'display' => [
+        'type' => 'table',
+        'label' => '',
+        'settings' => [
+          'actions' => TRUE,
+          'pager' => [],
+          'columns' => [
+            [
+              'key' => 'near_contact_id.display_name',
+              'label' => 'Contact',
+              'dataType' => 'String',
+              'type' => 'field',
+            ],
+            [
+              'type' => 'links',
+              'links' => [
+                [
+                  'entity' => 'Relationship',
+                  'action' => 'view',
+                  'icon' => 'fa-external-link',
+                ],
+                [
+                  'entity' => 'Relationship',
+                  'task' => 'delete',
+                  'icon' => 'fa-trash',
+                ],
+                [
+                  'entity' => 'Relationship',
+                  'task' => 'enable',
+                  'condition' => ['is_active', '=', FALSE],
+                ],
+                [
+                  'entity' => 'Relationship',
+                  'task' => 'disable',
+                  'condition' => ['is_active', '=', TRUE],
+                ],
+              ],
+            ],
+          ],
+          'sort' => [
+            ['relationship_id', 'ASC'],
+          ],
+        ],
+      ],
+    ];
+    $result = civicrm_api4('SearchDisplay', 'run', $params);
+    $this->assertCount(4, $result);
+    $this->assertCount(3, $result[0]['columns'][1]['links']);
+    // 1st link is to a quickform-based action
+    $this->assertArrayNotHasKey('task', $result[0]['columns'][1]['links'][0]);
+    $this->assertStringContainsString('id=' . $relationships[0]['id'], $result[0]['columns'][1]['links'][0]['url']);
+    // 2nd link is to the native SK bulk-delete task
+    $this->assertArrayNotHasKey('url', $result[0]['columns'][1]['links'][1]);
+    $this->assertEquals('delete', $result[0]['columns'][1]['links'][1]['task']);
+    // 3rd link is the disable task for active relationships or the enable task for inactive ones
+    $this->assertEquals('disable', $result[0]['columns'][1]['links'][2]['task']);
+    $this->assertEquals('disable', $result[1]['columns'][1]['links'][2]['task']);
+    $this->assertEquals('enable', $result[2]['columns'][1]['links'][2]['task']);
+    $this->assertEquals('enable', $result[3]['columns'][1]['links'][2]['task']);
+  }
+
   /**
    * Test smarty rewrite syntax.
    */
@@ -518,6 +669,10 @@ class SearchRunTest extends Api4TestBase implements TransactionalInterface {
                 'label' => 'First Name',
                 'dataType' => 'String',
                 'type' => 'field',
+                'link' => [
+                  'entity' => 'Contact',
+                  'action' => 'update',
+                ],
               ],
               [
                 'key' => 'last_name',
@@ -557,6 +712,16 @@ class SearchRunTest extends Api4TestBase implements TransactionalInterface {
     $this->assertCount(2, $result);
     $this->assertEquals($sampleData['Three'], $result[0]['data']['id']);
     $this->assertEquals($sampleData['Four'], $result[1]['data']['id']);
+
+    // Ensure edit link is only shown for contacts we have permission to edit
+    $hooks->setHook('civicrm_aclWhereClause', [$this, 'aclViewAllEditOne']);
+    $this->cleanupCachedPermissions();
+    $result = civicrm_api4('SearchDisplay', 'run', $params);
+    $this->assertCount(4, $result);
+    $this->assertNotEmpty($result[1]['columns'][1]['links']);
+    $this->assertTrue(empty($result[1]['columns'][0]['links']));
+    $this->assertTrue(empty($result[1]['columns'][2]['links']));
+    $this->assertTrue(empty($result[1]['columns'][3]['links']));
   }
 
   public function testWithACLBypass() {
@@ -1622,6 +1787,26 @@ class SearchRunTest extends Api4TestBase implements TransactionalInterface {
     $result = civicrm_api4('SearchDisplay', 'run', $params);
     $this->assertCount(1, $result);
     $this->assertEquals($id, $result[0]['key']);
+  }
+
+  /**
+   * Returns all contacts in VIEW mode but only specified contact for EDIT.
+   *
+   * @implements CRM_Utils_Hook::aclWhereClause
+   *
+   * @param int $type
+   * @param array $tables
+   * @param array $whereTables
+   * @param int $contactID
+   * @param string|null $where
+   */
+  public function aclViewAllEditOne(int $type, array &$tables, array &$whereTables, int &$contactID, ?string &$where): void {
+    if ($type === \CRM_Core_Permission::VIEW) {
+      $where = ' (1) ';
+    }
+    elseif ($type === \CRM_Core_Permission::EDIT) {
+      $where = ' contact_a.id = ' . $this->allowedContactId;
+    }
   }
 
 }

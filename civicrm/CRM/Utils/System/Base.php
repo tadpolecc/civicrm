@@ -124,22 +124,17 @@ abstract class CRM_Utils_System_Base {
    *   This link should be to the CMS front end (applies to WP & Joomla).
    * @param bool $forceBackend
    *   This link should be to the CMS back end (applies to WP & Joomla).
-   * @param bool $htmlize
-   *   Whether to encode special html characters such as &.
    *
    * @return string
    */
-  public function url(
+  abstract public function url(
     $path = NULL,
     $query = NULL,
     $absolute = FALSE,
     $fragment = NULL,
     $frontend = FALSE,
-    $forceBackend = FALSE,
-    $htmlize = TRUE
-  ) {
-    return NULL;
-  }
+    $forceBackend = FALSE
+  );
 
   /**
    * Return the Notification URL for Payments.
@@ -162,8 +157,6 @@ abstract class CRM_Utils_System_Base {
    *   This link should be to the CMS front end (applies to WP & Joomla).
    * @param bool $forceBackend
    *   This link should be to the CMS back end (applies to WP & Joomla).
-   * @param bool $htmlize
-   *   Whether to encode special html characters such as &.
    *
    * @return string
    *   The Notification URL.
@@ -174,10 +167,9 @@ abstract class CRM_Utils_System_Base {
     $absolute = FALSE,
     $fragment = NULL,
     $frontend = FALSE,
-    $forceBackend = FALSE,
-    $htmlize = TRUE
+    $forceBackend = FALSE
   ) {
-    return $this->url($path, $query, $absolute, $fragment, $frontend, $forceBackend, $htmlize);
+    return $this->url($path, $query, $absolute, $fragment, $frontend, $forceBackend);
   }
 
   /**
@@ -363,13 +355,14 @@ abstract class CRM_Utils_System_Base {
    * Create a user in the CMS.
    *
    * @param array $params
-   * @param string $mail
-   *   Email id for cms user.
+   * @param string $mailParam
+   *   Name of the $param which contains the email address.
+   *   Because. Right. OK. That's what it is.
    *
    * @return int|bool
    *   uid if user exists, false otherwise
    */
-  public function createUser(&$params, $mail) {
+  public function createUser(&$params, $mailParam) {
     return FALSE;
   }
 

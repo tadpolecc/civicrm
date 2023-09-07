@@ -3,7 +3,9 @@
 namespace Civi\Api4\Action\SearchDisplay;
 
 use Civi\API\Exception\UnauthorizedException;
+use Civi\API\Request;
 use Civi\Api4\Query\SqlField;
+use Civi\Api4\SearchDisplay;
 use Civi\Api4\Utils\CoreUtil;
 use Civi\Api4\Utils\FormattingUtil;
 
@@ -74,6 +76,18 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
    * @var array
    */
   private $_afform;
+
+  /**
+   * @var array
+   */
+  private $tasks;
+
+  /**
+   * @var array
+   */
+  private $entityActions;
+
+  private $editableInfo = [];
 
   /**
    * Override execute method to change the result object type
@@ -414,16 +428,8 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
   private function formatFieldLinks($column, $data, $value): array {
     $links = [];
     foreach ((array) $value as $index => $val) {
-      $path = $this->getLinkPath($column['link'], $data, $index);
-      $path = $this->replaceTokens($path, $data, 'url', $index);
-      if ($path) {
-        $link = [
-          'text' => $val,
-          'url' => $this->getUrl($path),
-        ];
-        if (!empty($column['link']['target'])) {
-          $link['target'] = $column['link']['target'];
-        }
+      $link = $this->formatLink($column['link'], $data, $val, $index);
+      if ($link) {
         $links[] = $link;
       }
     }
@@ -445,21 +451,108 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       if (!$this->checkLinkCondition($item, $data)) {
         continue;
       }
-      $path = $this->replaceTokens($this->getLinkPath($item, $data), $data, 'url');
-      if ($path) {
-        $link = [
-          'text' => $this->replaceTokens($item['text'] ?? '', $data, 'view'),
-          'url' => $this->getUrl($path),
-        ];
-        foreach (['target', 'style', 'icon'] as $prop) {
-          if (!empty($item[$prop])) {
-            $link[$prop] = $item[$prop];
-          }
-        }
+      $link = $this->formatLink($item, $data);
+      if ($link) {
         $out['links'][] = $link;
       }
     }
     return $out;
+  }
+
+  private function formatLink(array $link, array $data, string $text = NULL, $index = 0): ?array {
+    $link = $this->getLinkInfo($link, $data, $index);
+    if (!$this->checkLinkAccess($link, $data, $index)) {
+      return NULL;
+    }
+    $link['text'] = $text ?? $this->replaceTokens($link['text'], $data, 'view');
+    // Will return null if `$link[path]` is empty or if any tokens do not resolve
+    $path = $this->replaceTokens($link['path'], $data, 'url', $index);
+    if ($path) {
+      $link['url'] = $this->getUrl($path);
+      $keys = ['url', 'text', 'title', 'target', 'style', 'icon'];
+    }
+    else {
+      $keys = ['task', 'text', 'title', 'style', 'icon'];
+    }
+    $link = array_intersect_key($link, array_flip($keys));
+    return array_filter($link);
+  }
+
+  /**
+   * Check if a link should be visible to the user based on their permissions
+   *
+   * Checks ACLs for all links other than VIEW (presumably if a record is shown in
+   * SearchKit then the user already has view access, and the check is expensive).
+   *
+   * @param array $link
+   * @param array $data
+   * @param int $index
+   * @return bool
+   * @throws \CRM_Core_Exception
+   * @throws \Civi\API\Exception\NotImplementedException
+   */
+  private function checkLinkAccess(array $link, array $data, int $index = 0): bool {
+    if (empty($link['path']) && empty($link['task'])) {
+      return FALSE;
+    }
+    if ($link['entity'] && !empty($link['action']) && !in_array($link['action'], ['view', 'preview'], TRUE) && $this->getCheckPermissions()) {
+      $actionName = $this->getPermittedLinkAction($link['entity'], $link['action']);
+      if (!$actionName) {
+        return FALSE;
+      }
+      $idField = CoreUtil::getIdFieldName($link['entity']);
+      $idKey = $this->getIdKeyName($link['entity']);
+      $id = $data[$link['prefix'] . $idKey] ?? NULL;
+      $id = is_array($id) ? $id[$index] ?? NULL : $id;
+      if ($id) {
+        $values = [$idField => $id];
+        // If not aggregated, add other values to help checkAccess be efficient
+        if (!is_array($data[$link['prefix'] . $idKey])) {
+          $values += \CRM_Utils_Array::filterByPrefix($data, $link['prefix']);
+        }
+        // These 2 lines are the heart of the `checkAccess` api action.
+        // Calling this directly is more performant than going through the api wrapper
+        $apiRequest = Request::create($link['entity'], $actionName, ['version' => 4]);
+        return CoreUtil::checkAccessRecord($apiRequest, $values);
+      }
+    }
+    return TRUE;
+  }
+
+  /**
+   * Given entity/action name, return the api action name if the user is allowed to run it.
+   *
+   * This function serves 2 purposes:
+   * 1. Efficiently check api gatekeeper permissions (reuses a single getActions api call for every link).
+   * 2. Transform funny action names (some links have non-api-standard actions like "detach" or "copy").
+   *
+   * @param string $entityName
+   * @param string $actionName
+   * @return string|null
+   */
+  private function getPermittedLinkAction(string $entityName, string $actionName): ?string {
+    // Load api actions and cache for performance (this function may be called hundreds of times per request)
+    if (!isset($this->entityActions[$entityName])) {
+      $this->entityActions[$entityName] = [
+        'all' => civicrm_api4($entityName, 'getActions', ['checkPermissions' => FALSE])->column('name'),
+        'allowed' => civicrm_api4($entityName, 'getActions', ['checkPermissions' => TRUE])->column('name'),
+      ];
+    }
+    // Action exists and is permitted
+    if (in_array($actionName, $this->entityActions[$entityName]['allowed'], TRUE)) {
+      return $actionName;
+    }
+    // Action exists but is not permitted
+    elseif (in_array($actionName, $this->entityActions[$entityName]['all'], TRUE)) {
+      return NULL;
+    }
+    // Api action does not exist, so it's a link with a weird action name like "detach".
+    // Fall-back on "update"
+    elseif (in_array('update', $this->entityActions[$entityName]['allowed'], TRUE)) {
+      return 'update';
+    }
+    // Api action does not exist and user does not have permission to "update".
+    return NULL;
   }
 
   /**
@@ -487,56 +580,106 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
   }
 
   /**
-   * @param array $link
-   * @param array $data
-   * @param int $index
-   * @return string|null
+   * @param array{path: string, entity: string, action: string, task: string, join: string, target: string, style: string, icon: string, title: string, text: string} $link
+   * @return array{path: string, entity: string, action: string, task: string, join: string, target: string, style: string, icon: string, title: string, text: string, prefix: string}
    */
-  private function getLinkPath($link, $data = NULL, $index = 0) {
-    $path = $link['path'] ?? NULL;
-    if (!$path && !empty($link['entity']) && !empty($link['action'])) {
-      $entity = $link['entity'];
-      $idField = $idKey = CoreUtil::getIdFieldName($entity);
+  private function getLinkInfo(array $link): array {
+    $link += [
+      'path' => '',
+      'target' => '',
+      'entity' => '',
+      'text' => '',
+      'title' => '',
+      'prefix' => '',
+    ];
+    $entity = $link['entity'];
+    $idKey = $this->getIdKeyName($link['entity']);
+    if ($entity) {
       // Hack to support links to relationships
       if ($entity === 'Relationship') {
         $entity = 'RelationshipCache';
-        $idKey = 'relationship_id';
       }
-      $path = CoreUtil::getInfoItem($entity, 'paths')[$link['action']] ?? NULL;
-      $prefix = '';
-      if ($path && !empty($link['join'])) {
-        $prefix = $link['join'] . '.';
+      if (!empty($link['join'])) {
+        $link['prefix'] = $link['join'] . '.';
       }
-      // This is a bit clunky, the function_join_field gets un-munged later by $this->getJoinFromAlias()
-      if ($this->canAggregate($prefix . $idKey)) {
-        $prefix = 'GROUP_CONCAT_' . str_replace('.', '_', $prefix);
+      // Get path from action
+      if (!$link['path'] && !empty($link['action'])) {
+        $link['path'] = CoreUtil::getInfoItem($entity, 'paths')[$link['action']] ?? NULL;
+        // This is a bit clunky, the function_join_field gets un-munged later by $this->getJoinFromAlias()
+        if ($this->canAggregate($link['prefix'] . $idKey)) {
+          $link['prefix'] = 'GROUP_CONCAT_' . str_replace('.', '_', $link['prefix']);
+        }
+        if ($link['prefix']) {
+          $link['path'] = str_replace('[', '[' . $link['prefix'], $link['path']);
+        }
       }
-      if ($prefix) {
-        $path = str_replace('[', '[' . $prefix, $path);
-      }
-      // Check access for edit/update/delete links
-      // (presumably if a record is shown in SearchKit the user already has view access, and the check is expensive)
-      if ($path && isset($data) && !in_array($link['action'], ['view', 'preview'], TRUE)) {
-        $id = $data[$prefix . $idKey] ?? NULL;
-        $id = is_array($id) ? $id[$index] ?? NULL : $id;
-        if ($id) {
-          $values = [$idField => $id];
-          // If not aggregated, add other values to help checkAccess be efficient
-          if (!is_array($data[$prefix . $idKey])) {
-            $values += \CRM_Utils_Array::filterByPrefix($data, $prefix);
+      elseif (!$link['path'] && !empty($link['task'])) {
+        $task = $this->getTask($link['task']);
+        // Convert legacy tasks (which have a url)
+        if (!empty($task['crmPopup'])) {
+          $idField = CoreUtil::getIdFieldName($link['entity']);
+          $link['path'] = \CRM_Utils_JS::decode($task['crmPopup']['path']);
+          $data = \CRM_Utils_JS::getRawProps($task['crmPopup']['data']);
+          // Find the special key that combines selected ids and replace it with id token
+          $idsKey = array_search("ids.join(',')", $data);
+          unset($data[$idsKey]);
+          $amp = strpos($link['path'], '?') ? '&' : '?';
+          $link['path'] .= $amp . $idField . '=[' . $link['prefix'] . $idKey . ']';
+          // Add the rest of the data items
+          foreach ($data as $dataKey => $dataRaw) {
+            $link['path'] .= '&' . $dataKey . '=' . \CRM_Utils_JS::decode($dataRaw);
           }
-          $access = civicrm_api4($link['entity'], 'checkAccess', [
-            // Fudge links with funny action names to check 'update'
-            'action' => $link['action'] === 'delete' ? 'delete' : 'update',
-            'values' => $values,
-          ], 0)['access'];
-          if (!$access) {
-            return NULL;
-          }
+        }
+        elseif (!empty($task['apiBatch']) || !empty($task['uiDialog'])) {
+          $link['title'] = $link['title'] ?: $task['title'];
+          // Fill in the api action if known, for the sake of $this->checkLinkAccess
+          $link['action'] = $task['apiBatch']['action'] ?? NULL;
         }
       }
     }
-    return $path;
+    $link['key'] = $link['prefix'] . $idKey;
+    return $link;
+  }
+
+  /**
+   * Get fields needed by a link which should be added to the SELECT clause
+   *
+   * @param array $link
+   * @return array
+   */
+  private function getLinkTokens(array $link): array {
+    $link = $this->getLinkInfo($link);
+    $tokens = [];
+    if (!$link['path'] && !empty($link['task'])) {
+      $tokens[] = $link['prefix'] . $this->getIdKeyName($link['entity']);
+    }
+    if (!empty($link['condition'][0])) {
+      $tokens[] = $link['condition'][0];
+    }
+    return array_merge($tokens, $this->getTokens($link['path'] . $link['text'] . $link['title']));
+  }
+
+  /**
+   * Returns information about a task, but only if user has permission to use it.
+   *
+   * @param string $taskName
+   * @return array|null
+   */
+  private function getTask(string $taskName): ?array {
+    if (!isset($this->tasks)) {
+      try {
+        $this->tasks = SearchDisplay::getSearchTasks()
+          ->setCheckPermissions($this->getCheckPermissions())
+          ->setSavedSearch($this->getSavedSearch())
+          ->setDisplay($this->getDisplay())
+          ->execute()
+          ->indexBy('name');
+      }
+      catch (\CRM_Core_Exception $e) {
+        $this->tasks = [];
+      }
+    }
+    return $this->tasks[$taskName] ?? NULL;
   }
 
   /**
@@ -664,7 +807,9 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
    * @return array{entity: string, input_type: string, data_type: string, options: bool, serialize: bool, nullable: bool, fk_entity: string, value_key: string, value_path: string, id_key: string, id_path: string, explicit_join: string, grouping_fields: array}|null
    */
   private function getEditableInfo($key) {
-    $result = NULL;
+    if (array_key_exists($key, $this->editableInfo)) {
+      return $this->editableInfo[$key];
+    }
     // Strip pseudoconstant suffix
     [$key] = explode(':', $key);
     $field = $this->getField($key);
@@ -672,9 +817,19 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     if (!empty($field['implicit_join']) && empty($field['custom_field_id'])) {
       return $this->getEditableInfo(substr($key, 0, -1 - strlen($field['name'])));
     }
+    $result = NULL;
     if ($field) {
+      // Reload field with correct action because `$this->getField()` uses 'get' as the action
+      // TODO: Load options if pseudoconstant is dynamic (`ControlField` present)
+      $createModeField = civicrm_api4($field['entity'], 'getFields', [
+        'where' => [['name', '=', $field['name']]],
+        'checkPermissions' => FALSE,
+        'action' => 'create',
+      ])->first() ?? [];
+      // Merge with the augmented metadata like `explicit_join`
+      $field = $createModeField + $field;
       $idKey = CoreUtil::getIdFieldName($field['entity']);
-      $path = ($field['explicit_join'] ? $field['explicit_join'] . '.' : '');
+      $path = (!empty($field['explicit_join']) ? $field['explicit_join'] . '.' : '');
       $idPath = $path . $idKey;
       // Hack to support editing relationships
       if ($field['entity'] === 'RelationshipCache') {
@@ -705,7 +860,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
         }
       }
     }
-    return $result;
+    return $this->editableInfo[$key] = $result;
   }
 
   /**
@@ -737,25 +892,23 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
    * @return string
    */
   private function replaceTokens($tokenExpr, $data, $format, $index = NULL) {
-    if (strpos(($tokenExpr ?? ''), '[') !== FALSE) {
-      foreach ($this->getTokens($tokenExpr) as $token) {
-        $val = $data[$token] ?? NULL;
-        if (isset($val) && $format === 'view') {
-          $dataType = $this->getSelectExpression($token)['dataType'] ?? NULL;
-          $val = $this->formatViewValue($token, $val, $data, $dataType);
-        }
-        if (!(is_null($index))) {
-          $replacement = is_array($val) ? $val[$index] ?? '' : $val;
-        }
-        else {
-          $replacement = implode(', ', (array) $val);
-        }
-        // A missing token value in a url invalidates it
-        if ($format === 'url' && (!isset($replacement) || $replacement === '')) {
-          return NULL;
-        }
-        $tokenExpr = str_replace('[' . $token . ']', ($replacement ?? ''), ($tokenExpr ?? ''));
+    foreach ($this->getTokens($tokenExpr ?? '') as $token) {
+      $val = $data[$token] ?? NULL;
+      if (isset($val) && $format === 'view') {
+        $dataType = $this->getSelectExpression($token)['dataType'] ?? NULL;
+        $val = $this->formatViewValue($token, $val, $data, $dataType);
       }
+      if (!(is_null($index))) {
+        $replacement = is_array($val) ? $val[$index] ?? '' : $val;
+      }
+      else {
+        $replacement = implode(', ', (array) $val);
+      }
+      // A missing token value in a url invalidates it
+      if ($format === 'url' && (!isset($replacement) || $replacement === '')) {
+        return NULL;
+      }
+      $tokenExpr = str_replace('[' . $token . ']', ($replacement ?? ''), ($tokenExpr ?? ''));
     }
     return $tokenExpr;
   }
@@ -923,12 +1076,16 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       $possibleTokens .= ($column['rewrite'] ?? '');
       $possibleTokens .= ($column['title'] ?? '');
       $possibleTokens .= ($column['empty_value'] ?? '');
+
       if (!empty($column['link'])) {
-        $possibleTokens .= $this->getLinkPath($column['link']) ?? '';
+        foreach ($this->getLinkTokens($column['link']) as $token) {
+          $this->addSelectExpression($token);
+        }
       }
       foreach ($column['links'] ?? [] as $link) {
-        $possibleTokens .= $link['text'] ?? '';
-        $possibleTokens .= $this->getLinkPath($link) ?? '';
+        foreach ($this->getLinkTokens($link) as $token) {
+          $this->addSelectExpression($token);
+        }
       }
 
       // Select id, value & grouping for in-place editing
@@ -1272,6 +1429,19 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       }
     }
     return $values;
+  }
+
+  /**
+   * Given an entity name, returns the data fieldName used to identify it.
+   * @param string|null $entityName
+   * @return string
+   */
+  protected function getIdKeyName(?string $entityName) {
+    // Hack to support links to relationships
+    if ($entityName === 'Relationship') {
+      return 'relationship_id';
+    }
+    return CoreUtil::getIdFieldName($entityName);
   }
 
 }

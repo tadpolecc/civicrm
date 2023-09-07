@@ -1222,11 +1222,31 @@ class CRM_Core_SelectValues {
     \CRM_Utils_Hook::permissionList($perms);
 
     foreach ($perms as $machineName => $details) {
-      if ($details['is_active']) {
+      if (!empty($details['is_active'])) {
         $options[$machineName] = $details['title'];
       }
     }
     return $options;
+  }
+
+  /**
+   * Limit-to options for schedule reminders.
+   *
+   * @return array
+   */
+  public static function getLimitToValues(): array {
+    return [
+      [
+        'id' => 1,
+        'name' => 'limit',
+        'label' => ts('Limit to'),
+      ],
+      [
+        'id' => 2,
+        'name' => 'add',
+        'label' => ts('Also include'),
+      ],
+    ];
   }
 
 }

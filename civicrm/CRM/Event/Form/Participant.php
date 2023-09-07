@@ -825,7 +825,8 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
       ) ||
       ($self->_id && !$self->_paymentId && isset($self->_values['line_items']) && is_array($self->_values['line_items']))
     ) {
-      if ($priceSetId = CRM_Utils_Array::value('priceSetId', $values)) {
+      $priceSetId = $values['priceSetId'] ?? NULL;
+      if ($priceSetId) {
         CRM_Price_BAO_PriceField::priceSetValidation($priceSetId, $values, $errorMsg, TRUE);
       }
     }
@@ -1010,8 +1011,8 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
 
       // also add location name to the array
       $params["address_name-{$this->_bltID}"]
-        = CRM_Utils_Array::value('billing_first_name', $params) . ' ' .
-        CRM_Utils_Array::value('billing_middle_name', $params) . ' ' .
+        = ($params['billing_first_name'] ?? '') . ' ' .
+        ($params['billing_middle_name'] ?? '') . ' ' .
         CRM_Utils_Array::value('billing_last_name', $params);
 
       $params["address_name-{$this->_bltID}"] = trim($params["address_name-{$this->_bltID}"]);
@@ -1349,7 +1350,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
     }
 
     if (!empty($params['send_receipt'])) {
-      $result = $this->sendReceipts($params, $contributionParams['total_amount'], $customFields, $participants, $lineItem[0], $additionalParticipantDetails);
+      $result = $this->sendReceipts($params, $contributionParams['total_amount'], $customFields, $participants, $lineItem[0] ?? [], $additionalParticipantDetails);
     }
 
     // set the participant id if it is not set
@@ -1450,7 +1451,7 @@ class CRM_Event_Form_Participant extends CRM_Contribute_Form_AbstractEditPayment
       CRM_Event_Form_Registration_Register::buildAmount($form, TRUE, $form->_discountId);
       $lineItem = [];
       $totalTaxAmount = 0;
-      if (!CRM_Utils_System::isNull(CRM_Utils_Array::value('line_items', $form->_values))) {
+      if (!CRM_Utils_System::isNull($form->_values['line_items'] ?? NULL)) {
         $lineItem[] = $form->_values['line_items'];
         foreach ($form->_values['line_items'] as $key => $value) {
           $totalTaxAmount = $value['tax_amount'] + $totalTaxAmount;
@@ -2172,7 +2173,8 @@ INNER JOIN civicrm_price_field_value value ON ( value.id = lineItem.price_field_
       $this->_contributorDisplayName = ($this->_contributorDisplayName == ' ') ? $this->_contributorEmail : $this->_contributorDisplayName;
 
       $waitStatus = CRM_Event_PseudoConstant::participantStatus(NULL, "class = 'Waiting'");
-      if ($waitingStatus = CRM_Utils_Array::value($params['status_id'], $waitStatus)) {
+      $waitingStatus = $waitStatus[$params['status_id']] ?? NULL;
+      if ($waitingStatus) {
         $this->assign('isOnWaitlist', TRUE);
       }
 
@@ -2190,7 +2192,10 @@ INNER JOIN civicrm_price_field_value value ON ( value.id = lineItem.price_field_
         $eventAmount = [];
         $totalTaxAmount = 0;
 
-        //add dataArray in the receipts in ADD and UPDATE condition
+        // add dataArray in the receipts in ADD and UPDATE condition
+        // dataArray contains the total tax amount for each tax rate, in the form [tax rate => total tax amount]
+        // include 0% tax rate if it exists because if $dataArray controls if tax is shown for each line item
+        // in the message templates and we want to show 0% tax if set, even if there is no total tax
         $dataArray = [];
         if ($this->_action & CRM_Core_Action::ADD) {
           $line = $lineItem ?? [];
@@ -2200,13 +2205,13 @@ INNER JOIN civicrm_price_field_value value ON ( value.id = lineItem.price_field_
         }
         if (Civi::settings()->get('invoicing')) {
           foreach ($line as $key => $value) {
-            if (isset($value['tax_amount'])) {
+            if (isset($value['tax_amount']) && isset($value['tax_rate'])) {
               $totalTaxAmount += $value['tax_amount'];
               if (isset($dataArray[(string) $value['tax_rate']])) {
-                $dataArray[(string) $value['tax_rate']] = $dataArray[(string) $value['tax_rate']] + CRM_Utils_Array::value('tax_amount', $value);
+                $dataArray[(string) $value['tax_rate']] += $value['tax_amount'];
               }
               else {
-                $dataArray[(string) $value['tax_rate']] = $value['tax_amount'] ?? NULL;
+                $dataArray[(string) $value['tax_rate']] = $value['tax_amount'];
               }
             }
           }

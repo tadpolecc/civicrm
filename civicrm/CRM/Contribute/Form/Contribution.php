@@ -10,6 +10,7 @@
  */
 
 use Civi\Api4\Contribution;
+use Civi\Api4\FinancialType;
 use Civi\Payment\Exception\PaymentProcessorException;
 
 /**
@@ -743,7 +744,8 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
         if ($pledgePaymentId) {
           $buildPriceSet = FALSE;
         }
-        if ($participantID = CRM_Utils_Array::value('participant', $componentDetails)) {
+        $participantID = $componentDetails['participant'] ?? NULL;
+        if ($participantID) {
           $participantLI = CRM_Price_BAO_LineItem::getLineItems($participantID);
           if (!CRM_Utils_System::isNull($participantLI)) {
             $buildPriceSet = FALSE;
@@ -889,7 +891,8 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
 
     // Do the amount validations.
     if (empty($fields['total_amount']) && empty($self->_lineItems)) {
-      if ($priceSetId = CRM_Utils_Array::value('price_set_id', $fields)) {
+      $priceSetId = $fields['price_set_id'] ?? NULL;
+      if ($priceSetId) {
         CRM_Price_BAO_PriceField::priceSetValidation($priceSetId, $fields, $errors);
       }
     }
@@ -1145,10 +1148,8 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
 
     $contribution = $this->processFormContribution(
       $this->_params,
-      NULL,
       $contributionParams,
       $financialType,
-      FALSE,
       $this->_bltID,
       CRM_Utils_Array::value('is_recur', $this->_params)
     );
@@ -1229,7 +1230,6 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
    * end form - not all aspects of the code will be relevant to this form.
    *
    * @param array $params
-   * @param array $result
    * @param array $contributionParams
    *   Parameters to be passed to contribution create action.
    *   This differs from params in that we are currently adding params to it and 1) ensuring they are being
@@ -1244,9 +1244,6 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
    *   - thankyou_date (not all forms will set this)
    *
    * @param CRM_Financial_DAO_FinancialType $financialType
-   * @param bool $online
-   *   Is the form a front end form? If so set a bunch of unpredictable things that should be passed in from the form.
-   *
    * @param int $billingLocationID
    *   ID of billing location type.
    * @param bool $isRecur
@@ -1258,10 +1255,8 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
    */
   private function processFormContribution(
     $params,
-    $result,
     $contributionParams,
     $financialType,
-    $online,
     $billingLocationID,
     $isRecur
   ) {
@@ -1292,9 +1287,13 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     if (!isset($params['is_email_receipt']) && $isEmailReceipt) {
       $params['is_email_receipt'] = $isEmailReceipt;
     }
+    // We may no longer need to set params['is_recur'] - it used to be used in processRecurringContribution
     $params['is_recur'] = $isRecur;
     $params['payment_instrument_id'] = $contributionParams['payment_instrument_id'] ?? NULL;
-    $recurringContributionID = CRM_Contribute_Form_Contribution_Confirm::processRecurringContribution($form, $params, $contactID, $financialType);
+    $recurringContributionID = !$isRecur ? NULL : CRM_Contribute_Form_Contribution_Confirm::processRecurringContribution($form, $params, [
+      'contact_id' => $contactID,
+      'financial_type_id' => $financialType->id,
+    ]);
 
     $now = date('YmdHis');
     $receiptDate = $params['receipt_date'] ?? NULL;
@@ -1305,7 +1304,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     if (isset($params['amount'])) {
       $contributionParams = array_merge(CRM_Contribute_Form_Contribution_Confirm::getContributionParams(
         $params, $financialType->id,
-        $result, $receiptDate,
+        NULL, $receiptDate,
         $recurringContributionID), $contributionParams
       );
       $contributionParams['non_deductible_amount'] = CRM_Contribute_Form_Contribution_Confirm::getNonDeductibleAmount($params, $financialType, FALSE, $form);
@@ -1351,19 +1350,10 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
       $form = CRM_Contribute_Form_Contribution_Confirm::handlePledge($form, $params, $contributionParams, $pledgeID, $contribution, $isEmailReceipt);
     }
 
-    if ($online && $contribution) {
-      CRM_Core_BAO_CustomValueTable::postProcess($params,
-        'civicrm_contribution',
-        $contribution->id,
-        'Contribution'
-      );
-    }
-    elseif ($contribution) {
+    if ($contribution) {
       //handle custom data.
       $params['contribution_id'] = $contribution->id;
-      if (!empty($params['custom']) &&
-        is_array($params['custom'])
-      ) {
+      if (!empty($params['custom']) && is_array($params['custom'])) {
         CRM_Core_BAO_CustomValueTable::store($params['custom'], 'civicrm_contribution', $contribution->id);
       }
     }
@@ -1753,7 +1743,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
 
       if (CRM_Contribute_BAO_Contribution::isContributionStatusNegative($params['contribution_status_id'])
       ) {
-        if (CRM_Utils_System::isNull(CRM_Utils_Array::value('cancel_date', $params))) {
+        if (CRM_Utils_System::isNull($params['cancel_date'] ?? NULL)) {
           $params['cancel_date'] = date('YmdHis');
         }
       }
@@ -1844,7 +1834,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     $toType = $submittedValues['financial_type_id'] ?? NULL;
     $fromType = $this->_defaults['financial_type_id'] ?? NULL;
     if (($this->_action & CRM_Core_Action::UPDATE) && ($toType != $fromType) && ($submittedValues['non_deductible_amount'] ?? NULL)) {
-      $deductible = \Civi\Api4\FinancialType::get(TRUE)
+      $deductible = FinancialType::get(TRUE)
         ->addSelect('is_deductible')
         ->addWhere('id', 'IN', [$toType, $fromType])
         ->execute()->indexBy('id')->column('is_deductible');

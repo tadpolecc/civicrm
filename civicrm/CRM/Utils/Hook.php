@@ -569,7 +569,7 @@ abstract class CRM_Utils_Hook {
    * visibility of contacts to the logged in user
    *
    * @param int $type
-   *   The type of permission needed.
+   *   Action being taken (CRM_Core_Permission::VIEW or CRM_Core_Permission::EDIT)
    * @param array $tables
    *   (reference ) add the tables that are needed for the select clause.
    * @param array $whereTables
@@ -993,13 +993,15 @@ abstract class CRM_Utils_Hook {
    *   Name of the object.
    * @param object $object
    *   Reference to the copy.
+   * @param int $original_id
+   *   Original entity ID.
    *
    * @return null
    */
-  public static function copy($objectName, &$object) {
+  public static function copy($objectName, &$object, $original_id = NULL) {
     $null = NULL;
-    return self::singleton()->invoke(['objectName', 'object'], $objectName, $object,
-      $null, $null, $null, $null,
+    return self::singleton()->invoke(['objectName', 'object'], $objectName, $object, $original_id,
+      $null, $null, $null,
       'civicrm_copy'
     );
   }

@@ -342,6 +342,11 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
       'parents' => NULL,
     ];
 
+    if (empty($params['id']) && empty($params['frontend_title'])) {
+      // If we were calling writeRecord it would handle this, but we need
+      // to migrate the other bits of magic.
+      $params['frontend_title'] = $params['title'];
+    }
     $hook = empty($params['id']) ? 'create' : 'edit';
     CRM_Utils_Hook::pre($hook, 'Group', $params['id'] ?? NULL, $params);
 
@@ -1091,12 +1096,8 @@ WHERE  id IN $groupIdString
       $title = $dao->title;
       $description = $dao->description;
       if ($public) {
-        if (!empty($dao->frontend_title)) {
-          $title = $dao->frontend_title;
-        }
-        if (!empty($dao->frontend_description)) {
-          $description = $dao->frontend_description;
-        }
+        $title = $dao->frontend_title;
+        $description = $dao->frontend_description;
       }
       if ($dao->parents) {
         $parentArray = explode(',', $dao->parents);
@@ -1260,7 +1261,8 @@ WHERE {$whereClause}";
       $params[5] = [$parent_id, 'Integer'];
     }
 
-    if ($createdBy = CRM_Utils_Array::value('created_by', $params)) {
+    $createdBy = $params['created_by'] ?? NULL;
+    if ($createdBy) {
       $clauses[] = "createdBy.sort_name LIKE %6";
       if (strpos($createdBy, '%') !== FALSE) {
         $params[6] = [$createdBy, 'String', FALSE];
