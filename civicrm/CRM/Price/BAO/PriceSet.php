@@ -386,7 +386,7 @@ WHERE     cpf.price_set_id = %1";
    * @param int $setID
    *   Price Set ID.
    * @param bool $required
-   *   Appears to have no effect based on reading the code.
+   *   Deprecated.
    * @param bool $doNotIncludeExpiredFields
    *   Should only fields where today's date falls within the valid range be returned?
    *
@@ -415,9 +415,6 @@ WHERE     cpf.price_set_id = %1";
       'visibility_id',
       'is_required',
     ];
-    if ($required == TRUE) {
-      $priceFields[] = 'is_required';
-    }
 
     // create select
     $select = 'SELECT ' . implode(',', $priceFields);
@@ -458,7 +455,7 @@ AND ( expire_on IS NULL OR expire_on >= {$currentTime} )
       $setTree[$setID]['fields'][$fieldID]['id'] = $fieldID;
 
       foreach ($priceFields as $field) {
-        if ($field == 'id' || is_null($dao->$field)) {
+        if ($field === 'id') {
           continue;
         }
 
@@ -796,33 +793,23 @@ WHERE  id = %1";
    *
    * @param CRM_Core_Form $form
    * @param string|null $component
+   * @param bool $validFieldsOnly
    *
    * @return void
+   * @throws \CRM_Core_Exception
    */
-  public static function buildPriceSet(&$form, $component = NULL) {
+  public static function buildPriceSet(&$form, $component = NULL, $validFieldsOnly = TRUE) {
     $priceSetId = $form->get('priceSetId');
     if (!$priceSetId) {
       return;
     }
 
-    $validFieldsOnly = TRUE;
     $className = CRM_Utils_System::getClassName($form);
-    if (in_array($className, [
-      'CRM_Contribute_Form_Contribution',
-      'CRM_Member_Form_Membership',
-    ])) {
-      $validFieldsOnly = FALSE;
-    }
 
     $priceSet = self::getSetDetail($priceSetId, TRUE, $validFieldsOnly);
     $form->_priceSet = $priceSet[$priceSetId] ?? NULL;
     $validPriceFieldIds = array_keys($form->_priceSet['fields']);
-    $form->_quickConfig = $quickConfig = 0;
-    if (CRM_Core_DAO::getFieldValue('CRM_Price_DAO_PriceSet', $priceSetId, 'is_quick_config')) {
-      $quickConfig = 1;
-    }
-
-    $form->assign('quickConfig', $quickConfig);
+    $form->assign('quickConfig', (int) CRM_Core_DAO::getFieldValue('CRM_Price_DAO_PriceSet', $priceSetId, 'is_quick_config'));
 
     // Mark which field should have the auto-renew checkbox, if any. CRM-18305
     if (!empty($form->_membershipTypeValues) && is_array($form->_membershipTypeValues)) {
@@ -848,10 +835,6 @@ WHERE  id = %1";
     }
     $form->_priceSet['id'] = $form->_priceSet['id'] ?? $priceSetId;
     $form->assign('priceSet', $form->_priceSet);
-
-    if ($className == 'CRM_Member_Form_Membership') {
-      $component = 'membership';
-    }
 
     if ($className == 'CRM_Contribute_Form_Contribution_Main') {
       $feeBlock = &$form->_values['fee'];

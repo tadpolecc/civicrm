@@ -383,3 +383,28 @@ function financialacls_civicrm_alterMenu(array &$menu): void {
   }
   $menu['civicrm/admin/financial/financialType']['access_arguments'] = [['administer CiviCRM Financial Types']];
 }
+
+/**
+ * Hide edit/enable/disable links for memberships of a given Financial Type
+ * Note: The $objectID param can be an int, string or null, hence not typed
+ *
+ * Implements hook_civicrm_links()
+ */
+function financialacls_civicrm_links(string $op, ?string $objectName, $objectID, array &$links, ?int &$mask, array &$values) {
+  if ($objectName === 'MembershipType') {
+    $financialType = CRM_Core_PseudoConstant::getName('CRM_Member_BAO_MembershipType', 'financial_type_id', CRM_Member_BAO_MembershipType::getMembershipType($objectID)['financial_type_id']);
+    $hasEditPermission = CRM_Core_Permission::check('edit contributions of type ' . $financialType);
+    $hasDeletePermission = CRM_Core_Permission::check('delete contributions of type ' . $financialType);
+    if (!$hasDeletePermission || !$hasEditPermission) {
+      foreach ($links as $index => $link) {
+        if (!$hasEditPermission && in_array($link['name'], ['Edit', 'Enable', 'Disable'], TRUE)) {
+          unset($links[$index]);
+        }
+        if (!$hasDeletePermission && $link['name'] === 'Delete') {
+          unset($links[$index]);
+        }
+      }
+    }
+  }
+
+}

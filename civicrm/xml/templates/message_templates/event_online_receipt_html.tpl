@@ -26,8 +26,8 @@
    <td>
      {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
 
-    {if !empty($event.confirm_email_text) AND (empty($isOnWaitlist) AND empty($isRequireApproval))}
-     <p>{$event.confirm_email_text|htmlize}</p>
+    {if {event.confirm_email_text|boolean} AND (empty($isOnWaitlist) AND empty($isRequireApproval))}
+     <p>{event.confirm_email_text}</p>
 
     {else}
      <p>{ts}Thank you for your registration.{/ts}
@@ -64,7 +64,7 @@
      <tr>
       <td colspan="2" {$valueStyle}>
        {event.title}<br />
-       {event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate:"%A"} {$event.event_end_date|crmDate}{/if}{/if}
+       {event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if {event.end_date|boolean}}-{if '{event.end_date|crmDate:"%Y%m%d"}' === '{event.start_date|crmDate:"%Y%m%d"}'}{event.end_date|crmDate:"Time"}{else}{event.end_date|crmDate:"%A"} {event.end_date|crmDate}{/if}{/if}
       </td>
      </tr>
 
@@ -189,12 +189,12 @@
       </tr>
 
       {if $isShowLineItems}
-        {foreach from=$participants key=index item=participant}
-          {if $isPrimary || {participant.id} === $participant.id}
+        {foreach from=$participants key=index item=currentParticipant}
+          {if $isPrimary || {participant.id} === $currentParticipant.id}
           {if $isPrimary && $lineItems|@count GT 1} {* Header for multi participant registration cases. *}
             <tr>
               <td colspan="2" {$labelStyle}>
-                {ts 1=$participant.index}Participant %1{/ts} {$participant.contact.display_name}
+                {ts 1=$currentParticipant.index}Participant %1{/ts} {$currentParticipant.contact.display_name}
               </td>
             </tr>
           {/if}
@@ -213,7 +213,7 @@
                     <th>{ts}Total{/ts}</th>
                       {if !empty($pricesetFieldsCount)}<th>{ts}Total Participants{/ts}</th>{/if}
                   </tr>
-                  {foreach from=$participant.line_items item=line}
+                  {foreach from=$currentParticipant.line_items item=line}
                     <tr>
                       <td {$tdfirstStyle}>{$line.title}</td>
                       <td {$tdStyle} align="middle">{$line.qty}</td>
@@ -234,9 +234,9 @@
                   {if $isShowTax}
                     <tr {$participantTotal}>
                       <td colspan=3>{ts}Participant Total{/ts}</td>
-                      <td colspan=2>{$participant.totals.total_amount_exclusive|crmMoney}</td>
-                      <td colspan=1>{$participant.totals.tax_amount|crmMoney}</td>
-                      <td colspan=2>{$participant.totals.total_amount_inclusive|crmMoney}</td>
+                      <td colspan=2>{$currentParticipant.totals.total_amount_exclusive|crmMoney}</td>
+                      <td colspan=1>{$currentParticipant.totals.tax_amount|crmMoney}</td>
+                      <td colspan=2>{$currentParticipant.totals.total_amount_inclusive|crmMoney}</td>
                     </tr>
                   {/if}
                 </table>
@@ -422,12 +422,10 @@
 {foreach from=$customPre item=customPr key=i}
    <tr> <th {$headerStyle}>{$customPre_grouptitle.$i}</th></tr>
    {foreach from=$customPr item=customValue key=customName}
-   {if ( !empty($trackingFields) and ! in_array( $customName, $trackingFields ) ) or empty($trackingFields)}
      <tr>
          <td {$labelStyle}>{$customName}</td>
          <td {$valueStyle}>{$customValue}</td>
      </tr>
-   {/if}
    {/foreach}
 {/foreach}
 {/if}
@@ -436,13 +434,11 @@
 {foreach from=$customPost item=customPos key=j}
    <tr> <th {$headerStyle}>{$customPost_grouptitle.$j}</th></tr>
    {foreach from=$customPos item=customValue key=customName}
-   {if (!empty($trackingFields) and ! in_array( $customName, $trackingFields ) ) or empty($trackingFields)}
      <tr>
          <td {$labelStyle}>{$customName}</td>
          <td {$valueStyle}>{$customValue}</td>
      </tr>
-{/if}
-{/foreach}
+   {/foreach}
 {/foreach}
 {/if}
 
@@ -467,7 +463,7 @@
      <tr>
       <td colspan="2" {$valueStyle}>
         {ts 1=$selfcancelxfer_time 2=$selfservice_preposition}You may transfer your registration to another participant or cancel your registration up to %1 hours %2 the event.{/ts} {if !empty($totalAmount)}{ts}Cancellations are not refundable.{/ts}{/if}<br />
-        {capture assign=selfService}{crmURL p='civicrm/event/selfsvcupdate' q="reset=1&pid=`{participant.id}`&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
+        {capture assign=selfService}{crmURL p='civicrm/event/selfsvcupdate' q="reset=1&pid={participant.id}&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
         <a href="{$selfService}">{ts}Click here to transfer or cancel your registration.{/ts}</a>
       </td>
      </tr>

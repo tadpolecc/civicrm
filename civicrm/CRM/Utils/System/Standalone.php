@@ -206,6 +206,18 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
   }
 
   /**
+   * Path of the current page e.g. 'civicrm/contact/view'
+   *
+   * @return string|null
+   *   the current menu path
+   */
+  public static function currentPath() {
+    $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    $path = trim($path, '/');
+    return $path;
+  }
+
+  /**
    * @inheritDoc
    * Authenticate the user against the CMS db.
    *
@@ -560,7 +572,7 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
    */
   public function getCMSPermissionsUrlParams() {
     if ($this->missingStandaloneExtension()) {
-      return ['ufAccessURL' => '/fixme/standalone/permissions/url/params'];
+      return ['ufAccessURL' => '/civicrm/admin/roles'];
     }
     return Security::singleton()->getCMSPermissionsUrlParams();
   }

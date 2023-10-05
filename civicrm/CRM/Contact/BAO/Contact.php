@@ -1136,7 +1136,7 @@ WHERE     civicrm_contact.id = " . CRM_Utils_Type::escape($id, 'Integer');
     // retrieve contact id in case of Profile context
     $id = CRM_Utils_Request::retrieve('id', 'Positive');
     $formName = $pcp ? 'CRM_PCP_Form_PCPAccount' : ($cid ? 'CRM_Contact_Form_Contact' : 'CRM_Profile_Form_Edit');
-    $cid = $cid ? $cid : $id;
+    $cid = $cid ?: $id;
     if ($action & CRM_Core_Action::DELETE) {
       if (CRM_Utils_Request::retrieve('confirmed', 'Boolean')) {
         // $controller is not used at all but we need the CRM_Core_Controller object as in it's constructor

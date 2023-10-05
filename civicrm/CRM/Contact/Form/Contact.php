@@ -312,8 +312,7 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
     // also keep the convention.
     $this->assign('contactId', $this->_contactId);
 
-    // location blocks.
-    CRM_Contact_Form_Location::preProcess($this);
+    $this->preProcessLocation();
 
     // retain the multiple count custom fields value
     if (!empty($_POST['hidden_custom'])) {
@@ -373,6 +372,28 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
       }
     }
     $this->assign('paramSubType', $paramSubType ?? '');
+  }
+
+  private function preProcessLocation() {
+    $blockName = CRM_Utils_Request::retrieve('block', 'String');
+    $additionalblockCount = CRM_Utils_Request::retrieve('count', 'Positive');
+
+    $this->assign('addBlock', FALSE);
+    if ($blockName && $additionalblockCount) {
+      $this->assign('addBlock', TRUE);
+      $this->assign('blockName', $blockName);
+      $this->assign('blockId', $additionalblockCount);
+      $this->set($blockName . '_Block_Count', $additionalblockCount);
+    }
+
+    $this->assign('className', 'CRM_Contact_Form_Contact');
+
+    // get address sequence.
+    if (!$addressSequence = $this->get('addressSequence')) {
+      $addressSequence = CRM_Core_BAO_Address::addressSequence();
+      $this->set('addressSequence', $addressSequence);
+    }
+    $this->assign('addressSequence', $addressSequence);
   }
 
   /**
@@ -538,7 +559,7 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
    */
   public function addRules() {
     // skip adding formRules when custom data is build
-    if ($this->_addBlockName || ($this->_action & CRM_Core_Action::DELETE)) {
+    if ($this->isAjaxMode() || ($this->_action & CRM_Core_Action::DELETE)) {
       return;
     }
 
@@ -556,6 +577,38 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
     if (array_key_exists('CommunicationPreferences', $this->_editOptions)) {
       $this->addFormRule(['CRM_Contact_Form_Edit_CommunicationPreferences', 'formRule'], $this);
     }
+  }
+
+  /**
+   * Is the form being run in an ajax overload way.
+   *
+   * Overloading of existing forms to return ajax forms is an anti-pattern. We
+   * have removed it in some places (eg, the Payment_Form) & added separate paths.
+   *
+   * If someone does separate this out, care needs to be taken to ensure that fields added in the ajax mode
+   * are also added to the parent form, when separating them. ie it is important to check the
+   * ajax-loaded fields are in the forms values retrieved from quick form as
+   * quick form will filter out POST values that have not been added to the
+   * quick form object..
+   *
+   * @return bool
+   */
+  public function isAjaxMode(): bool {
+    return (bool) $this->getAjaxBlockName();
+  }
+
+  /**
+   * Get the name of any overload block being used.
+   *
+   * This would either be 'CustomData' or a location entity
+   * (Phone, Address, Email, etc).
+   *
+   * @return string
+   * @noinspection PhpDocMissingThrowsInspection
+   * @noinspection PhpUnhandledExceptionInspection
+   */
+  public function getAjaxBlockName(): string {
+    return (string) (CRM_Utils_Request::retrieve('type', 'String') ? 'CustomData' : CRM_Utils_Request::retrieve('block', 'String'));
   }
 
   /**
@@ -719,8 +772,8 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
    */
   public function buildQuickForm() {
     //load form for child blocks
-    if ($this->_addBlockName) {
-      $className = 'CRM_Contact_Form_Edit_' . $this->_addBlockName;
+    if ($this->isAjaxMode()) {
+      $className = 'CRM_Contact_Form_Edit_' . $this->getAjaxBlockName();
       return $className::buildQuickForm($this);
     }
 
@@ -798,7 +851,7 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
 
     // build location blocks.
     CRM_Contact_Form_Edit_Lock::buildQuickForm($this);
-    CRM_Contact_Form_Location::buildQuickForm($this);
+    $this->buildLocationForm();
 
     // add attachment
     $this->addField('image_URL', ['maxlength' => '255', 'label' => ts('Browse/Upload Image'), 'accept' => 'image/png, image/jpeg, image/gif']);
@@ -860,6 +913,67 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
     $this->assign('oldSubtypes', json_encode($this->_oldSubtypes));
 
     $this->addButtons($buttons);
+  }
+
+  private function buildLocationForm(): void {
+    // required for subsequent AJAX requests.
+    $ajaxRequestBlocks = [];
+    $generateAjaxRequest = 0;
+
+    //build 1 instance of all blocks, without using ajax ...
+    foreach ($this->_blocks as $blockName => $label) {
+      $name = strtolower($blockName);
+
+      $instances = [1];
+      if (!empty($_POST[$name]) && is_array($_POST[$name])) {
+        $instances = array_keys($_POST[$name]);
+      }
+      elseif (!empty($this->_values[$name]) && is_array($this->_values[$name])) {
+        $instances = array_keys($this->_values[$name]);
+      }
+
+      foreach ($instances as $instance) {
+        if ($instance == 1) {
+          $this->assign('addBlock', FALSE);
+          $this->assign('blockId', $instance);
+        }
+        else {
+          //we are going to build other block instances w/ AJAX
+          $generateAjaxRequest++;
+          $ajaxRequestBlocks[$blockName][$instance] = TRUE;
+        }
+        switch ($blockName) {
+          case 'Email':
+            // setDefaults uses this to tell which instance
+            $this->set('Email_Block_Count', $instance);
+            CRM_Contact_Form_Edit_Email::buildQuickForm($this, $instance);
+            // Only display the signature fields if this contact has a CMS account
+            // because they can only send email if they have access to the CRM
+            $ufID = $this->_contactId && CRM_Core_BAO_UFMatch::getUFId($this->_contactId);
+            $this->assign('isAddSignatureFields', (bool) $ufID);
+            if ($ufID) {
+              $this->add('textarea', "email[$instance][signature_text]", ts('Signature (Text)'),
+                ['rows' => 2, 'cols' => 40]
+              );
+              $this->add('wysiwyg', "email[$instance][signature_html]", ts('Signature (HTML)'),
+                ['rows' => 2, 'cols' => 40]
+              );
+            }
+            break;
+
+          default:
+            // @todo This pattern actually adds complexity compared to filling out a switch statement
+            // for the limited number of blocks - as we also have to receive the block count
+            $this->set($blockName . '_Block_Count', $instance);
+            $formName = 'CRM_Contact_Form_Edit_' . $blockName;
+            $formName::buildQuickForm($this);
+        }
+      }
+    }
+
+    //assign to generate AJAX request for building extra blocks.
+    $this->assign('generateAjaxRequest', $generateAjaxRequest);
+    $this->assign('ajaxRequestBlocks', $ajaxRequestBlocks);
   }
 
   /**

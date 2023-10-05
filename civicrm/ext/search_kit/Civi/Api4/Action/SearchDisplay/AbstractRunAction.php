@@ -89,6 +89,8 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
 
   private $editableInfo = [];
 
+  private $currencyFields = [];
+
   /**
    * Override execute method to change the result object type
    * @return \Civi\Api4\Result\SearchDisplayRunResult
@@ -576,6 +578,15 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       }
       return TRUE;
     }
+    // Convert the conditional value of 'current_domain' into an actual value that filterCompare can work with
+    if ($item['condition'][2] === 'current_domain') {
+      if (str_ends_with($item['condition'][0], ':label') !== FALSE) {
+        $item['condition'][2] = \CRM_Core_BAO_Domain::getDomain()->name;
+      }
+      else {
+        $item['condition'][2] = \CRM_Core_Config::domainID();
+      }
+    }
     return self::filterCompare($data, $item['condition']);
   }
 
@@ -699,7 +710,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
   /**
    * @param array $column
    * @param array $data
-   * @return array{entity: string, action: string, input_type: string, data_type: string, options: bool, serialize: bool, nullable: bool, fk_entity: string, value_key: string, record: array, value: mixed}|null
+   * @return array{entity: string, action: string, input_type: string, data_type: string, options: bool, serialize: bool, nullable: bool, fk_entity: string, value_key: string, record: array, value_path: string}|null
    */
   private function formatEditableColumn($column, $data) {
     $editable = $this->getEditableInfo($column['key']);
@@ -708,7 +719,6 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     if (!empty($data[$editable['id_path']])) {
       $editable['action'] = 'update';
       $editable['record'][$editable['id_key']] = $data[$editable['id_path']];
-      $editable['value'] = $data[$editable['value_path']];
       // Ensure field is appropriate to this entity sub-type
       $field = $this->getField($column['key']);
       $entityValues = FormattingUtil::filterByPath($data, $editable['id_path'], $editable['id_key']);
@@ -719,7 +729,6 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     // Generate params to create new record, if applicable
     elseif ($editable['explicit_join'] && !$this->getJoin($editable['explicit_join'])['bridge']) {
       $editable['action'] = 'create';
-      $editable['value'] = NULL;
       $editable['nullable'] = FALSE;
       // Get values for creation from the join clause
       $join = $this->getQuery()->getExplicitJoin($editable['explicit_join']);
@@ -769,8 +778,14 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
         'values' => $entityValues,
       ], 0)['access'];
       if ($access) {
+        // Add currency formatting info
+        if ($editable['data_type'] === 'Money') {
+          $currencyField = $this->getCurrencyField($column['key']);
+          $currency = is_string($data[$currencyField] ?? NULL) ? $data[$currencyField] : NULL;
+          $editable['currency_format'] = \Civi::format()->money(1234.56, $currency);
+        }
         // Remove info that's for internal use only
-        \CRM_Utils_Array::remove($editable, 'id_key', 'id_path', 'value_path', 'explicit_join', 'grouping_fields');
+        \CRM_Utils_Array::remove($editable, 'id_key', 'id_path', 'explicit_join', 'grouping_fields');
         return $editable;
       }
     }
@@ -1113,7 +1128,8 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     foreach ($apiParams['select'] as $select) {
       // When selecting monetary fields, also select currency
       $currencyFieldName = $this->getCurrencyField($select);
-      if ($currencyFieldName) {
+      // Only select currency field if it doesn't break ONLY_FULL_GROUP_BY
+      if ($currencyFieldName && !$this->canAggregate($currencyFieldName)) {
         $this->addSelectExpression($currencyFieldName);
       }
       // Add field dependencies needed to resolve pseudoconstants
@@ -1133,60 +1149,103 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
   }
 
   /**
-   * Given a field that contains money, find the corresponding currency field
+   * Return the corresponding currency field if a select expression is monetary
    *
    * @param string $select
    * @return string|null
    */
-  private function getCurrencyField(string $select):?string {
+  private function getCurrencyField(string $select): ?string {
+    // This function is called one or more times per row so cache the results
+    if (array_key_exists($select, $this->currencyFields)) {
+      return $this->currencyFields[$select];
+    }
+    $this->currencyFields[$select] = NULL;
+
     $clause = $this->getSelectExpression($select);
     // Only deal with fields of type money.
-    // TODO: In theory it might be possible to support aggregated columns but be careful about FULL_GROUP_BY errors
-    if (!($clause && $clause['dataType'] === 'Money' && $clause['fields'])) {
+    if (!$clause || !$clause['fields'] || $clause['dataType'] !== 'Money') {
       return NULL;
     }
+
     $moneyFieldAlias = array_keys($clause['fields'])[0];
     $moneyField = $clause['fields'][$moneyFieldAlias];
+    $prefix = substr($moneyFieldAlias, 0, strrpos($moneyFieldAlias, $moneyField['name']));
+
     // Custom fields do their own thing wrt currency
     if ($moneyField['type'] === 'Custom') {
       return NULL;
     }
 
-    $prefix = substr($moneyFieldAlias, 0, strrpos($moneyFieldAlias, $moneyField['name']));
-
-    // If using aggregation, this will only work if grouping by currency
-    if ($clause['expr']->isType('SqlFunction')) {
-      $groupingByCurrency = array_intersect([$prefix . 'currency', 'currency'], $this->savedSearch['api_params']['groupBy'] ?? []);
-      return \CRM_Utils_Array::first($groupingByCurrency);
+    // First look for a currency field on the same entity as the money field
+    $ownCurrencyField = $this->findCurrencyField($moneyField['entity']);
+    if ($ownCurrencyField) {
+      return $this->currencyFields[$select] = $prefix . $ownCurrencyField;
     }
 
-    // If the entity has a field named 'currency', just assume that's it.
-    if ($this->getField($prefix . 'currency')) {
-      return $prefix . 'currency';
-    }
-    // Some currency fields go by other names like `fee_currency`. We find them by checking the pseudoconstant.
-    $entityDao = CoreUtil::getInfoItem($moneyField['entity'], 'dao');
-    if ($entityDao) {
-      foreach ($entityDao::getSupportedFields() as $fieldName => $field) {
-        if (($field['pseudoconstant']['table'] ?? NULL) === 'civicrm_currency') {
-          return $prefix . $fieldName;
-        }
+    // Next look at the previously-joined entity
+    if ($prefix && $this->getQuery()) {
+      $parentJoin = $this->getQuery()->getJoinParent(rtrim($prefix, '.'));
+      $parentCurrencyField = $parentJoin ? $this->findCurrencyField($this->getQuery()->getExplicitJoin($parentJoin)['entity']) : NULL;
+      if ($parentCurrencyField) {
+        return $this->currencyFields[$select] = $parentJoin . '.' . $parentCurrencyField;
       }
     }
-    // If the base entity has a field named 'currency', fall back on that.
-    if ($this->getField('currency')) {
-      return 'currency';
+
+    // Fall back on the base entity
+    $baseCurrencyField = $this->findCurrencyField($this->savedSearch['api_entity']);
+    if ($baseCurrencyField) {
+      return $this->currencyFields[$select] = $baseCurrencyField;
     }
-    // Finally, if there's a FK field to civicrm_contribution, we can use an implicit join
-    // E.G. the LineItem entity has no `currency` field of its own & uses that of the contribution record
+
+    // Finally, try adding an implicit join
+    // e.g. the LineItem entity can use `contribution_id.currency`
+    foreach ($this->findFKFields($moneyField['entity']) as $fieldName => $fkEntity) {
+      $joinCurrencyField = $this->findCurrencyField($fkEntity);
+      if ($joinCurrencyField) {
+        return $this->currencyFields[$select] = $prefix . $fieldName . '.' . $joinCurrencyField;
+      }
+    }
+    return NULL;
+  }
+
+  /**
+   * Find currency field for an entity.
+   *
+   * @param string $entityName
+   * @return string|null
+   */
+  private function findCurrencyField(string $entityName): ?string {
+    $entityDao = CoreUtil::getInfoItem($entityName, 'dao');
     if ($entityDao) {
+      // Check for a pseudoconstant that points to civicrm_currency.
       foreach ($entityDao::getSupportedFields() as $fieldName => $field) {
-        if (($field['FKClassName'] ?? NULL) === 'CRM_Contribute_DAO_Contribution') {
-          return $prefix . $fieldName . '.currency';
+        if (($field['pseudoconstant']['table'] ?? NULL) === 'civicrm_currency') {
+          return $fieldName;
         }
       }
     }
     return NULL;
+  }
+
+  /**
+   * Return all fields for this entity with a foreign key
+   *
+   * @param string $entityName
+   * @return string[]
+   */
+  private function findFKFields(string $entityName): array {
+    $entityDao = CoreUtil::getInfoItem($entityName, 'dao');
+    $fkFields = [];
+    if ($entityDao) {
+      // Check for a pseudoconstant that points to civicrm_currency.
+      foreach ($entityDao::getSupportedFields() as $fieldName => $field) {
+        $fkEntity = !empty($field['FKClassName']) ? CoreUtil::getApiNameFromBAO($field['FKClassName']) : NULL;
+        if ($fkEntity) {
+          $fkFields[$fieldName] = $fkEntity;
+        }
+      }
+    }
+    return $fkFields;
   }
 
   /**

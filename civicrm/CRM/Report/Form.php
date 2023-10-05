@@ -1026,7 +1026,7 @@ class CRM_Report_Form extends CRM_Core_Form {
       if (array_key_exists('filters', $table)) {
         foreach ($table['filters'] as $fieldName => $field) {
           if (isset($field['default'])) {
-            if (CRM_Utils_Array::value('type', $field) & CRM_Utils_Type::T_DATE
+            if (($field['type'] ?? 0) & CRM_Utils_Type::T_DATE
             ) {
               if (is_array($field['default'])) {
                 $this->_defaults["{$fieldName}_from"] = $field['default']['from'] ?? NULL;
@@ -3711,7 +3711,7 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
         unset($_POST['crmPID_B'], $_POST['crmPID']);
       }
 
-      $pageId = $pageId ? $pageId : 1;
+      $pageId = $pageId ?: 1;
       $this->set(CRM_Utils_Pager::PAGE_ID, $pageId);
       $offset = ($pageId - 1) * $rowCount;
 
@@ -5118,7 +5118,7 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
    * @param string $table
    */
   public function setEntityRefDefaults(&$field, $table) {
-    $field['attributes'] = $field['attributes'] ? $field['attributes'] : [];
+    $field['attributes'] = $field['attributes'] ?: [];
     $field['attributes'] += [
       'entity' => CRM_Core_DAO_AllCoreTables::getEntityNameForTable($table),
       'multiple' => TRUE,
@@ -5839,6 +5839,7 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
         'options' => CRM_Core_PseudoConstant::stateProvince(),
         'is_fields' => TRUE,
         'is_filters' => TRUE,
+        'is_order_bys' => TRUE,
         'is_group_bys' => TRUE,
       ],
       $options['prefix'] . 'country_id' => [
@@ -5847,6 +5848,7 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
         'name' => 'country_id',
         'is_fields' => TRUE,
         'is_filters' => TRUE,
+        'is_order_bys' => TRUE,
         'is_group_bys' => TRUE,
         'type' => CRM_Utils_Type::T_INT,
         'operatorType' => CRM_Report_Form::OP_MULTISELECT,
@@ -6064,7 +6066,7 @@ LEFT JOIN civicrm_contact {$field['alias']} ON {$field['alias']}.id = {$this->_a
    *   Relevant where clause.
    */
   protected function generateFilterClause($field, $fieldName) {
-    if (CRM_Utils_Array::value('type', $field) & CRM_Utils_Type::T_DATE) {
+    if (($field['type'] ?? 0) & CRM_Utils_Type::T_DATE) {
       if (($field['operatorType'] ?? NULL) ==
         CRM_Report_Form::OP_MONTH
       ) {

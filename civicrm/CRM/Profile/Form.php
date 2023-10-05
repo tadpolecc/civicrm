@@ -492,7 +492,6 @@ class CRM_Profile_Form extends CRM_Core_Form {
           $page->run();
         }
       }
-      $this->assign('multiRecordFieldListing', $multiRecordFieldListing);
 
       // is profile double-opt in?
       if (!empty($this->_fields['group']) &&
@@ -521,7 +520,7 @@ class CRM_Profile_Form extends CRM_Core_Form {
         CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm', 'reset=1'));
       }
     }
-
+    $this->assign('multiRecordFieldListing', $multiRecordFieldListing ?? NULL);
     if (!is_array($this->_fields)) {
       CRM_Core_Session::setStatus(ts('This feature is not currently available.'), ts('Sorry'), 'error');
       CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm', 'reset=1'));
@@ -770,7 +769,7 @@ class CRM_Profile_Form extends CRM_Core_Form {
           $return = TRUE;
           if (!$statusMessage) {
             $statusMessage = ts("This profile is configured for contact type '%1'. It cannot be used to edit contacts of other types.",
-                [1 => $profileSubType ? $profileSubType : $profileType]);
+                [1 => $profileSubType ?: $profileType]);
           }
         }
       }
@@ -1367,7 +1366,7 @@ class CRM_Profile_Form extends CRM_Core_Form {
    */
   public function getTemplateFileName() {
     $fileName = $this->checkTemplateFileExists();
-    return $fileName ? $fileName : parent::getTemplateFileName();
+    return $fileName ?: parent::getTemplateFileName();
   }
 
   /**
@@ -1378,7 +1377,7 @@ class CRM_Profile_Form extends CRM_Core_Form {
    */
   public function overrideExtraTemplateFileName() {
     $fileName = $this->checkTemplateFileExists('extra.');
-    return $fileName ? $fileName : parent::overrideExtraTemplateFileName();
+    return $fileName ?: parent::overrideExtraTemplateFileName();
   }
 
   /**

@@ -119,6 +119,18 @@ class CRM_Report_Form_Member_Detail extends CRM_Report_Form {
             'default_weight' => '1',
             'default_order' => 'ASC',
           ],
+          'status_id' => [
+            'title' => ts('Membership Status'),
+          ],
+          'membership_start_date' => [
+            'title' => ts('Membership Start Date'),
+          ],
+          'membership_end_date' => [
+            'title' => ts('Membership End Date'),
+          ],
+          'contribution_recur_id' => [
+            'title' => ts('Auto-renew'),
+          ],
         ],
         'grouping' => 'member-fields',
         'group_bys' => [
@@ -233,6 +245,12 @@ class CRM_Report_Form_Member_Detail extends CRM_Report_Form {
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => [0 => ts('None'), -1 => ts('Ended')] + CRM_Contribute_BAO_ContributionRecur::buildOptions('contribution_status_id', 'search'),
             'type' => CRM_Utils_Type::T_INT,
+          ],
+        ],
+        'order_bys' => [
+          'autorenew_status_id' => [
+            'name' => 'contribution_status_id',
+            'title' => ts('Auto-Renew Subscription Status'),
           ],
         ],
         'grouping' => 'member-fields',
@@ -379,18 +397,13 @@ HERESQL;
     }
   }
 
-  public function getOperationPair($type = "string", $fieldName = NULL) {
+  public function getOperationPair($type = 'string', $fieldName = NULL) {
     //re-name IS NULL/IS NOT NULL for clarity
     if ($fieldName === 'owner_membership_id') {
       $result = [];
+      $result[''] = ts('Any');
       $result['nll'] = ts('Primary members only');
       $result['nnll'] = ts('Non-primary members only');
-      $options = parent::getOperationPair($type, $fieldName);
-      foreach ($options as $key => $label) {
-        if (!array_key_exists($key, $result)) {
-          $result[$key] = $label;
-        }
-      }
     }
     else {
       $result = parent::getOperationPair($type, $fieldName);
