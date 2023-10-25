@@ -2895,7 +2895,7 @@ ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMA
 -- *******************************************************/
 CREATE TABLE `civicrm_action_schedule` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) NOT NULL COMMENT 'Name of the action(reminder)',
+  `name` varchar(128) NOT NULL COMMENT 'Name of the scheduled action',
   `title` varchar(64) COMMENT 'Title of the action(reminder)',
   `recipient` varchar(64) COMMENT 'Recipient',
   `limit_to` int COMMENT 'Is this the recipient criteria limited to OR in addition to?',
