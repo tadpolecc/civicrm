@@ -254,7 +254,11 @@ class CRM_Contribute_Form_Contribution_Main extends CRM_Contribute_Form_Contribu
       //set custom field defaults
       foreach ($this->_fields as $name => $field) {
         if ($customFieldID = CRM_Core_BAO_CustomField::getKeyID($name)) {
-          if (!isset($this->_defaults[$name])) {
+          // check if the custom field is on a membership, we only want to load
+          // defaults for membership custom fields here, not contact fields
+          if (!isset($this->_defaults[$name])
+            && !CRM_Core_BAO_CustomGroup::checkCustomField($customFieldID, ['Membership'])
+          ) {
             CRM_Core_BAO_CustomField::setProfileDefaults($customFieldID, $name, $this->_defaults,
               $entityId, CRM_Profile_Form::MODE_REGISTER
             );
@@ -321,10 +325,9 @@ class CRM_Contribute_Form_Contribution_Main extends CRM_Contribute_Form_Contribu
     $this->addPaymentProcessorFieldsToForm();
     $this->assign('is_pay_later', $this->getCurrentPaymentProcessor() === 0 && $this->_values['is_pay_later']);
     $this->assign('pay_later_text', $this->getCurrentPaymentProcessor() === 0 ? $this->getPayLaterLabel() : NULL);
-
+    $this->assign('nocid', $contactID === 0);
     if ($contactID === 0) {
       $this->addCidZeroOptions();
-
     }
 
     //build pledge block.

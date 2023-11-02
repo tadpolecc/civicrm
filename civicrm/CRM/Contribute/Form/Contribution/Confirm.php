@@ -1217,19 +1217,6 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     $campaignId = $params['campaign_id'] ?? $form->_values['campaign_id'] ?? NULL;
     $recurParams['campaign_id'] = $campaignId;
     $recurring = CRM_Contribute_BAO_ContributionRecur::add($recurParams);
-    if (is_a($recurring, 'CRM_Core_Error')) {
-      CRM_Core_Error::displaySessionError($recurring);
-      $urlString = 'civicrm/contribute/transact';
-      $urlParams = '_qf_Main_display=true';
-      if (get_class($form) == 'CRM_Contribute_Form_Contribution') {
-        $urlString = 'civicrm/contact/view/contribution';
-        $urlParams = "action=add&cid={$form->_contactID}";
-        if ($form->_mode) {
-          $urlParams .= "&mode={$form->_mode}";
-        }
-      }
-      CRM_Utils_System::redirect(CRM_Utils_System::url($urlString, $urlParams));
-    }
     $form->_params['contributionRecurID'] = $recurring->id;
 
     return $recurring->id;
@@ -1594,15 +1581,6 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
           $pending = $membershipContribution->contribution_status_id == CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_Contribution', 'contribution_status_id', 'Pending');
         }
         else {
-          // The concept of contributeMode is deprecated.
-          // the is_monetary concept probably should be too as it can be calculated from
-          // the existence of 'amount' & seems fragile.
-          if (((isset($this->_contributeMode)) || !empty($this->_params['is_pay_later'])
-            ) &&
-            (($this->_values['is_monetary'] && $this->_amount > 0.0))
-          ) {
-            $pending = TRUE;
-          }
           $pending = FALSE;
         }
 

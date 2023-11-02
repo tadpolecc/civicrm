@@ -99,7 +99,7 @@ class CRM_Core_EntityTokens extends AbstractTokenSubscriber {
     $fieldValue = $this->getFieldValue($row, $field);
     if (is_array($fieldValue)) {
       // eg. role_id for participant would be an array here.
-      $fieldValue = implode(',', $fieldValue);
+      $fieldValue = implode(', ', $fieldValue);
     }
 
     if ($this->isPseudoField($field)) {
@@ -152,7 +152,6 @@ class CRM_Core_EntityTokens extends AbstractTokenSubscriber {
    * @return bool
    */
   public function isHTMLTextField(string $fieldName): bool {
-    $metadata = $this->getMetadataForField($fieldName);
     return ($this->getMetadataForField($fieldName)['input_type'] ?? NULL) === 'RichTextEditor';
   }
 

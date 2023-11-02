@@ -2150,7 +2150,7 @@
             "type": "library",
             "extra": {
                 "patches_applied": {
-                    "Apply patch for php8.1": "https://patch-diff.githubusercontent.com/raw/pear/Log/pull/23.patch"
+                    "Apply patch for php8.1": "https://gist.githubusercontent.com/totten/d99d47dd9d19a5cb02858954a5577609/raw/0e5e4628a475219c2aec6af76e69894cdec42a55/pear-log-locale.patch"
                 }
             },
             "installation-source": "dist",

@@ -20,6 +20,10 @@ use CRM_Core_DAO_AllCoreTables as AllCoreTables;
 
 class CoreUtil {
 
+  public static function entityExists(string $entityName): bool {
+    return (bool) self::getInfoItem($entityName, 'name');
+  }
+
   /**
    * @param $entityName
    *
@@ -28,10 +32,17 @@ class CoreUtil {
    *   auto-completion of static methods
    */
   public static function getBAOFromApiName($entityName) {
+    // TODO: It would be nice to just call self::getInfoItem($entityName, 'dao')
+    // but that currently causes test failures, probably due to early-bootstrap issues.
     if ($entityName === 'CustomValue' || strpos($entityName, 'Custom_') === 0) {
-      return 'CRM_Core_BAO_CustomValue';
+      $dao = \Civi\Api4\CustomValue::getInfo()['dao'];
     }
-    $dao = AllCoreTables::getFullName($entityName);
+    else {
+      $dao = AllCoreTables::getFullName($entityName);
+    }
+    if (!$dao && self::isContact($entityName)) {
+      $dao = 'CRM_Contact_DAO_Contact';
+    }
     return $dao ? AllCoreTables::getBAOClassName($dao) : NULL;
   }
 
@@ -49,7 +60,7 @@ class CoreUtil {
   }
 
   /**
-   * @param $entityName
+   * @param string $entityName
    * @return string|\Civi\Api4\Generic\AbstractEntity
    */
   public static function getApiClass($entityName) {
@@ -58,6 +69,13 @@ class CoreUtil {
       return $className;
     }
     return self::getInfoItem($entityName, 'class');
+  }
+
+  /**
+   * Returns TRUE if `entityName` is 'Contact', 'Individual', 'Organization' or 'Household'
+   */
+  public static function isContact(string $entityName): bool {
+    return $entityName === 'Contact' || in_array($entityName, \CRM_Contact_BAO_ContactType::basicTypes(TRUE), TRUE);
   }
 
   /**
@@ -117,6 +135,10 @@ class CoreUtil {
     return NULL;
   }
 
+  public static function getCustomGroupName(string $entityName): ?string {
+    return str_starts_with($entityName, 'Custom_') ? substr($entityName, 7) : NULL;
+  }
+
   /**
    * @return string[]
    */
@@ -134,15 +156,26 @@ class CoreUtil {
   /**
    * For a given API Entity, return the types of custom fields it supports and the column they join to.
    *
+   * Sort of the inverse of this function:
+   * @see \CRM_Core_BAO_CustomGroup::getEntityForGroup
+   *
    * @param string $entityName
    * @return array{extends: array, column: string, grouping: mixed}|null
    */
   public static function getCustomGroupExtends(string $entityName) {
+    $contactTypes = \CRM_Contact_BAO_ContactType::basicTypes();
     // Custom_group.extends pretty much maps 1-1 with entity names, except for Contact.
+    if (in_array($entityName, $contactTypes, TRUE)) {
+      return [
+        'extends' => ['Contact', $entityName],
+        'column' => 'id',
+        'grouping' => ['contact_type', 'contact_sub_type'],
+      ];
+    }
     switch ($entityName) {
       case 'Contact':
         return [
-          'extends' => array_merge(['Contact'], array_keys(\CRM_Core_SelectValues::contactType())),
+          'extends' => array_merge(['Contact'], $contactTypes),
           'column' => 'id',
           'grouping' => ['contact_type', 'contact_sub_type'],
         ];
@@ -428,6 +461,16 @@ class CoreUtil {
         $fields[] = $indexedFields[$fieldName];
       }
     }
+  }
+
+  /**
+   * Strips leading namespace from a classname
+   * @param string $className
+   * @return string
+   */
+  public static function stripNamespace(string $className): string {
+    $slashPos = strrpos($className, '\\');
+    return $slashPos === FALSE ? $className : substr($className, $slashPos + 1);
   }
 
 }

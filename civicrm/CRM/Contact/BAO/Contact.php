@@ -1995,7 +1995,7 @@ ORDER BY civicrm_email.is_primary DESC";
     else {
       CRM_Utils_Hook::post('create', 'Profile', $contactID, $params);
     }
-    return $contactID;
+    return (int) $contactID;
   }
 
   /**
@@ -2925,8 +2925,8 @@ LEFT JOIN civicrm_email    ON ( civicrm_contact.id = civicrm_email.contact_id )
         'key' => 'note',
         'tab' => 'note',
         'class' => 'medium-popup',
-        'href' => CRM_Utils_System::url('civicrm/contact/view/note',
-          'reset=1&action=add'
+        'href' => CRM_Utils_System::url('civicrm/note',
+          'reset=1&action=add&entity_table=civicrm_contact&entity_id=' . $contactId
         ),
         'permissions' => ['edit all contacts'],
       ],
@@ -3409,16 +3409,19 @@ LEFT JOIN civicrm_address ON ( civicrm_address.contact_id = civicrm_contact.id )
   }
 
   /**
+   * @param string|null $entityName
+   * @param int|null $userId
+   * @param array $conditions
    * @inheritDoc
    */
-  public function addSelectWhereClause() {
+  public function addSelectWhereClause(string $entityName = NULL, int $userId = NULL, array $conditions = []): array {
     // We always return an array with these keys, even if they are empty,
     // because this tells the query builder that we have considered these fields for acls
     $clauses = [
       'id' => (array) CRM_Contact_BAO_Contact_Permission::cacheSubquery(),
       'is_deleted' => CRM_Core_Permission::check('access deleted contacts') ? [] : ['!= 1'],
     ];
-    CRM_Utils_Hook::selectWhereClause($this, $clauses);
+    CRM_Utils_Hook::selectWhereClause($this, $clauses, $userId, $conditions);
     return $clauses;
   }
 
@@ -3578,6 +3581,7 @@ LEFT JOIN civicrm_address ON ( civicrm_address.contact_id = civicrm_contact.id )
   public static function getEntityRefFilters() {
     return [
       ['key' => 'contact_type', 'value' => ts('Contact Type')],
+      ['key' => 'email', 'value' => ts('Email'), 'entity' => 'Email', 'type' => 'text'],
       ['key' => 'group', 'value' => ts('Group'), 'entity' => 'GroupContact'],
       ['key' => 'tag', 'value' => ts('Tag'), 'entity' => 'EntityTag'],
       ['key' => 'city', 'value' => ts('City'), 'type' => 'text', 'entity' => 'Address'],

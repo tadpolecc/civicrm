@@ -913,6 +913,7 @@ class CRM_Financial_BAO_Order {
         $lineItem['tax_amount'] = ($taxRate / 100) * $lineItem['line_total'];
       }
       $lineItem['title'] = $this->getLineItemTitle($lineItem);
+      $lineItem['line_total_inclusive'] = $lineItem['line_total'] + $lineItem['tax_amount'];
     }
     return $lineItems;
   }
@@ -1040,6 +1041,7 @@ class CRM_Financial_BAO_Order {
       }
       $lineItem['tax_rate'] = $this->getTaxRate($lineItem['financial_type_id']);
       $lineItem['tax_amount'] = ($lineItem['tax_rate'] / 100) * $lineItem['line_total'];
+      $lineItem['line_total_inclusive'] = $lineItem['tax_amount'] + $lineItem['line_total'];
     }
     if (!empty($lineItem['membership_type_id'])) {
       $lineItem['entity_table'] = 'civicrm_membership';

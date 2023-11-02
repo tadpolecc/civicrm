@@ -21,6 +21,7 @@ use CRM_Afform_ExtensionUtil as E;
  * @labelField title
  * @iconField type:icon
  * @searchable none
+ * @since 5.31
  * @package Civi\Api4
  */
 class Afform extends Generic\AbstractEntity {
@@ -195,6 +196,11 @@ class Afform extends Generic\AbstractEntity {
           'options' => \CRM_Contact_BAO_ContactType::contactTypePairs(),
         ],
         [
+          'name' => 'summary_weight',
+          'title' => E::ts('Order'),
+          'data_type' => 'Integer',
+        ],
+        [
           'name' => 'icon',
           'title' => E::ts('Icon'),
           'description' => 'Icon shown in the contact summary tab',
@@ -305,7 +311,7 @@ class Afform extends Generic\AbstractEntity {
           'data_type' => 'String',
           'description' => 'Name of extension which provides this form',
           'readonly' => TRUE,
-          'pseudoconstant' => ['callback' => ['CRM_Core_PseudoConstant', 'getExtensions']],
+          'pseudoconstant' => ['callback' => ['CRM_Core_BAO_Managed', 'getBaseModules']],
         ];
         $fields[] = [
           'name' => 'search_displays',

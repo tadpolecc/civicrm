@@ -173,7 +173,7 @@ function afform_civicrm_tabset($tabsetName, &$tabs, $context) {
   }
   $contactTypes = array_merge((array) ($context['contact_type'] ?? []), $context['contact_sub_type'] ?? []);
   $afforms = Civi\Api4\Afform::get(FALSE)
-    ->addSelect('name', 'title', 'icon', 'module_name', 'directive_name', 'summary_contact_type')
+    ->addSelect('name', 'title', 'icon', 'module_name', 'directive_name', 'summary_contact_type', 'summary_weight')
     ->addWhere('contact_summary', '=', 'tab')
     ->addOrderBy('title')
     ->execute();
@@ -186,7 +186,7 @@ function afform_civicrm_tabset($tabsetName, &$tabs, $context) {
       $tabs[] = [
         'id' => $tabId,
         'title' => $afform['title'],
-        'weight' => $weight++,
+        'weight' => $afform['summary_weight'] ?? $weight++,
         'icon' => 'crm-i ' . ($afform['icon'] ?: 'fa-list-alt'),
         'is_active' => TRUE,
         'contact_type' => _afform_get_contact_types($summaryContactType) ?: NULL,
@@ -214,6 +214,7 @@ function afform_civicrm_pageRun(&$page) {
   $afforms = Civi\Api4\Afform::get(FALSE)
     ->addSelect('name', 'title', 'icon', 'module_name', 'directive_name', 'summary_contact_type')
     ->addWhere('contact_summary', '=', 'block')
+    ->addOrderBy('summary_weight')
     ->addOrderBy('title')
     ->execute();
   $cid = $page->get('cid');
@@ -390,7 +391,7 @@ function afform_civicrm_alterMenu(&$items) {
   try {
     $afforms = \Civi\Api4\Afform::get(FALSE)
       ->addWhere('server_route', 'IS NOT EMPTY')
-      ->addSelect('name', 'server_route', 'is_public')
+      ->addSelect('name', 'server_route', 'is_public', 'title')
       ->execute()->indexBy('name');
   }
   catch (Exception $e) {
@@ -401,6 +402,7 @@ function afform_civicrm_alterMenu(&$items) {
   foreach ($afforms as $name => $meta) {
     if (!empty($meta['server_route'])) {
       $items[$meta['server_route']] = [
+        'title' => $meta['title'],
         'page_callback' => 'CRM_Afform_Page_AfformBase',
         'page_arguments' => 'afform=' . urlencode($name),
         'access_arguments' => [["@afform:$name"], 'and'],

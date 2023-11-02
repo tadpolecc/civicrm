@@ -14,7 +14,7 @@
     {/if}
 
     {assign var='adminFld' value=false}
-    {if call_user_func(array('CRM_Core_Permission','check'), 'administer CiviCRM') }
+    {if call_user_func(array('CRM_Core_Permission','check'), 'administer CiviCRM')}
       {assign var='adminFld' value=true}
       {if $priceSet.id && !$priceSet.is_quick_config}
         <div class='float-right'>
@@ -27,22 +27,22 @@
 
     {foreach from=$priceSet.fields item=element key=field_id}
         {* Skip 'Admin' visibility price fields WHEN this tpl is used in online registration unless user has administer CiviCRM permission. *}
-        {if $element.visibility EQ 'public' || ($element.visibility EQ 'admin' && $adminFld EQ true) || $context eq 'standalone' || $context eq 'advanced' || $context eq 'search' || $context eq 'participant' || $context eq 'dashboard' }
+        {if $element.visibility EQ 'public' || ($element.visibility EQ 'admin' && $adminFld EQ true) || $context eq 'standalone' || $context eq 'advanced' || $context eq 'search' || $context eq 'participant' || $context eq 'dashboard'}
             {if $element.help_pre}<span class="content description">{$element.help_pre}</span><br />{/if}
             <div class="crm-section {$element.name}-section crm-price-field-id-{$field_id}">
             {if ($element.html_type eq 'CheckBox' || $element.html_type == 'Radio') && $element.options_per_line}
-              {assign var="element_name" value="price_"|cat:$field_id}
+              {assign var="element_name" value="price_`$field_id`"}
               <div class="label">{$form.$element_name.label}</div>
               <div class="content {$element.name}-content">
                 {assign var="elementCount" value="0"}
                 {assign var="optionCount" value="0"}
                 {assign var="rowCount" value="0"}
                 {foreach name=outer key=key item=item from=$form.$element_name}
-                  {assign var="elementCount" value=`$elementCount+1`}
-                  {if is_numeric($key) }
-                    {assign var="optionCount" value=`$optionCount+1`}
+                  {assign var="elementCount" value=$elementCount+1}
+                  {if is_numeric($key)}
+                    {assign var="optionCount" value=$optionCount+1}
                     {if $optionCount == 1}
-                      {assign var="rowCount" value=`$rowCount+1`}
+                      {assign var="rowCount" value=$rowCount+1}
                       <div class="price-set-row {$element.name}-row{$rowCount}">
                     {/if}
                     <span class="price-set-option-content">{$form.$element_name.$key.html}</span>
@@ -68,7 +68,7 @@
                     <span class="price-field-amount{if $form.$element_name.frozen EQ 1} sold-out-option{/if}">
                     {foreach item=option from=$element.options}
                       {if ($option.tax_amount || $option.tax_amount == "0") && $displayOpt && $invoicing}
-                        {assign var="amount" value=`$option.amount+$option.tax_amount`}
+                        {assign var="amount" value=$option.amount+$option.tax_amount}
                         {if $displayOpt == 'Do_not_show'}
                           {$amount|crmMoney:$currency}
                         {elseif $displayOpt == 'Inclusive'}

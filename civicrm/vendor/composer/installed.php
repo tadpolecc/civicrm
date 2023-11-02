@@ -1,11 +1,11 @@
 <?php return array(
     'root' => array(
-        'pretty_version' => '5.66.x-dev',
-        'version' => '5.66.9999999.9999999-dev',
+        'pretty_version' => '5.67.x-dev',
+        'version' => '5.67.9999999.9999999-dev',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => '8898c46a078f24e69cda6eb834943b97e8cca743',
+        'reference' => '192b5c8ee388d2c084591fae00eb97be59cf2128',
         'name' => 'civicrm/civicrm-core',
         'dev' => true,
     ),
@@ -38,12 +38,12 @@
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-core' => array(
-            'pretty_version' => '5.66.x-dev',
-            'version' => '5.66.9999999.9999999-dev',
+            'pretty_version' => '5.67.x-dev',
+            'version' => '5.67.9999999.9999999-dev',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => '8898c46a078f24e69cda6eb834943b97e8cca743',
+            'reference' => '192b5c8ee388d2c084591fae00eb97be59cf2128',
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-cxn-rpc' => array(

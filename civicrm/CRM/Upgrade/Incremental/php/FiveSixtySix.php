@@ -84,17 +84,6 @@ class CRM_Upgrade_Incremental_php_FiveSixtySix extends CRM_Upgrade_Incremental_B
   }
 
   /**
-   * Upgrade step; adds tasks including 'runSql'.
-   *
-   * @param string $rev
-   *   The version number matching this function name
-   */
-  public function upgrade_5_66_1($rev): void {
-    $this->addTask('Make ActionSchedule.name required', 'alterColumn', 'civicrm_action_schedule', 'name', "varchar(128) NOT NULL COMMENT 'Name of the scheduled action'");
-    $this->addTask('Make Discount.entity_table required', 'alterColumn', 'civicrm_discount', 'entity_table', "varchar(64) NOT NULL COMMENT 'physical tablename for entity being joined to discount, e.g. civicrm_event'");
-  }
-
-  /**
    * Add fields to civicrm_mail_settings to allow more flexibility for email to activity
    *
    * @param \CRM_Queue_TaskContext $ctx
