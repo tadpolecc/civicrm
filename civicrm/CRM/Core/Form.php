@@ -202,6 +202,10 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
    * to combine fields from the various screens & save the resulting 'submitted_values'
    * to the UserJob.
    *
+   * @api This function will not change in a minor release and is supported for
+   * use outside of core. This annotation / external support for properties
+   * is only given where there is specific test cover.
+   *
    * @return array
    */
   public function getSubmittedValues(): array {
@@ -218,6 +222,10 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
    * To make fields in related forms (ie within the same wizard like
    * Contribution_Main and Contribution_Confirm) accessible you can override
    * this function as CRM_Import_Forms does.
+   *
+   * @api This function will not change in a minor release and is supported for
+   * use outside of core. This annotation / external support for properties
+   * is only given where there is specific test cover.
    *
    * @return string[]
    */
@@ -781,7 +789,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
         $this->submitOnce = TRUE;
       }
 
-      $attrs = ['class' => 'crm-form-submit'] + (array) CRM_Utils_Array::value('js', $button);
+      $attrs = ['class' => 'crm-form-submit'] + ($button['js'] ?? []);
 
       // A lot of forms use the hacky method of looking at
       // `$params['button name']` (dating back to them being inputs with a
@@ -1836,7 +1844,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
       }
       if ($context == 'search') {
         $widget = $widget == 'Select2' ? $widget : 'Select';
-        $props['multiple'] = CRM_Utils_Array::value('multiple', $props, TRUE);
+        $props['multiple'] = $props['multiple'] ?? TRUE;
       }
       elseif (!empty($fieldSpec['serialize'])) {
         $props['multiple'] = TRUE;
@@ -2316,6 +2324,9 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     $props['data-select-params'] = json_encode($props['select']);
     $props['data-api-params'] = json_encode($props['api']);
     $props['data-api-entity'] = $props['entity'];
+    if (!empty($props['select']['quickAdd'])) {
+      Civi::service('angularjs.loader')->addModules(['af']);
+    }
     CRM_Utils_Array::remove($props, 'select', 'api', 'entity');
     return $this->add('text', $name, $label, $props, $required);
   }
@@ -3012,6 +3023,8 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
    * they have permission to (setContactID does do that) and can be used to check if the user is
    * accessing their own record.
    *
+   * @deprecated use getAuthenticatedContactID()
+   *
    * @return int|false
    * @throws \CRM_Core_Exception
    */
@@ -3028,14 +3041,20 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
   }
 
   /**
-   * Get values submitted by the user.
+   * Get value submitted by the user.
    *
    * These values have been validated against the fields added to the form.
    * https://pear.php.net/manual/en/package.html.html-quickform.html-quickform.exportvalues.php
    *
+   * Any money processing has also been done.
+   *
    * @param string $fieldName
    *
    * @return mixed|null
+   *
+   * @api This function will not change in a minor release and is supported for
+   * use outside of core. This annotation / external support for properties
+   * is only given where there is specific test cover.
    */
   public function getSubmittedValue(string $fieldName) {
     if (empty($this->exportedValues)) {
@@ -3044,6 +3063,15 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     $value = $this->exportedValues[$fieldName] ?? NULL;
     if (in_array($fieldName, $this->submittableMoneyFields, TRUE)) {
       return CRM_Utils_Rule::cleanMoney($value);
+    }
+    else {
+      // Numeric fields are not in submittableMoneyFields (for now)
+      $fieldRules = $this->_rules[$fieldName] ?? [];
+      foreach ($fieldRules as $rule) {
+        if ('money' === $rule['type']) {
+          return CRM_Utils_Rule::cleanMoney($value);
+        }
+      }
     }
     return $value;
   }

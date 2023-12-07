@@ -677,7 +677,7 @@ abstract class CRM_Utils_Hook {
   }
 
   /**
-   * (Experimental) This hook is called when build the menu table.
+   * This hook is called when building the menu table.
    *
    * @param array $items
    *   List of records to include in menu table.
@@ -1145,6 +1145,9 @@ abstract class CRM_Utils_Hook {
    *     - title: string
    *     - callback: string|array, the function which starts the setup process.
    *        The function is expected to return a 'url' for the config screen.
+   *     - url: string (optional), a URL which starts the setup process.
+   *        If omitted, then a default URL is generated. The effect of opening the URL is
+   *        to invoke the `callback`.
    * @return mixed
    */
   public static function mailSetupActions(&$setupActions) {
@@ -1176,7 +1179,7 @@ abstract class CRM_Utils_Hook {
   }
 
   /**
-   * (Experimental) Modify the list of template-types used for CiviMail composition.
+   * Modify the list of template-types used for CiviMail composition.
    *
    * @param array $types
    *   Sequentially indexed list of template types. Each type specifies:
@@ -1864,10 +1867,9 @@ abstract class CRM_Utils_Hook {
   }
 
   /**
-   * (EXPERIMENTAL) Scan extensions for a list of auto-registered interfaces.
+   * Scan extensions for a list of auto-registered interfaces.
    *
-   * This hook is currently experimental. It is a means to implementing `mixin/scan-classes@1`.
-   * If there are no major difficulties circa 5.55, then it can be marked stable.
+   * @see mixin/scan-classes@1
    *
    * @param string[] $classes
    *   List of classes which may be of interest to the class-scanner.
@@ -2670,7 +2672,7 @@ abstract class CRM_Utils_Hook {
   }
 
   /**
-   * EXPERIMENTAL: This hook allows one to register additional Angular modules
+   * Register Angular modules
    *
    * @param array $angularModules
    *   List of modules. Each module defines:
@@ -3114,7 +3116,7 @@ abstract class CRM_Utils_Hook {
    */
   public static function queueTaskError(CRM_Queue_Queue $queue, $item, &$outcome, ?Throwable $exception) {
     $null = NULL;
-    return self::singleton()->invoke(['job', 'params'], $queue, $item,
+    return self::singleton()->invoke(['queue', 'item', 'outcome', 'exception'], $queue, $item,
       $outcome, $exception, $null, $null,
       'civicrm_queueTaskError'
     );

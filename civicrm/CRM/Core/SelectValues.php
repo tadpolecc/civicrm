@@ -219,6 +219,11 @@ class CRM_Core_SelectValues {
         'name' => 'Link',
         'label' => ts('Link'),
       ],
+      [
+        'id' => 'Hidden',
+        'name' => 'Hidden',
+        'label' => ts('Hidden'),
+      ],
     ];
   }
 
@@ -634,6 +639,7 @@ class CRM_Core_SelectValues {
    * @return array
    */
   public static function participantTokens(): array {
+    CRM_Core_Error::deprecatedFunctionWarning('user TokenProcessor');
     $tokenProcessor = new TokenProcessor(Civi::dispatcher(), ['schema' => ['participantId']]);
     $allTokens = $tokenProcessor->listTokens();
     foreach (array_keys($allTokens) as $token) {
@@ -1158,6 +1164,10 @@ class CRM_Core_SelectValues {
         'key' => 'address_primary.postal_code',
         'label' => ts('Postal Code'),
         'adv_search_legacy' => 'postal_code',
+      ],
+      [
+        'key' => 'employer_id.sort_name',
+        'label' => ts('Current Employer'),
       ],
       [
         'key' => 'job_title',

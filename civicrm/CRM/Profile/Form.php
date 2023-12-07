@@ -889,13 +889,10 @@ class CRM_Profile_Form extends CRM_Core_Form {
     $this->setDefaultsValues();
 
     $action = CRM_Utils_Request::retrieve('action', 'String', $this, FALSE, NULL);
-
     if ($this->_mode == self::MODE_CREATE || $this->_mode == self::MODE_EDIT) {
       CRM_Core_BAO_CMSUser::buildForm($this, $this->_gid, $emailPresent, $action);
     }
-    else {
-      $this->assign('showCMS', FALSE);
-    }
+    $this->assign('showCMS', FALSE);
 
     $this->assign('groupId', $this->_gid);
 

@@ -164,12 +164,12 @@ class SpecFormatter {
     $bao = CoreUtil::getBAOFromApiName($spec->getEntity());
     $optionLabels = $bao::buildOptions($fieldName, NULL, $values);
 
-    if (!is_array($optionLabels) || !$optionLabels) {
+    if (!is_array($optionLabels)) {
       $options = FALSE;
     }
     else {
       $options = \CRM_Utils_Array::makeNonAssociative($optionLabels, 'id', 'label');
-      if (is_array($returnFormat)) {
+      if (is_array($returnFormat) && $options) {
         self::addOptionProps($options, $spec, $bao, $fieldName, $values, $returnFormat);
       }
     }

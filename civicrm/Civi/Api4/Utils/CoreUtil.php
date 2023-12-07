@@ -16,6 +16,7 @@ use Civi\API\Exception\NotImplementedException;
 use Civi\API\Exception\UnauthorizedException;
 use Civi\API\Request;
 use Civi\Api4\Generic\AbstractAction;
+use Civi\Api4\Service\Schema\SchemaMap;
 use CRM_Core_DAO_AllCoreTables as AllCoreTables;
 
 class CoreUtil {
@@ -31,7 +32,7 @@ class CoreUtil {
    *   The BAO name for use in static calls. Return doc block is hacked to allow
    *   auto-completion of static methods
    */
-  public static function getBAOFromApiName($entityName) {
+  public static function getBAOFromApiName($entityName): ?string {
     // TODO: It would be nice to just call self::getInfoItem($entityName, 'dao')
     // but that currently causes test failures, probably due to early-bootstrap issues.
     if ($entityName === 'CustomValue' || strpos($entityName, 'Custom_') === 0) {
@@ -54,16 +55,16 @@ class CoreUtil {
    * @param $baoClassName
    * @return string|null
    */
-  public static function getApiNameFromBAO($baoClassName) {
+  public static function getApiNameFromBAO($baoClassName): ?string {
     $briefName = AllCoreTables::getBriefName($baoClassName);
     return $briefName && self::getApiClass($briefName) ? $briefName : NULL;
   }
 
   /**
    * @param string $entityName
-   * @return string|\Civi\Api4\Generic\AbstractEntity
+   * @return string|\Civi\Api4\Generic\AbstractEntity|null
    */
-  public static function getApiClass($entityName) {
+  public static function getApiClass(string $entityName): ?string {
     $className = 'Civi\Api4\\' . $entityName;
     if (class_exists($className)) {
       return $className;
@@ -92,6 +93,20 @@ class CoreUtil {
   }
 
   /**
+   * Check if entity is of given type.
+   *
+   * @param string $entityName
+   *   e.g. 'Contact'
+   * @param string $entityType
+   *   e.g. 'SortableEntity'
+   * @return bool
+   */
+  public static function isType(string $entityName, string $entityType): bool {
+    $entityTypes = (array) self::getInfoItem($entityName, 'type');
+    return in_array($entityType, $entityTypes, TRUE);
+  }
+
+  /**
    * Get name of unique identifier, typically "id"
    * @param string $entityName
    * @return string
@@ -114,19 +129,19 @@ class CoreUtil {
    *
    * @param string $entityName
    *
-   * @return string
+   * @return string|null
    */
-  public static function getTableName(string $entityName) {
+  public static function getTableName(string $entityName): ?string {
     return self::getInfoItem($entityName, 'table_name');
   }
 
   /**
    * Given a sql table name, return the name of the api entity.
    *
-   * @param $tableName
+   * @param string $tableName
    * @return string|NULL
    */
-  public static function getApiNameFromTableName($tableName) {
+  public static function getApiNameFromTableName($tableName): ?string {
     $provider = \Civi::service('action_object_provider');
     foreach ($provider->getEntities() as $entityName => $info) {
       if (($info['table_name'] ?? NULL) === $tableName) {
@@ -143,7 +158,7 @@ class CoreUtil {
   /**
    * @return string[]
    */
-  public static function getOperators() {
+  public static function getOperators(): array {
     $operators = \CRM_Core_DAO::acceptedSQLOperators();
     $operators[] = 'CONTAINS';
     $operators[] = 'NOT CONTAINS';
@@ -151,6 +166,8 @@ class CoreUtil {
     $operators[] = 'IS NOT EMPTY';
     $operators[] = 'REGEXP';
     $operators[] = 'NOT REGEXP';
+    $operators[] = 'REGEXP BINARY';
+    $operators[] = 'NOT REGEXP BINARY';
     return $operators;
   }
 
@@ -163,7 +180,7 @@ class CoreUtil {
    * @param string $entityName
    * @return array{extends: array, column: string, grouping: mixed}|null
    */
-  public static function getCustomGroupExtends(string $entityName) {
+  public static function getCustomGroupExtends(string $entityName): ?array {
     $contactTypes = \CRM_Contact_BAO_ContactType::basicTypes();
     // Custom_group.extends pretty much maps 1-1 with entity names, except for Contact.
     if (in_array($entityName, $contactTypes, TRUE)) {
@@ -207,7 +224,7 @@ class CoreUtil {
    * @return bool
    * @throws \CRM_Core_Exception
    */
-  public static function isCustomEntity($customGroupName) {
+  public static function isCustomEntity($customGroupName): bool {
     return $customGroupName && \CRM_Core_DAO::getFieldValue('CRM_Core_DAO_CustomGroup', $customGroupName, 'is_multiple', 'name');
   }
 
@@ -218,10 +235,10 @@ class CoreUtil {
    * @param array $record
    * @param int|null $userID
    *   Contact ID of the user we are testing, 0 for the anonymous user.
-   * @return bool
+   * @return bool|null
    * @throws \CRM_Core_Exception
    */
-  public static function checkAccessRecord(AbstractAction $apiRequest, array $record, int $userID = NULL) {
+  public static function checkAccessRecord(AbstractAction $apiRequest, array $record, int $userID = NULL): ?bool {
     $userID = $userID ?? \CRM_Core_Session::getLoggedInContactID() ?? 0;
 
     // Super-admins always have access to everything
@@ -284,7 +301,7 @@ class CoreUtil {
   /**
    * @return \Civi\Api4\Service\Schema\SchemaMap
    */
-  public static function getSchemaMap() {
+  public static function getSchemaMap(): SchemaMap {
     $cache = \Civi::cache('metadata');
     $schemaMap = $cache->get('api4.schema.map');
     if (!$schemaMap) {
@@ -303,7 +320,7 @@ class CoreUtil {
    * @return array{name: string, type: string, count: int, table: string|null, key: string|null}[]
    * @throws NotImplementedException
    */
-  public static function getRefCount(string $entityName, $entityId) {
+  public static function getRefCount(string $entityName, $entityId): array {
     $daoName = self::getInfoItem($entityName, 'dao');
     if (!$daoName) {
       throw new NotImplementedException("Cannot getRefCount for $entityName - dao not found.");

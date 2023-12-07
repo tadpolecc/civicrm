@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'civicrm/civicrm-core',
-        'pretty_version' => '5.67.x-dev',
-        'version' => '5.67.9999999.9999999-dev',
-        'reference' => '5f86ffb076598c9cae9841fda3004459df2aa77a',
+        'pretty_version' => '5.68.x-dev',
+        'version' => '5.68.9999999.9999999-dev',
+        'reference' => '8a55d28fd045ac640eaa5fc32b2b1441f92fe4b9',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -38,9 +38,9 @@
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-core' => array(
-            'pretty_version' => '5.67.x-dev',
-            'version' => '5.67.9999999.9999999-dev',
-            'reference' => '5f86ffb076598c9cae9841fda3004459df2aa77a',
+            'pretty_version' => '5.68.x-dev',
+            'version' => '5.68.9999999.9999999-dev',
+            'reference' => '8a55d28fd045ac640eaa5fc32b2b1441f92fe4b9',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -159,15 +159,6 @@
             'replaced' => array(
                 0 => '*',
             ),
-        ),
-        'html2text/html2text' => array(
-            'pretty_version' => '4.3.1',
-            'version' => '4.3.1.0',
-            'reference' => '61ad68e934066a6f8df29a3d23a6460536d0855c',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../html2text/html2text',
-            'aliases' => array(),
-            'dev_requirement' => false,
         ),
         'laminas/laminas-escaper' => array(
             'pretty_version' => '2.6.1',
@@ -541,6 +532,15 @@
             'reference' => '0f1e1516ed2412ad43e42a6a319e77624ba1f713',
             'type' => 'library',
             'install_path' => __DIR__ . '/../scssphp/scssphp',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'soundasleep/html2text' => array(
+            'pretty_version' => '2.1.0',
+            'version' => '2.1.0.0',
+            'reference' => '83502b6f8f1aaef8e2e238897199d64f284b4af3',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../soundasleep/html2text',
             'aliases' => array(),
             'dev_requirement' => false,
         ),

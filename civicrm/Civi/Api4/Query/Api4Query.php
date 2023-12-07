@@ -27,7 +27,8 @@ use Civi\Api4\Utils\FormattingUtil;
  * * '=', '<=', '>=', '>', '<', 'LIKE', "<>", "!=",
  * * 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN',
  * * 'IS NOT NULL', 'IS NULL', 'CONTAINS', 'NOT CONTAINS',
- * * 'IS EMPTY', 'IS NOT EMPTY', 'REGEXP', 'NOT REGEXP'.
+ * * 'IS EMPTY', 'IS NOT EMPTY', 'REGEXP', 'NOT REGEXP'
+ * * 'REGEXP BINARY', 'NOT REGEXP BINARY'
  */
 abstract class Api4Query {
 
@@ -402,8 +403,8 @@ abstract class Api4Query {
       }
     }
 
-    if ($operator == 'REGEXP' || $operator == 'NOT REGEXP') {
-      return sprintf('%s %s "%s"', $fieldAlias, $operator, \CRM_Core_DAO::escapeString($value));
+    if ($operator == 'REGEXP' || $operator == 'NOT REGEXP' || $operator == 'REGEXP BINARY' || $operator == 'NOT REGEXP BINARY') {
+      return sprintf('%s %s "%s"', (str_ends_with($operator, 'BINARY') ? 'CAST(' . $fieldAlias . ' AS BINARY)' : $fieldAlias), $operator, \CRM_Core_DAO::escapeString($value));
     }
 
     if (!$value && ($operator === 'IN' || $operator === 'NOT IN')) {

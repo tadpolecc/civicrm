@@ -238,11 +238,11 @@ ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMA
 -- *******************************************************/
 CREATE TABLE `civicrm_managed` (
   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Surrogate Key',
-  `module` varchar(127) NOT NULL COMMENT 'Name of the module which declared this object',
-  `name` varchar(127) COMMENT 'Symbolic name used by the module to identify the object',
+  `module` varchar(255) NOT NULL COMMENT 'Name of the module which declared this object (soft FK to civicrm_extension.full_name)',
+  `name` varchar(255) NOT NULL COMMENT 'Symbolic name used by the module to identify the object',
   `entity_type` varchar(64) NOT NULL COMMENT 'API entity type',
-  `entity_id` int unsigned NOT NULL COMMENT 'Foreign key to the referenced item.',
-  `cleanup` varchar(32) COMMENT 'Policy on when to cleanup entity (always, never, unused)',
+  `entity_id` int unsigned COMMENT 'Soft foreign key to the referenced item.',
+  `cleanup` varchar(16) NOT NULL DEFAULT 'always' COMMENT 'Policy on when to cleanup entity (always, never, unused)',
   `entity_modified_date` timestamp NULL DEFAULT NULL COMMENT 'When the managed entity was changed from its original settings.',
   PRIMARY KEY (`id`),
   INDEX `UI_managed_module_name`(module, name),
@@ -446,7 +446,7 @@ CREATE TABLE `civicrm_acl` (
   `object_id` int unsigned COMMENT 'The ID of the object controlled by this ACL entry',
   `acl_table` varchar(64) COMMENT 'If this is a grant/revoke entry, what table are we granting?',
   `acl_id` int unsigned COMMENT 'ID of the ACL or ACL group being granted/revoked',
-  `is_active` tinyint COMMENT 'Is this property active?',
+  `is_active` tinyint NOT NULL DEFAULT 1 COMMENT 'Is this property active?',
   `priority` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   INDEX `index_acl_id`(acl_id)
@@ -1864,7 +1864,8 @@ ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMA
 -- *******************************************************/
 CREATE TABLE `civicrm_tag` (
   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Tag ID',
-  `name` varchar(64) NOT NULL COMMENT 'Name of Tag.',
+  `name` varchar(64) NOT NULL COMMENT 'Unique machine name',
+  `label` varchar(64) NOT NULL COMMENT 'User-facing tag name',
   `description` varchar(255) COMMENT 'Optional verbose description of the tag.',
   `parent_id` int unsigned DEFAULT NULL COMMENT 'Optional parent id for this tag.',
   `is_selectable` tinyint NOT NULL DEFAULT 1 COMMENT 'Is this tag selectable / displayed',
@@ -1873,7 +1874,7 @@ CREATE TABLE `civicrm_tag` (
   `used_for` varchar(64) DEFAULT NULL,
   `created_id` int unsigned COMMENT 'FK to civicrm_contact, who created this tag',
   `color` varchar(255) DEFAULT NULL COMMENT 'Hex color value e.g. #ffffff',
-  `created_date` datetime COMMENT 'Date and time that tag was created.',
+  `created_date` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Date and time that tag was created.',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `UI_name`(name),
   CONSTRAINT FK_civicrm_tag_parent_id FOREIGN KEY (`parent_id`) REFERENCES `civicrm_tag`(`id`),
@@ -2982,7 +2983,7 @@ CREATE TABLE `civicrm_dashboard_contact` (
   `dashboard_id` int unsigned NOT NULL COMMENT 'Dashboard ID',
   `contact_id` int unsigned NOT NULL COMMENT 'Contact ID',
   `column_no` int DEFAULT 0 COMMENT 'column no for this widget',
-  `is_active` tinyint DEFAULT 0 COMMENT 'Is this widget active?',
+  `is_active` tinyint NOT NULL DEFAULT 0 COMMENT 'Is this widget active?',
   `weight` int DEFAULT 0 COMMENT 'Ordering of the widgets.',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `index_dashboard_id_contact_id`(dashboard_id, contact_id),

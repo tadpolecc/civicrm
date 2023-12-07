@@ -53,7 +53,7 @@ class Admin {
         ->setLoadOptions(['id', 'label'])
         ->execute()->first()['options'],
       'tags' => Tag::get()
-        ->addSelect('id', 'name', 'color', 'is_selectable', 'description')
+        ->addSelect('id', 'label', 'color', 'is_selectable', 'description')
         ->addWhere('used_for', 'CONTAINS', 'civicrm_saved_search')
         ->execute(),
     ];
@@ -95,6 +95,8 @@ class Admin {
       'NOT LIKE' => E::ts('Not Like'),
       'REGEXP' => E::ts('Matches Pattern'),
       'NOT REGEXP' => E::ts("Doesn't Match Pattern"),
+      'REGEXP BINARY' => E::ts('Matches Pattern (case-sensitive)'),
+      'NOT REGEXP BINARY' => E::ts("Doesn't Match Pattern (case-sensitive)"),
       'BETWEEN' => E::ts('Is Between'),
       'NOT BETWEEN' => E::ts('Not Between'),
       'IS EMPTY' => E::ts('Is Empty'),

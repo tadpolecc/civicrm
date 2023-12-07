@@ -473,8 +473,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
 
     $this->assign('address', CRM_Utils_Address::getFormattedBillingAddressFieldsFromParameters($params, $this->_bltID));
 
-    // The concept of contributeMode is deprecated.
-    if ($this->_contributeMode === 'direct' && empty($params['is_pay_later'])) {
+    if ($this->getSubmittedValue('credit_card_number')) {
       if (isset($params['credit_card_exp_date'])) {
         $date = CRM_Utils_Date::format($params['credit_card_exp_date']);
         $date = CRM_Utils_Date::mysqlToIso($date);
@@ -631,7 +630,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
       if (!empty($form->_priceSet['fields'])) {
         foreach ($form->_priceSet['fields'] as $field) {
           foreach ($field['options'] as $option) {
-            $count = CRM_Utils_Array::value('count', $option, 0);
+            $count = $option['count'] ?? 0;
             $optionsCountDetails['fields'][$field['id']]['options'][$option['id']] = $count;
           }
         }
@@ -646,7 +645,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
     if (!empty($form->_priceSet['fields'])) {
       foreach ($form->_priceSet['fields'] as $field) {
         foreach ($field['options'] as $option) {
-          $maxVal = CRM_Utils_Array::value('max_value', $option, 0);
+          $maxVal = $option['max_value'] ?? 0;
           $optionsMaxValueDetails['fields'][$field['id']]['options'][$option['id']] = $maxVal;
           $optionsMaxValueTotal += $maxVal;
         }

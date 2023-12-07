@@ -99,13 +99,16 @@ function afform_civicrm_managed(&$entities, $modules) {
     // This AfformScanner instance only lives during this method call, and it feeds off the regular cache.
     $scanner = new CRM_Afform_AfformScanner();
   }
-  $domains = NULL;
 
   foreach ($scanner->getMetas() as $afform) {
     if (empty($afform['name'])) {
       continue;
     }
+    // Backward-compat with legacy `is_dashlet`
     if (!empty($afform['is_dashlet'])) {
+      $afform['placement'][] = 'dashboard_dashlet';
+    }
+    if (in_array('dashboard_dashlet', $afform['placement'] ?? [], TRUE)) {
       $entities[] = [
         'module' => E::LONG_NAME,
         'name' => 'afform_dashlet_' . $afform['name'],
@@ -116,8 +119,6 @@ function afform_civicrm_managed(&$entities, $modules) {
         'params' => [
           'version' => 4,
           'values' => [
-            // Q: Should we loop through all domains?
-            'domain_id' => 'current_domain',
             'is_active' => TRUE,
             'name' => $afform['name'],
             'label' => $afform['title'] ?? E::ts('(Untitled)'),
@@ -129,35 +130,30 @@ function afform_civicrm_managed(&$entities, $modules) {
       ];
     }
     if (!empty($afform['navigation']) && !empty($afform['server_route'])) {
-      $domains = $domains ?: \Civi\Api4\Domain::get(FALSE)->addSelect('id')->execute();
-      foreach ($domains as $domain) {
-        $params = [
-          'version' => 4,
-          'values' => [
-            'name' => $afform['name'],
-            'label' => $afform['navigation']['label'] ?: $afform['title'],
-            'permission' => $afform['permission'],
-            'permission_operator' => $afform['permission_operator'] ?? 'AND',
-            'weight' => $afform['navigation']['weight'] ?? 0,
-            'url' => $afform['server_route'],
-            'is_active' => 1,
-            'icon' => 'crm-i ' . $afform['icon'],
-            'domain_id' => $domain['id'],
-          ],
-          'match' => ['domain_id', 'name'],
-        ];
-        if (!empty($afform['navigation']['parent'])) {
-          $params['values']['parent_id.name'] = $afform['navigation']['parent'];
-        }
-        $entities[] = [
-          'module' => E::LONG_NAME,
-          'name' => 'navigation_' . $afform['name'] . '_' . $domain['id'],
-          'cleanup' => 'always',
-          'update' => 'unmodified',
-          'entity' => 'Navigation',
-          'params' => $params,
-        ];
+      $params = [
+        'version' => 4,
+        'values' => [
+          'name' => $afform['name'],
+          'label' => $afform['navigation']['label'] ?: $afform['title'],
+          'permission' => $afform['permission'],
+          'permission_operator' => $afform['permission_operator'] ?? 'AND',
+          'weight' => $afform['navigation']['weight'] ?? 0,
+          'url' => $afform['server_route'],
+          'icon' => !empty($afform['icon']) ? 'crm-i ' . $afform['icon'] : '',
+        ],
+        'match' => ['domain_id', 'name'],
+      ];
+      if (!empty($afform['navigation']['parent'])) {
+        $params['values']['parent_id.name'] = $afform['navigation']['parent'];
       }
+      $entities[] = [
+        'module' => E::LONG_NAME,
+        'name' => 'navigation_' . $afform['name'],
+        'cleanup' => 'always',
+        'update' => 'unmodified',
+        'entity' => 'Navigation',
+        'params' => $params,
+      ];
     }
   }
 }
@@ -174,7 +170,7 @@ function afform_civicrm_tabset($tabsetName, &$tabs, $context) {
   $contactTypes = array_merge((array) ($context['contact_type'] ?? []), $context['contact_sub_type'] ?? []);
   $afforms = Civi\Api4\Afform::get(FALSE)
     ->addSelect('name', 'title', 'icon', 'module_name', 'directive_name', 'summary_contact_type', 'summary_weight')
-    ->addWhere('contact_summary', '=', 'tab')
+    ->addWhere('placement', 'CONTAINS', 'contact_summary_tab')
     ->addOrderBy('title')
     ->execute();
   $weight = 111;
@@ -213,7 +209,7 @@ function afform_civicrm_pageRun(&$page) {
   }
   $afforms = Civi\Api4\Afform::get(FALSE)
     ->addSelect('name', 'title', 'icon', 'module_name', 'directive_name', 'summary_contact_type')
-    ->addWhere('contact_summary', '=', 'block')
+    ->addWhere('placement', 'CONTAINS', 'contact_summary_block')
     ->addOrderBy('summary_weight')
     ->addOrderBy('title')
     ->execute();
@@ -257,7 +253,7 @@ function afform_civicrm_pageRun(&$page) {
 function afform_civicrm_contactSummaryBlocks(&$blocks) {
   $afforms = \Civi\Api4\Afform::get(FALSE)
     ->setSelect(['name', 'title', 'directive_name', 'module_name', 'type', 'type:icon', 'type:label', 'summary_contact_type'])
-    ->addWhere('contact_summary', '=', 'block')
+    ->addWhere('placement', 'CONTAINS', 'contact_summary_block')
     ->addOrderBy('title')
     ->execute();
   foreach ($afforms as $index => $afform) {
@@ -592,7 +588,6 @@ function afform_civicrm_referenceCounts($dao, &$counts) {
     try {
       $displays = civicrm_api4('SearchDisplay', 'get', [
         'where' => [['saved_search_id', '=', $dao->id]],
-        'select' => 'name',
       ], ['name']);
       foreach ($displays as $displayName) {
         $clauses[] = ['search_displays', 'CONTAINS', $dao->name . '.' . $displayName];

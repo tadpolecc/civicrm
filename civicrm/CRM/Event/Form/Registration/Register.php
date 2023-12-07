@@ -189,7 +189,26 @@ class CRM_Event_Form_Registration_Register extends CRM_Event_Form_Registration {
 
     // get the participant values from EventFees.php, CRM-4320
     if ($this->_allowConfirmation) {
-      CRM_Event_Form_EventFees::preProcess($this);
+      $this->eventFeeWrangling($this);
+    }
+  }
+
+  /**
+   * This is previously shared code which is probably of little value.
+   *
+   * @param CRM_Core_Form $form
+   *
+   * @throws \CRM_Core_Exception
+   */
+  private function eventFeeWrangling($form) {
+    $form->_pId = CRM_Utils_Request::retrieve('participantId', 'Positive', $form);
+    $form->_discountId = CRM_Utils_Request::retrieve('discountId', 'Positive', $form);
+
+    //CRM-6907 set event specific currency.
+    if ($this->getEventID() &&
+      ($currency = CRM_Core_DAO::getFieldValue('CRM_Event_DAO_Event', $form->_eventId, 'currency'))
+    ) {
+      CRM_Core_Config::singleton()->defaultCurrency = $currency;
     }
   }
 
@@ -310,7 +329,7 @@ class CRM_Event_Form_Registration_Register extends CRM_Event_Form_Registration {
     if ($this->_allowConfirmation) {
       $this->_contactId = $contactID;
       $this->_discountId = $discountId;
-      $forcePayLater = CRM_Utils_Array::value('is_pay_later', $this->_defaults, FALSE);
+      $forcePayLater = $this->_defaults['is_pay_later'] ?? FALSE;
       $this->_defaults = array_merge($this->_defaults, CRM_Event_Form_EventFees::setDefaultValues($this));
       $this->_defaults['is_pay_later'] = $forcePayLater;
 
@@ -735,10 +754,10 @@ class CRM_Event_Form_Registration_Register extends CRM_Event_Form_Registration {
       }
       foreach ($field['options'] as & $option) {
         $optId = $option['id'];
-        $count = CRM_Utils_Array::value('count', $option, 0);
-        $maxValue = CRM_Utils_Array::value('max_value', $option, 0);
-        $dbTotalCount = CRM_Utils_Array::value($optId, $recordedOptionsCount, 0);
-        $currentTotalCount = CRM_Utils_Array::value($optId, $currentOptionsCount, 0);
+        $count = $option['count'] ?? 0;
+        $maxValue = $option['max_value'] ?? 0;
+        $dbTotalCount = $recordedOptionsCount[$optId] ?? 0;
+        $currentTotalCount = $currentOptionsCount[$optId] ?? 0;
 
         $totalCount = $currentTotalCount + $dbTotalCount;
         $isFull = FALSE;
@@ -750,7 +769,7 @@ class CRM_Event_Form_Registration_Register extends CRM_Event_Form_Registration {
           $optionFullIds[$optId] = $optId;
           if ($field['html_type'] != 'Select') {
             if (in_array($optId, $defaultPricefieldIds)) {
-              $optionFullTotalAmount += CRM_Utils_Array::value('amount', $option);
+              $optionFullTotalAmount += $option['amount'] ?? 0;
             }
           }
           else {
@@ -969,7 +988,7 @@ class CRM_Event_Form_Registration_Register extends CRM_Event_Form_Registration {
     $this->set('is_pay_later', $params['is_pay_later']);
 
     // assign pay later stuff
-    $this->_params['is_pay_later'] = CRM_Utils_Array::value('is_pay_later', $params, FALSE);
+    $this->_params['is_pay_later'] = $params['is_pay_later'] ?? FALSE;
     $this->assign('is_pay_later', $params['is_pay_later']);
     $this->assign('pay_later_text', $params['is_pay_later'] ? $this->_values['event']['pay_later_text'] : NULL);
     $this->assign('pay_later_receipt', $params['is_pay_later'] ? $this->_values['event']['pay_later_receipt'] : NULL);

@@ -79,9 +79,9 @@ function civicrm_api4(string $entity, string $action, array $params = [], $index
   if ($index && is_array($index)) {
     $indexCol = reset($index);
     $indexField = key($index);
-    // Index array indicates only 1 or 2 fields need to be selected (except for oddball "Setting" api)
-    if ($entity !== 'Setting' && property_exists($apiCall, 'select')) {
-      $apiCall->setSelect([$indexCol]);
+    // Automatically add index fields(s) to the SELECT clause
+    if ($entity !== 'Setting' && method_exists($apiCall, 'addSelect')) {
+      $apiCall->addSelect($indexCol);
       if ($indexField && $indexField != $indexCol) {
         $apiCall->addSelect($indexField);
       }
@@ -135,7 +135,7 @@ function civicrm_api3(string $entity, string $action, array $params = []) {
   $params['version'] = 3;
   $result = \Civi::service('civi_api_kernel')->runSafe($entity, $action, $params);
   if (is_array($result) && !empty($result['is_error'])) {
-    throw new CRM_Core_Exception($result['error_message'], CRM_Utils_Array::value('error_code', $result, 'undefined'), $result);
+    throw new CRM_Core_Exception($result['error_message'], $result['error_code'] ?? 'undefined', $result);
   }
   return $result;
 }

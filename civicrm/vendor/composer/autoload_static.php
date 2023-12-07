@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6
+class ComposerStaticInit7e131bfaa15ca0367c946ea14269f3cb
 {
     public static $files = array (
         'a4a119a56e50fbb293281d9a48007e0e' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
@@ -141,6 +141,7 @@ class ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6
             'Symfony\\Component\\DependencyInjection\\' => 38,
             'Symfony\\Component\\Config\\' => 25,
             'Svg\\' => 4,
+            'Soundasleep\\' => 12,
             'ScssPhp\\ScssPhp\\' => 16,
             'Sabberworm\\CSS\\' => 15,
         ),
@@ -171,10 +172,6 @@ class ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6
             'LastCall\\DownloadsPlugin\\' => 25,
             'Laminas\\ZendFrameworkBridge\\' => 28,
             'Laminas\\Escaper\\' => 16,
-        ),
-        'H' => 
-        array (
-            'Html2Text\\' => 10,
         ),
         'G' => 
         array (
@@ -319,6 +316,10 @@ class ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6
         array (
             0 => __DIR__ . '/..' . '/phenx/php-svg-lib/src/Svg',
         ),
+        'Soundasleep\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/soundasleep/html2text/src',
+        ),
         'ScssPhp\\ScssPhp\\' => 
         array (
             0 => __DIR__ . '/..' . '/scssphp/scssphp/src',
@@ -404,11 +405,6 @@ class ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6
         'Laminas\\Escaper\\' => 
         array (
             0 => __DIR__ . '/..' . '/laminas/laminas-escaper/src',
-        ),
-        'Html2Text\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/html2text/html2text/src',
-            1 => __DIR__ . '/..' . '/html2text/html2text/test',
         ),
         'GuzzleHttp\\Psr7\\' => 
         array (
@@ -729,11 +725,11 @@ class ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6::$prefixesPsr0;
-            $loader->fallbackDirsPsr0 = ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6::$fallbackDirsPsr0;
-            $loader->classMap = ComposerStaticInit7bbaec5d7960153e513fff9ee79197c6::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit7e131bfaa15ca0367c946ea14269f3cb::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit7e131bfaa15ca0367c946ea14269f3cb::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInit7e131bfaa15ca0367c946ea14269f3cb::$prefixesPsr0;
+            $loader->fallbackDirsPsr0 = ComposerStaticInit7e131bfaa15ca0367c946ea14269f3cb::$fallbackDirsPsr0;
+            $loader->classMap = ComposerStaticInit7e131bfaa15ca0367c946ea14269f3cb::$classMap;
 
         }, null, ClassLoader::class);
     }

@@ -153,7 +153,7 @@ class CRM_Core_ManagedEntities {
     // Fetch default values for fields that are writeable
     $condition = [['type', '=', 'Field'], ['readonly', 'IS EMPTY'], ['default_value', '!=', 'now']];
     // Exclude "weight" as that auto-adjusts
-    if (in_array('SortableEntity', CoreUtil::getInfoItem($item['entity_type'], 'type'), TRUE)) {
+    if (CoreUtil::isType($item['entity_type'], 'SortableEntity')) {
       $weightCol = CoreUtil::getInfoItem($item['entity_type'], 'order_by');
       $condition[] = ['name', '!=', $weightCol];
     }
@@ -200,12 +200,18 @@ class CRM_Core_ManagedEntities {
   }
 
   /**
-   * Create a new entity.
+   * Create a new entity (if policy allows).
    *
    * @param array $item
    *   Entity specification (per hook_civicrm_managedEntities).
    */
   protected function insertNewEntity(array $item) {
+    // If entity has previously been created, only re-insert if 'update' policy is 'always'
+    // NOTE: $item[id] is the id of the `civicrm_managed` row not the entity itself
+    // If that id exists, then we know the entity was inserted previously and subsequently deleted.
+    if (!empty($item['id']) && $item['update'] !== 'always') {
+      return;
+    }
     $params = $item['params'];
     // APIv4
     if ($params['version'] == 4) {
@@ -233,11 +239,13 @@ class CRM_Core_ManagedEntities {
     }
 
     $dao = new CRM_Core_DAO_Managed();
+    // If re-inserting the entity, we'll update instead of create the managed record.
+    $dao->id = $item['id'] ?? NULL;
     $dao->module = $item['module'];
     $dao->name = $item['name'];
     $dao->entity_type = $item['entity_type'];
     $dao->entity_id = $id;
-    $dao->cleanup = $item['cleanup'] ?? NULL;
+    $dao->cleanup = $item['cleanup'] ?? 'always';
     $dao->save();
   }
 
@@ -291,7 +299,13 @@ class CRM_Core_ManagedEntities {
     }
     elseif ($doUpdate && $item['params']['version'] == 4) {
       $params = ['checkPermissions' => FALSE] + $item['params'];
-      $params['values']['id'] = $item['entity_id'];
+      $idField = CoreUtil::getIdFieldName($item['entity_type']);
+      $params['values'][$idField] = $item['entity_id'];
+      // Exclude "weight" as that auto-adjusts
+      if (CoreUtil::isType($item['entity_type'], 'SortableEntity')) {
+        $weightCol = CoreUtil::getInfoItem($item['entity_type'], 'order_by');
+        unset($params['values'][$weightCol]);
+      }
       // 'match' param doesn't apply to "update" action
       unset($params['match']);
       try {
@@ -430,30 +444,6 @@ class CRM_Core_ManagedEntities {
   }
 
   /**
-   * @param array $moduleIndex
-   * @param array $declarations
-   *
-   * @return array
-   *   indexed by module,name
-   */
-  protected function createDeclarationIndex($moduleIndex, $declarations) {
-    $result = [];
-    if (!isset($moduleIndex[TRUE])) {
-      return $result;
-    }
-    foreach ($moduleIndex[TRUE] as $moduleName => $module) {
-      if ($module->is_active) {
-        // need an empty array() for all active modules, even if there are no current $declarations
-        $result[$moduleName] = [];
-      }
-    }
-    foreach ($declarations as $declaration) {
-      $result[$declaration['module']][$declaration['name']] = $declaration;
-    }
-    return $result;
-  }
-
-  /**
    * @param array $declarations
    *
    * @throws CRM_Core_Exception
@@ -585,29 +575,20 @@ class CRM_Core_ManagedEntities {
     $plan = [];
     foreach ($managedEntities as $managedEntity) {
       $key = "{$managedEntity['module']}_{$managedEntity['name']}_{$managedEntity['entity_type']}";
-      // Set to disable or delete if module is disabled or missing - it will be overwritten below module is active.
+      // Set to disable or delete if module is disabled or missing - it will be overwritten below if module is active.
       $action = $this->isModuleDisabled($managedEntity['module']) ? 'disable' : 'delete';
       $plan[$key] = array_merge($managedEntity, ['managed_action' => $action]);
     }
     foreach ($declarations as $declaration) {
       $key = "{$declaration['module']}_{$declaration['name']}_{$declaration['entity']}";
-      if (isset($plan[$key])) {
-        $plan[$key]['params'] = $declaration['params'];
-        $plan[$key]['managed_action'] = 'update';
-        $plan[$key]['cleanup'] = $declaration['cleanup'] ?? NULL;
-        $plan[$key]['update'] = $declaration['update'] ?? 'always';
-      }
-      else {
-        $plan[$key] = [
-          'module' => $declaration['module'],
-          'name' => $declaration['name'],
-          'entity_type' => $declaration['entity'],
-          'managed_action' => 'create',
-          'params' => $declaration['params'],
-          'cleanup' => $declaration['cleanup'] ?? NULL,
-          'update' => $declaration['update'] ?? 'always',
-        ];
-      }
+      // Set action to update if already managed
+      $plan[$key]['managed_action'] = empty($plan[$key]['entity_id']) ? 'create' : 'update';
+      $plan[$key]['module'] = $declaration['module'];
+      $plan[$key]['name'] = $declaration['name'];
+      $plan[$key]['entity_type'] = $declaration['entity'];
+      $plan[$key]['params'] = $declaration['params'];
+      $plan[$key]['cleanup'] = $declaration['cleanup'] ?? NULL;
+      $plan[$key]['update'] = $declaration['update'] ?? 'always';
     }
     return $plan;
   }
