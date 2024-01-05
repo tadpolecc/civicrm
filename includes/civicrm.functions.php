@@ -22,6 +22,36 @@ if (!defined('ABSPATH')) {
 }
 
 /**
+ * Gets a URL that points to the CiviCRM Base Page.
+ *
+ * @see CiviCRM_For_WordPress_Basepage::url
+ *
+ * @since 5.69
+ *
+ * @param string $path The path being linked to, such as "civicrm/add".
+ * @param array|string $query A query string to append to the link, or an array of key-value pairs.
+ * @param bool $absolute Whether to force the output to be an absolute link.
+ * @param string $fragment A fragment identifier (named anchor) to append to the link.
+ * @param bool $htmlize Whether to encode special html characters such as &.
+ * @return string $link An HTML string containing a link to the given path.
+ */
+function civicrm_basepage_url(
+  $path = '',
+  $query = '',
+  $absolute = TRUE,
+  $fragment = NULL,
+  $htmlize = TRUE
+) {
+  return civi_wp()->basepage->url(
+    $path,
+    $query,
+    $absolute,
+    $fragment,
+    $htmlize
+  );
+}
+
+/**
  * Add CiviCRM access capabilities to WordPress roles.
  *
  * Called by postProcess() in civicrm/CRM/ACL/Form/WordPress/Permissions.php
@@ -168,7 +198,7 @@ function civicrm_get_ctype($default = NULL) {
  *
  * @since 4.3
  *
- * @return string $wp_set_breadCrumb The breadcrumb markup.
+ * @return array $wp_set_breadCrumb The breadcrumb markup.
  */
 function wp_get_breadcrumb() {
   global $wp_set_breadCrumb;
@@ -183,8 +213,8 @@ function wp_get_breadcrumb() {
  *
  * @since 4.3
  *
- * @param string $breadCrumb The desired breadcrumb markup.
- * @return string $wp_set_breadCrumb The breadcrumb markup.
+ * @param array $breadCrumb The desired breadcrumb markup.
+ * @return array $wp_set_breadCrumb The breadcrumb markup.
  */
 function wp_set_breadcrumb($breadCrumb) {
   global $wp_set_breadCrumb;

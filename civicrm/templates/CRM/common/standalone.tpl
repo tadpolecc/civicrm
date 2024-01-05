@@ -1,9 +1,8 @@
 <!DOCTYPE html >
-<html lang="{$config->lcMessages|substr:0:2}">
+<html lang="{$config->lcMessages|substr:0:2}" class="crm-standalone" >
  <head>
-  <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="Shortcut Icon" type="image/x-icon" href="{$config->resourceBase}i/widget/favicon.png" />
 
   {* @todo crmRegion below should replace this, but not working? *}
@@ -65,10 +64,6 @@
         {/if}
       {/crmRegion}
     </div>
-
-    {if isset($localTasks)}
-      {include file="CRM/common/localNav.tpl"}
-    {/if}
 
     {crmRegion name='page-footer'}
       {if !empty($urlIsPublic)}

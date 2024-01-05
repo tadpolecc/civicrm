@@ -162,8 +162,6 @@ class CRM_Event_Cart_Form_Checkout_Payment extends CRM_Event_Cart_Form_Cart {
           ) {
             $this->_paymentProcessor = $paymentProcessorDetail;
             $this->assign('paymentProcessor', $this->_paymentProcessor);
-            // Setting this is a bit of a legacy overhang.
-            $this->_paymentObject = $paymentProcessorDetail['object'];
           }
         }
         // It's not clear why we set this on the form.
@@ -250,10 +248,7 @@ class CRM_Event_Cart_Form_Checkout_Payment extends CRM_Event_Cart_Form_Cart {
       else {
         $cost = $event_price_values['amount'];
       }
-      // @todo - stop setting amount level in this function & call the CRM_Price_BAO_PriceSet::getAmountLevel
-      // function to get correct amount level consistently. Remove setting of the amount level in
-      // CRM_Price_BAO_PriceSet::processAmount. Extend the unit tests in CRM_Price_BAO_PriceSetTest
-      // to cover all variants.
+      // @todo - stop setting amount level in this function - use $this->order->getAmountLevel()
       $amount_level = $event_price_values['amount_level'];
       $price_details[$price_set_id] = $price_set_amount;
     }

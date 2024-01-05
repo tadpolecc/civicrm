@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CiviCRM
  * Description: CiviCRM - Growing and Sustaining Relationships
- * Version: 5.68.1
+ * Version: 5.69.0
  * Requires at least: 4.9
  * Requires PHP:      7.3
  * Author: CiviCRM LLC
@@ -36,7 +36,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Set version here: changing it forces Javascript and CSS to reload.
-define('CIVICRM_PLUGIN_VERSION', '5.68.1');
+define('CIVICRM_PLUGIN_VERSION', '5.69.0');
 
 // Store reference to this file.
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -197,6 +197,38 @@ class CiviCRM_For_WordPress {
    */
   public $admin;
 
+  /**
+   * @var array
+   * Reference to the original $_GET value.
+   * @since 4.6
+   * @access protected
+   */
+  protected $wp_get;
+
+  /**
+   * @var array
+   * Reference to the original $_POST value.
+   * @since 4.6
+   * @access protected
+   */
+  protected $wp_post;
+
+  /**
+   * @var array
+   * Reference to the original $_COOKIE value.
+   * @since 4.6
+   * @access protected
+   */
+  protected $wp_cookie;
+
+  /**
+   * @var array
+   * Reference to the original $_REQUEST value.
+   * @since 4.6
+   * @access protected
+   */
+  protected $wp_request;
+
   // ---------------------------------------------------------------------------
   // Setup
   // ---------------------------------------------------------------------------
@@ -217,15 +249,12 @@ class CiviCRM_For_WordPress {
       // Create instance.
       self::$instance = new CiviCRM_For_WordPress();
 
-      // Include legacy global scope functions.
+      // Include global scope functions.
       include_once CIVICRM_PLUGIN_DIR . 'includes/civicrm.functions.php';
 
-      /*
-       * Incorporate WP-CLI Integration based on drush CiviCRM functionality.
-       * @see https://github.com/andy-walker/wp-cli-civicrm
-       */
+      // Add WP-CLI commands.
       if (defined('WP_CLI') && WP_CLI) {
-        include_once CIVICRM_PLUGIN_DIR . 'wp-cli/civicrm.php';
+        include_once CIVICRM_PLUGIN_DIR . 'wp-cli/wp-cli-civicrm.php';
       }
 
       // Delay setup until 'plugins_loaded' to allow other plugins to load as well.
@@ -329,8 +358,10 @@ class CiviCRM_For_WordPress {
     update_option('civicrm_activation_in_progress', 'false');
 
     // When installed via the WordPress UI, try and redirect to the Installer page.
-    if (!is_multisite() && !isset($_GET['activate-multi']) && !CIVICRM_INSTALLED) {
-      wp_redirect(admin_url('admin.php?page=civicrm-install'));
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+    $activate_multi = isset($_GET['activate-multi']) ? sanitize_text_field(wp_unslash($_GET['activate-multi'])) : '';
+    if (!is_multisite() && empty($activate_multi) && !CIVICRM_INSTALLED) {
+      wp_safe_redirect(admin_url('admin.php?page=civicrm-install'));
       exit;
     }
 
@@ -518,6 +549,7 @@ class CiviCRM_For_WordPress {
   public function enable_translation() {
 
     // Load translations.
+    // phpcs:ignore WordPress.WP.DeprecatedParameters.Load_plugin_textdomainParam2Found
     load_plugin_textdomain(
       // Unique name.
       'civicrm',
@@ -549,11 +581,9 @@ class CiviCRM_For_WordPress {
    */
   public function civicrm_in_wordpress_set() {
 
-    // Get identifying query var.
+    // Store identifying query var.
     $page = get_query_var('civiwp');
-
-    // Store.
-    self::$in_wordpress = ($page == 'CiviCRM') ? TRUE : FALSE;
+    self::$in_wordpress = ($page === 'CiviCRM') ? TRUE : FALSE;
 
   }
 
@@ -697,7 +727,7 @@ class CiviCRM_For_WordPress {
     }
 
     // Bail if filters are suppressed on this query.
-    if (TRUE == $query->get('suppress_filters')) {
+    if (TRUE === $query->get('suppress_filters')) {
       return;
     }
 
@@ -709,10 +739,10 @@ class CiviCRM_For_WordPress {
     $alreadyRegistered = TRUE;
 
     // Redirect if old query var is present.
-    if ('CiviCRM' == get_query_var('page') && 'CiviCRM' != get_query_var('civiwp')) {
+    if ('CiviCRM' === get_query_var('page') && 'CiviCRM' !== get_query_var('civiwp')) {
       $redirect_url = remove_query_arg('page', FALSE);
       $redirect_url = add_query_arg('civiwp', 'CiviCRM', $redirect_url);
-      wp_redirect($redirect_url, 301);
+      wp_safe_redirect($redirect_url, 301);
       exit();
     }
 
@@ -1155,6 +1185,7 @@ class CiviCRM_For_WordPress {
     $original_timezone = date_default_timezone_get();
     $wp_site_timezone = $this->get_timezone_string();
     if ($wp_site_timezone) {
+      // phpcs:ignore WordPress.DateTime.RestrictedFunctions.timezone_change_date_default_timezone_set
       date_default_timezone_set($wp_site_timezone);
       CRM_Core_Config::singleton()->userSystem->setMySQLTimeZone();
     }
@@ -1178,7 +1209,8 @@ class CiviCRM_For_WordPress {
      * Bypass synchronize if running upgrade to avoid any serious non-recoverable
      * error which might hinder the upgrade process.
      */
-    if (CRM_Utils_Array::value('q', $_GET) != 'civicrm/upgrade') {
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+    if (CRM_Utils_Array::value('q', $_GET) !== 'civicrm/upgrade') {
       $this->users->sync_user($current_user);
     }
 
@@ -1200,6 +1232,7 @@ class CiviCRM_For_WordPress {
 
     // Restore original timezone.
     if ($original_timezone) {
+      // phpcs:ignore WordPress.DateTime.RestrictedFunctions.timezone_change_date_default_timezone_set
       date_default_timezone_set($original_timezone);
     }
 
@@ -1248,8 +1281,10 @@ class CiviCRM_For_WordPress {
      * @see https://www.php.net/manual/en/timezones.others.php
      */
     $offset = get_option('gmt_offset');
+    // phpcs:ignore WordPress.PHP.StrictComparisons.LooseComparison
     if (0 != $offset && floor($offset) == $offset) {
-      $offset_string = $offset > 0 ? "-$offset" : '+' . abs((int) $offset);
+      $offset_int = (int) $offset;
+      $offset_string = $offset > 0 ? "-$offset" : '+' . abs($offset_int);
       $tzstring = 'Etc/GMT' . $offset_string;
     }
 
@@ -1272,6 +1307,9 @@ class CiviCRM_For_WordPress {
    */
   private function remove_wp_magic_quotes() {
 
+    // phpcs:disable WordPress.Security.NonceVerification.Recommended
+    // phpcs:disable WordPress.Security.NonceVerification.Missing
+
     // Save original arrays.
     $this->wp_get     = $_GET;
     $this->wp_post    = $_POST;
@@ -1283,6 +1321,9 @@ class CiviCRM_For_WordPress {
     $_POST    = stripslashes_deep($_POST);
     $_COOKIE  = stripslashes_deep($_COOKIE);
     $_REQUEST = stripslashes_deep($_REQUEST);
+
+    // phpcs:enable WordPress.Security.NonceVerification.Recommended
+    // phpcs:enable WordPress.Security.NonceVerification.Missing
 
     // Test for query var.
     $q = get_query_var('q');
@@ -1369,6 +1410,8 @@ class CiviCRM_For_WordPress {
     $_COOKIE  = $this->wp_cookie;
     $_REQUEST = $this->wp_request;
 
+    unset($this->wp_get, $this->wp_post, $this->wp_cookie, $this->wp_request);
+
   }
 
   /**
@@ -1394,7 +1437,12 @@ class CiviCRM_For_WordPress {
     // Grab query var.
     $html = get_query_var('html');
     if (empty($html)) {
-      $html = isset($_GET['html']) ? $_GET['html'] : '';
+      // We do not use $html apart to test for empty.
+      // phpcs:disable WordPress.Security.NonceVerification.Recommended
+      // phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+      $html = isset($_GET['html']) ? wp_unslash($_GET['html']) : '';
+      // phpcs:enable WordPress.Security.NonceVerification.Recommended
+      // phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
     }
 
     /*
@@ -1402,9 +1450,11 @@ class CiviCRM_For_WordPress {
      * pages. Maybe the menu-XML should include some metadata to make this
      * unnecessary?
      */
-    if (CRM_Utils_Array::value('HTTP_X_REQUESTED_WITH', $_SERVER) == 'XMLHttpRequest'
-        || ($argdata['args'][0] == 'civicrm' && in_array($argdata['args'][1], ['ajax', 'file']))
+    if (CRM_Utils_Array::value('HTTP_X_REQUESTED_WITH', $_SERVER) === 'XMLHttpRequest'
+        || ($argdata['args'][0] === 'civicrm' && in_array($argdata['args'][1], ['ajax', 'file']))
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended
         || !empty($_REQUEST['snippet'])
+        // phpcs:enable WordPress.Security.NonceVerification.Recommended
         || strpos($argdata['argString'], 'civicrm/event/ical') === 0 && empty($html)
         || strpos($argdata['argString'], 'civicrm/contact/imagefile') === 0
     ) {
@@ -1433,7 +1483,9 @@ class CiviCRM_For_WordPress {
     // Get path from query vars.
     $q = get_query_var('q');
     if (empty($q)) {
-      $q = isset($_GET['q']) ? $_GET['q'] : '';
+      // phpcs:disable WordPress.Security.NonceVerification.Recommended
+      $q = isset($_GET['q']) ? sanitize_text_field(wp_unslash($_GET['q'])) : '';
+      // phpcs:enable WordPress.Security.NonceVerification.Recommended
     }
 
     /*
@@ -1466,25 +1518,18 @@ class CiviCRM_For_WordPress {
   /**
    * Get base URL.
    *
-   * Clone of CRM_Utils_System_WordPress::getBaseUrl() whose access is set to
-   * private. Until it is public, we cannot access the URL of the Base Page since
-   * CRM_Utils_System_WordPress::url().
-   *
-   * 27-09-2016
-   * CRM-16421 CRM-17633 WIP Changes to support WordPress in it's own directory.
-   * https://wiki.civicrm.org/confluence/display/CRM/WordPress+installed+in+its+own+directory+issues
-   * For now leave hard coded wp-admin references.
-   * TODO: remove wp-admin references and replace with admin_url() in the future.
-   * TODO: Look at best way to get path to admin_url.
+   * Clone of CRM_Utils_System_WordPress::getBaseUrl() whose access was set to
+   * private. Now that it is public, we can access that method instead.
    *
    * @since 4.4
    *
    * @param bool $absolute Passing TRUE prepends the scheme and domain, FALSE doesn't.
    * @param bool $frontend Passing FALSE returns the admin URL.
-   * @param $forceBackend Passing TRUE overrides $frontend and returns the admin URL.
+   * @param bool $forceBackend Passing TRUE overrides $frontend and returns the admin URL.
    * @return mixed|null|string
    */
   public function get_base_url($absolute, $frontend, $forceBackend) {
+    _deprecated_function(__METHOD__, '5.69', 'CRM_Utils_System::getBaseUrl');
     $config = CRM_Core_Config::singleton();
     if ((is_admin() && !$frontend) || $forceBackend) {
       return Civi::paths()->getUrl('[wp.backend]/.', $absolute ? 'absolute' : 'relative');

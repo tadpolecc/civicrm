@@ -557,7 +557,7 @@ class CiviCRM_For_WordPress_Basepage {
     }
 
     // Construct title depending on separator location.
-    if ($separator_location == 'right') {
+    if ($separator_location === 'right') {
       $title = $this->basepage_title . " $separator " . get_bloginfo('name', 'display');
     }
     else {
@@ -636,21 +636,26 @@ class CiviCRM_For_WordPress_Basepage {
     // Access CiviCRM config object.
     $config = CRM_Core_Config::singleton();
 
+    // None of the following needs a nonce check.
+    // phpcs:disable WordPress.Security.NonceVerification.Recommended
+
     // Retain old logic when not using clean URLs.
     if (!$config->cleanURL) {
+
+      $civiwp = empty($_GET['civiwp']) ? '' : sanitize_text_field(wp_unslash($_GET['civiwp']));
+      $q = empty($_GET['q']) ? '' : sanitize_text_field(wp_unslash($_GET['q']));
 
       /*
        * It would be better to specify which params are okay to accept as the
        * canonical URLs, but this will work for the time being.
        */
-      if (empty($_GET['civiwp'])
-        || empty($_GET['q'])
-        || 'CiviCRM' !== $_GET['civiwp']) {
+      if (empty($civiwp)
+        || 'CiviCRM' !== $civiwp
+        || empty($q)) {
         return $canonical;
       }
-      $path = $_GET['q'];
-      unset($_GET['q']);
-      unset($_GET['civiwp']);
+      $path = $q;
+      unset($q, $_GET['q'], $civiwp, $_GET['civiwp']);
       $query = http_build_query($_GET);
 
     }
@@ -661,6 +666,8 @@ class CiviCRM_For_WordPress_Basepage {
       $query = http_build_query($_GET);
 
     }
+
+    // phpcs:enable WordPress.Security.NonceVerification.Recommended
 
     /*
      * We should, however, build the URL the way that CiviCRM expects it to be
@@ -687,12 +694,12 @@ class CiviCRM_For_WordPress_Basepage {
     $template_name = str_replace(trailingslashit(get_stylesheet_directory()), '', $template);
 
     // If the above fails, try parent theme.
-    if ($template_name == $template) {
+    if ($template_name === $template) {
       $template_name = str_replace(trailingslashit(get_template_directory()), '', $template);
     }
 
     // Bail in the unlikely event that the template name has not been found.
-    if ($template_name == $template) {
+    if ($template_name === $template) {
       return $template;
     }
 
@@ -713,7 +720,7 @@ class CiviCRM_For_WordPress_Basepage {
     $page_template = locate_template([$basepage_template]);
 
     // If not homepage and template is found.
-    if ('' != $page_template && !is_front_page()) {
+    if (!is_front_page() && !empty($page_template)) {
       return $page_template;
     }
 
@@ -740,7 +747,7 @@ class CiviCRM_For_WordPress_Basepage {
     $home_template = locate_template([$home_template_name]);
 
     // Use it if found.
-    if ('' != $home_template) {
+    if (!empty($home_template)) {
       return $home_template;
     }
 
@@ -860,6 +867,94 @@ class CiviCRM_For_WordPress_Basepage {
      * @param WP_Post $basepage The CiviCRM Base Page object.
      */
     return apply_filters('civicrm/basepage', $basepage);
+
+  }
+
+  /**
+   * Gets a URL that points to the CiviCRM Base Page.
+   *
+   * There can be situations where `CRM_Utils_System::url` does not return
+   * a link to the Base Page, e.g. in a page template where the content
+   * contains a Shortcode. This utility method will always return a URL
+   * that points to the CiviCRM Base Page.
+   *
+   * @see https://lab.civicrm.org/dev/wordpress/-/issues/144
+   *
+   * @since 5.69
+   *
+   * @param string $path The path being linked to, such as "civicrm/add".
+   * @param array|string $query A query string to append to the link, or an array of key-value pairs.
+   * @param bool $absolute Whether to force the output to be an absolute link.
+   * @param string $fragment A fragment identifier (named anchor) to append to the link.
+   * @param bool $htmlize Whether to encode special html characters such as &.
+   * @return string $link An HTML string containing a link to the given path.
+   */
+  public function url(
+    $path = '',
+    $query = '',
+    $absolute = TRUE,
+    $fragment = NULL,
+    $htmlize = TRUE
+  ) {
+
+    // Return early if no CiviCRM.
+    $link = '';
+    if (!$this->civi->initialize()) {
+      return $link;
+    }
+
+    // Add modifying callbacks prior to multi-lingual compat.
+    add_filter('civicrm/basepage/match', [$this, 'ensure_match'], 9);
+    add_filter('civicrm/core/url/base', [$this, 'ensure_url'], 9, 2);
+
+    // Pass to CiviCRM to construct front-end URL.
+    $link = CRM_Utils_System::url(
+      $path,
+      $query,
+      TRUE,
+      $fragment,
+      $htmlize,
+      TRUE,
+      FALSE
+    );
+
+    // Remove callbacks.
+    remove_filter('civicrm/basepage/match', [$this, 'ensure_match'], 9);
+    remove_filter('civicrm/core/url/base', [$this, 'ensure_url'], 9);
+
+    return $link;
+
+  }
+
+  /**
+   * Callback to ensure CiviCRM returns a Base Page URL.
+   *
+   * @since 5.69
+   *
+   * @return bool
+   */
+  public function ensure_match() {
+    return TRUE;
+  }
+
+  /**
+   * Callback to ensure CiviCRM builds a Base Page URL.
+   *
+   * @since 5.69
+   *
+   * @param str $url The "base" URL as built by CiviCRM.
+   * @param bool $admin_request True if building an admin URL, false otherwise.
+   * @return str $url The Base Page URL.
+   */
+  public function ensure_url($url, $admin_request) {
+
+    // Skip when not defined.
+    if (empty($url) || $admin_request) {
+      return $url;
+    }
+
+    // Return the Base Page URL.
+    return $this->url_get();
 
   }
 

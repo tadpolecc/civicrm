@@ -21,6 +21,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
 
   use CRM_Financial_Form_FrontEndPaymentFormTrait;
   use CRM_Event_Form_EventFormTrait;
+  use CRM_Financial_Form_PaymentProcessorFormTrait;
 
   /**
    * The id of the event we are processing.
@@ -314,7 +315,19 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
 
       $priceSetID = $this->getPriceSetID();
       if ($priceSetID) {
+        $this->_values['line_items'] = CRM_Price_BAO_LineItem::getLineItems($this->_participantId, 'participant');
         self::initEventFee($this, TRUE, $priceSetID);
+
+        //fix for non-upgraded price sets.CRM-4256.
+        if (isset($this->_isPaidEvent)) {
+          $isPaidEvent = $this->_isPaidEvent;
+        }
+        else {
+          $isPaidEvent = $this->_values['event']['is_monetary'] ?? NULL;
+        }
+        if ($isPaidEvent && empty($this->_values['fee'])) {
+          CRM_Core_Error::statusBounce(ts('No Fee Level(s) or Price Set is configured for this event.<br />Click <a href=\'%1\'>CiviEvent >> Manage Event >> Configure >> Event Fees</a> to configure the Fee Level(s) or Price Set for this event.', [1 => CRM_Utils_System::url('civicrm/event/manage/fee', 'reset=1&action=update&id=' . $this->_eventId)]));
+        }
         $this->assign('quickConfig', $this->isQuickConfig());
       }
 
@@ -379,12 +392,8 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
       );
       CRM_Utils_System::redirect($url);
     }
-    // The concept of contributeMode is deprecated.
-    $this->_contributeMode = $this->get('contributeMode');
-    $this->assign('contributeMode', $this->_contributeMode);
 
-    $this->assign('paidEvent', $this->_values['event']['is_monetary']);
-
+    $this->assign('paidEvent', $this->getEventValue('is_monetary'));
     // we do not want to display recently viewed items on Registration pages
     $this->assign('displayRecent', FALSE);
 
@@ -471,7 +480,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
       }
     }
 
-    $this->assign('address', CRM_Utils_Address::getFormattedBillingAddressFieldsFromParameters($params, $this->_bltID));
+    $this->assign('address', CRM_Utils_Address::getFormattedBillingAddressFieldsFromParameters($params));
 
     if ($this->getSubmittedValue('credit_card_number')) {
       if (isset($params['credit_card_exp_date'])) {
@@ -609,15 +618,6 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
       return;
     }
 
-    // get price info
-    if ($form->_action & CRM_Core_Action::UPDATE) {
-      if (in_array(CRM_Utils_System::getClassName($form), ['CRM_Event_Form_Participant', 'CRM_Event_Form_Task_Register'])) {
-        $form->_values['line_items'] = CRM_Price_BAO_LineItem::getLineItems($form->_id, 'participant');
-      }
-      else {
-        $form->_values['line_items'] = CRM_Price_BAO_LineItem::getLineItems($form->_participantId, 'participant');
-      }
-    }
     $priceSet = CRM_Price_BAO_PriceSet::getSetDetail($priceSetId, NULL, $doNotIncludeExpiredFields);
     $form->_priceSet = $priceSet[$priceSetId] ?? NULL;
     $form->_values['fee'] = $form->_priceSet['fields'] ?? NULL;
@@ -662,14 +662,6 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
     if (!is_array($eventFee) || empty($eventFee)) {
       $form->_values['fee'] = [];
     }
-
-    //fix for non-upgraded price sets.CRM-4256.
-    if (isset($form->_isPaidEvent)) {
-      $isPaidEvent = $form->_isPaidEvent;
-    }
-    else {
-      $isPaidEvent = $form->_values['event']['is_monetary'] ?? NULL;
-    }
     if (CRM_Financial_BAO_FinancialType::isACLFinancialTypeStatus()
       && !empty($form->_values['fee'])
     ) {
@@ -679,11 +671,6 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
             unset($form->_values['fee'][$k]);
           }
         }
-      }
-    }
-    if ($isPaidEvent && empty($form->_values['fee'])) {
-      if (!in_array(CRM_Utils_System::getClassName($form), ['CRM_Event_Form_Participant', 'CRM_Event_Form_Task_Register'])) {
-        CRM_Core_Error::statusBounce(ts('No Fee Level(s) or Price Set is configured for this event.<br />Click <a href=\'%1\'>CiviEvent >> Manage Event >> Configure >> Event Fees</a> to configure the Fee Level(s) or Price Set for this event.', [1 => CRM_Utils_System::url('civicrm/event/manage/fee', 'reset=1&action=update&id=' . $form->_eventId)]));
       }
     }
   }
@@ -963,6 +950,17 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
     }
 
     return $totalCount;
+  }
+
+  /**
+   * Get id of participant being acted on.
+   *
+   * @api This function will not change in a minor release and is supported for
+   * use outside of core. This annotation / external support for properties
+   * is only given where there is specific test cover.
+   */
+  public function getParticipantID(): ?int {
+    return $this->_participantId;
   }
 
   /**
@@ -1593,10 +1591,9 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
       $this->set('participantInfo', $this->_participantInfo);
     }
 
-    //send mail Confirmation/Receipt
-    if ($this->_contributeMode != 'checkout' ||
-      $this->_contributeMode != 'notify'
+    if ($this->getPaymentProcessorObject()->supports('noReturn')
     ) {
+      // Send mail Confirmation/Receipt.
       $this->sendMails($params, $registerByID, $participantCount);
     }
   }
@@ -1729,6 +1726,27 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
    */
   public function isQuickConfig(): bool {
     return $this->getPriceSetID() && CRM_Price_BAO_PriceSet::isQuickConfig($this->getPriceSetID());
+  }
+
+  /**
+   * Get the currency for the form.
+   *
+   * Rather historic - might have unneeded stuff
+   *
+   * @return string
+   */
+  public function getCurrency() {
+    $currency = $this->_values['currency'] ?? NULL;
+    // For event forms, currency is in a different spot
+    if (empty($currency)) {
+      $currency = CRM_Utils_Array::value('currency', CRM_Utils_Array::value('event', $this->_values));
+    }
+    if (empty($currency)) {
+      $currency = CRM_Utils_Request::retrieveValue('currency', 'String');
+    }
+    // @todo If empty there is a problem - we should probably put in a deprecation notice
+    // to warn if that seems to be happening.
+    return $currency;
   }
 
 }

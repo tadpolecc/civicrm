@@ -35,16 +35,15 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
     return !class_exists(\Civi\Standalone\Security::class);
   }
 
-  /**
-   * Start a new session.
-   */
-  public function sessionStart() {
-    parent::sessionStart();
-    if ($this->missingStandaloneExtension()) {
-      // Provide a fake contact and user ID, otherwise we don't get a menu.
-      $session = CRM_Core_Session::singleton();
-      $session->set('userID', 1);
-      $session->set('ufID', 1);
+  public function initialize() {
+    parent::initialize();
+    // Initialize the session if it looks like there might be one.
+    // Case 1: user sends no session cookie: do NOT start the session. May be anon access that does not require session data. Good for caching.
+    // Case 2: user sends a session cookie: start the session, so we can access data like lcMessages for localization (which occurs early in the boot process).
+    // Case 3: user sends a session cookie but it's invalid: start the session, it will be empty and a new cookie will be sent.
+    if (isset($_COOKIE['PHPSESSID'])) {
+      // Note: passing $isRead = FALSE in the arguments will cause the session to be started.
+      CRM_Core_Session::singleton()->initialize(FALSE);
     }
   }
 
@@ -206,10 +205,10 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
   ) {
     $fragment = $fragment ? ('#' . $fragment) : '';
     if ($absolute) {
-      return Civi::paths()->getUrl("[cms.root]/{$path}?{$query}$fragment");
+      return Civi::paths()->getUrl("[cms.root]/{$path}?{$query}$fragment", 'absolute');
     }
     else {
-      return "/{$path}?{$query}$fragment";
+      return Civi::paths()->getUrl("[cms.root]/{$path}?{$query}$fragment");
     }
   }
 
@@ -314,15 +313,13 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
 
     if (!isset($runOnce)) {
       $runOnce = TRUE;
+    }
+    else {
       return TRUE;
     }
 
-    $root = rtrim($this->cmsRootPath(), '/' . DIRECTORY_SEPARATOR);
-    if (empty($root) || !is_dir($root) || !chdir($root)) {
-      return FALSE;
-    }
-
-    require_once $root . '/../vendor/autoload.php'; /* assumes $root to be the _web_ root path, not the project root path. */
+    global $civicrm_paths;
+    require_once $civicrm_paths['civicrm.vendor']['path'] . '/autoload.php';
 
     // seems like we've bootstrapped drupal
     $config = CRM_Core_Config::singleton();
@@ -353,7 +350,7 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
       // if given username we expect a correct password.
       $user = $security->loadUserByName($params['name']);
       if ($user) {
-        if (!$security->checkPassword($params['pass'], $user['password'] ?? '')) {
+        if (!$security->checkPassword($params['pass'], $user['hashed_password'] ?? '')) {
           return FALSE;
         }
       }
@@ -390,7 +387,7 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
     }
 
     return [
-      'url' => CRM_Utils_File::addTrailingSlash('', '/'),
+      'url' => CRM_Utils_File::addTrailingSlash(CIVICRM_UF_BASEURL, '/') . '/core/',
       'path' => CRM_Utils_File::addTrailingSlash($civicrm_root),
     ];
   }
@@ -485,18 +482,6 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
   }
 
   /**
-   * Function to return current language.
-   *
-   * @return string
-   */
-  public function getCurrentLanguage() {
-    if ($this->missingStandaloneExtension()) {
-      return NULL;
-    }
-    return Security::singleton()->getCurrentLanguage();
-  }
-
-  /**
    * I don't know why this needs to be here? Does it even?
    *
    * Helper function to extract path, query and route name from Civicrm URLs.
@@ -555,6 +540,13 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
    */
   public function getTimeZoneString() {
     $timezone = date_default_timezone_get();
+    $userId = Security::singleton()->getLoggedInUfID();
+    if ($userId) {
+      $user = Security::singleton()->loadUserByID($userId);
+      if ($user && !empty($user['timezone'])) {
+        $timezone = $user['timezone'];
+      }
+    }
     return $timezone;
   }
 

@@ -584,10 +584,7 @@ UPDATE civicrm_contact
       }
 
       // check permission on acl basis.
-      if (in_array($task, [
-        'view',
-        'edit',
-      ])) {
+      if (in_array($task, ['view', 'edit'])) {
         $aclPermission = CRM_Core_Permission::VIEW;
         if ($task == 'edit') {
           $aclPermission = CRM_Core_Permission::EDIT;
@@ -944,14 +941,6 @@ INNER JOIN civicrm_contact contact_target ON ( contact_target.id = act.contact_i
     $originalGreetingString = $greetingString = $allGreetings[$valueID] ?? NULL;
     if (!$greetingString) {
       throw new CRM_Core_Exception(ts('Incorrect greeting value id %1, or no default greeting for this contact type and greeting type.', [1 => $valueID]));
-    }
-
-    // build return properties based on tokens
-    $greetingTokens = CRM_Utils_Token::getTokens($greetingString);
-    $tokens = $greetingTokens['contact'] ?? NULL;
-    $greetingsReturnProperties = [];
-    if (is_array($tokens)) {
-      $greetingsReturnProperties = array_fill_keys(array_values($tokens), 1);
     }
 
     // Process ALL contacts only when force=1 or force=2 is passed. Else only contacts with NULL greeting or addressee value are updated.

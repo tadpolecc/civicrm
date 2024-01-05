@@ -26,6 +26,15 @@ class CRM_Activity_Form_ActivityView extends CRM_Core_Form {
   public $submitOnce = TRUE;
 
   /**
+   * Used by CRM_Mailing_BAO_Mailing::getMailingContent(), so cannot be removed
+   * (even though at first glance it may look safe)
+   *
+   * @var bool
+   * @internal
+   */
+  public $_mailing_id;
+
+  /**
    * Set variables up before form is built.
    */
   public function preProcess() {
@@ -42,12 +51,7 @@ class CRM_Activity_Form_ActivityView extends CRM_Core_Form {
     }
 
     $session = CRM_Core_Session::singleton();
-    if (!in_array($context, [
-      'home',
-      'dashlet',
-      'dashletFullscreen',
-    ])
-    ) {
+    if (!in_array($context, ['home', 'dashlet', 'dashletFullscreen'])) {
       $url = CRM_Utils_System::url('civicrm/contact/view', "reset=1&cid={$cid}&selectedChild=activity");
     }
     else {
