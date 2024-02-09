@@ -322,7 +322,6 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
         $paramSubType = implode(',', $contactSubType);
       }
 
-      $this->_getCachedTree = FALSE;
       unset($customGroupCount[0]);
       foreach ($customGroupCount as $groupID => $groupCount) {
         if ($groupCount > 1) {
@@ -330,7 +329,7 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
           //loop the group
           for ($i = 1; $i <= $groupCount; $i++) {
             CRM_Custom_Form_CustomData::preProcess($this, NULL, $contactSubType,
-              $i, $this->_contactType, $this->_contactId
+              $i, $this->_contactType, $this->_contactId, NULL, FALSE
             );
             CRM_Contact_Form_Edit_CustomData::buildQuickForm($this);
           }
@@ -988,14 +987,9 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
       $params['preferred_communication_method'] = 'null';
     }
 
-    $group = $params['group'] ?? NULL;
-    $params['group'] = ($params['group'] == '') ? [] : $params['group'];
-    if (!empty($group)) {
-      $group = is_array($group) ? $group : explode(',', $group);
-      $params['group'] = [];
-      foreach ($group as $key => $value) {
-        $params['group'][$value] = 1;
-      }
+    if (array_key_exists('group', $params)) {
+      $group = is_array($params['group']) ? $params['group'] : explode(',', $params['group']);
+      $params['group'] = array_fill_keys($group, 1);
     }
 
     if (!empty($params['image_URL'])) {
@@ -1055,7 +1049,7 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
 
     if (array_key_exists('CommunicationPreferences', $this->_editOptions)) {
       // this is a chekbox, so mark false if we dont get a POST value
-      $params['is_opt_out'] = $params['is_opt_out'] ?? FALSE;
+      $params['is_opt_out'] ??= FALSE;
 
       CRM_Utils_Array::formatArrayKeys($params['preferred_communication_method']);
     }

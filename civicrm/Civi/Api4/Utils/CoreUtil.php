@@ -239,13 +239,8 @@ class CoreUtil {
    * @throws \CRM_Core_Exception
    */
   public static function checkAccessRecord(AbstractAction $apiRequest, array $record, int $userID = NULL): ?bool {
-    $userID = $userID ?? \CRM_Core_Session::getLoggedInContactID() ?? 0;
+    $userID ??= \CRM_Core_Session::getLoggedInContactID() ?? 0;
     $idField = self::getIdFieldName($apiRequest->getEntityName());
-
-    // Super-admins always have access to everything
-    if (\CRM_Core_Permission::check('all CiviCRM permissions and ACLs', $userID)) {
-      return TRUE;
-    }
 
     // For get actions, just run a get and ACLs will be applied to the query.
     // It's a cheap trick and not as efficient as not running the query at all,

@@ -539,8 +539,29 @@ class CRM_Core_DAO extends DB_DataObject {
    */
   public static function getReferenceColumns() {
     if (!isset(Civi::$statics[static::class]['links'])) {
-      Civi::$statics[static::class]['links'] = static::createReferenceColumns(static::class);
-      CRM_Core_DAO_AllCoreTables::invoke(static::class, 'links_callback', Civi::$statics[static::class]['links']);
+      $links = static::createReferenceColumns(static::class);
+      // Add references based on field metadata
+      foreach (static::fields() as $field) {
+        if (!empty($field['FKClassName'])) {
+          $links[] = new CRM_Core_Reference_Basic(
+            static::getTableName(),
+            $field['name'],
+            CRM_Core_DAO_AllCoreTables::getTableForClass($field['FKClassName']),
+            $field['FKColumnName'] ?? 'id'
+          );
+        }
+        if (!empty($field['DFKEntityColumn'])) {
+          $links[] = new CRM_Core_Reference_Dynamic(
+            static::getTableName(),
+            $field['name'],
+            NULL,
+            $field['FKColumnName'] ?? 'id',
+            $field['DFKEntityColumn']
+          );
+        }
+      }
+      CRM_Core_DAO_AllCoreTables::invoke(static::class, 'links_callback', $links);
+      Civi::$statics[static::class]['links'] = $links;
     }
     return Civi::$statics[static::class]['links'];
   }
@@ -958,7 +979,11 @@ class CRM_Core_DAO extends DB_DataObject {
     if (empty($values[$idField]) && array_key_exists('frontend_title', $fields) && empty($values['frontend_title'])) {
       $instance->frontend_title = $instance->title;
     }
-    if (empty($values[$idField]) && array_key_exists('title', $fields) && empty($values['title']) && !empty($values['frontend_title'])) {
+    if (empty($values[$idField]) && array_key_exists('frontend_title', $fields) && !$instance->frontend_title) {
+      // Still empty? Fall back to name.
+      $instance->frontend_title = $instance->name;
+    }
+    if (empty($values[$idField]) && array_key_exists('title', $fields) && empty($values['title']) && array_key_exists('frontend_title', $fields) && $instance->frontend_title) {
       $instance->title = $instance->frontend_title;
     }
     $instance->save();
@@ -1428,7 +1453,7 @@ LIKE %1
       throw new CRM_Core_Exception('getFieldValue failed');
     }
 
-    self::$_dbColumnValueCache = self::$_dbColumnValueCache ?? [];
+    self::$_dbColumnValueCache ??= [];
 
     while (strpos($daoName, '_BAO_') !== FALSE) {
       $daoName = get_parent_class($daoName);
@@ -1515,6 +1540,8 @@ LIKE %1
 
   /**
    * Fetch object based on array of properties.
+   *
+   * @internal - extensions should always use the api
    *
    * @param string $daoName
    *   Name of the dao class.
@@ -2522,7 +2549,7 @@ SELECT contact_id
           $className::getTableName(),
           $field['name'],
           'civicrm_option_value',
-          CRM_Utils_Array::value('keyColumn', $field['pseudoconstant'], 'value'),
+          $field['pseudoconstant']['keyColumn'] ?? 'value',
           $field['pseudoconstant']['optionGroupName']
         );
       }
@@ -3182,8 +3209,8 @@ SELECT contact_id
    */
   public static function getSelectWhereClause($tableAlias = NULL, $entityName = NULL, $conditions = []) {
     $bao = new static();
-    $tableAlias = $tableAlias ?? $bao->tableName();
-    $entityName = $entityName ?? CRM_Core_DAO_AllCoreTables::getBriefName(get_class($bao));
+    $tableAlias ??= $bao->tableName();
+    $entityName ??= CRM_Core_DAO_AllCoreTables::getBriefName(get_class($bao));
     $finalClauses = [];
     $fields = static::getSupportedFields();
     $selectWhereClauses = $bao->addSelectWhereClause($entityName, NULL, $conditions);
@@ -3350,10 +3377,11 @@ SELECT contact_id
    * Return a mapping from field-name to the corresponding key (as used in fields()).
    *
    * @return array
-   *   Array(string $name => string $uniqueName).
+   *   [string $name => string $uniqueName]
    */
   public static function fieldKeys() {
-    return array_flip(CRM_Utils_Array::collect('name', static::fields()));
+    $fields = static::fields();
+    return array_combine(array_column($fields, 'name'), array_keys($fields));
   }
 
   /**

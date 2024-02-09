@@ -250,13 +250,6 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
 
       // check for is_monetary status
       $isMonetary = $this->getEventValue('is_monetary');
-      // check for ability to add contributions of type
-      if ($isMonetary
-        && CRM_Financial_BAO_FinancialType::isACLFinancialTypeStatus()
-        && !CRM_Core_Permission::check('add contributions of type ' . CRM_Contribute_PseudoConstant::financialType($this->_values['event']['financial_type_id']))
-      ) {
-        CRM_Core_Error::statusBounce(ts('You do not have permission to access this page.'));
-      }
 
       $this->checkValidEvent();
       // get the participant values, CRM-4320
@@ -495,7 +488,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
 
     $this->assign('is_email_confirm', $this->_values['event']['is_email_confirm'] ?? NULL);
     // assign pay later stuff
-    $params['is_pay_later'] = $params['is_pay_later'] ?? FALSE;
+    $params['is_pay_later'] ??= FALSE;
     $this->assign('is_pay_later', $params['is_pay_later']);
     $this->assign('pay_later_text', $params['is_pay_later'] ? $this->getPayLaterLabel() : FALSE);
     $this->assign('pay_later_receipt', $params['is_pay_later'] ? $this->_values['event']['pay_later_receipt'] : NULL);
@@ -604,7 +597,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
   /**
    * Initiate event fee.
    *
-   * @param \CRM_Event_Form_Participant|\CRM_Event_Form_Registration|\CRM_Event_Form_ParticipantFeeSelection|\CRM_Event_Form_Task_Register $form
+   * @param \CRM_Event_Form_Registration|\CRM_Event_Form_ParticipantFeeSelection $form
    * @param bool $doNotIncludeExpiredFields
    *   See CRM-16456.
    * @param int|null $priceSetId
@@ -661,17 +654,6 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
     $eventFee = $form->_values['fee'] ?? NULL;
     if (!is_array($eventFee) || empty($eventFee)) {
       $form->_values['fee'] = [];
-    }
-    if (CRM_Financial_BAO_FinancialType::isACLFinancialTypeStatus()
-      && !empty($form->_values['fee'])
-    ) {
-      foreach ($form->_values['fee'] as $k => $fees) {
-        foreach ($fees['options'] as $options) {
-          if (!CRM_Core_Permission::check('add contributions of type ' . CRM_Contribute_PseudoConstant::financialType($options['financial_type_id']))) {
-            unset($form->_values['fee'][$k]);
-          }
-        }
-      }
     }
   }
 
@@ -1523,7 +1505,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
    */
   public function processRegistration($params, $contactID = NULL) {
     $session = CRM_Core_Session::singleton();
-    $this->_participantInfo = [];
+    $participantInfo = [];
 
     // CRM-4320, lets build array of cancelled additional participant ids
     // those are drop or skip by primary at the time of confirmation.
@@ -1560,10 +1542,10 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
             }
           }
           if ($participantEmail) {
-            $this->_participantInfo[] = $participantEmail;
+            $participantInfo[] = $participantEmail;
           }
           else {
-            $this->_participantInfo[] = $value['first_name'] . ' ' . $value['last_name'];
+            $participantInfo[] = $value['first_name'] . ' ' . $value['last_name'];
           }
         }
         elseif (!empty($value['contact_id'])) {
@@ -1621,8 +1603,8 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
     }
 
     //set information about additional participants if exists
-    if (count($this->_participantInfo)) {
-      $this->set('participantInfo', $this->_participantInfo);
+    if (count($participantInfo)) {
+      $this->set('participantInfo', $participantInfo);
     }
 
     if (!$this->getEventValue('is_monetary') || $this->getPaymentProcessorObject()->supports('noReturn')

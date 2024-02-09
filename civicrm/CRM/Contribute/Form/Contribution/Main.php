@@ -61,6 +61,23 @@ class CRM_Contribute_Form_Contribution_Main extends CRM_Contribute_Form_Contribu
   private $existingMemberships;
 
   /**
+   * @param array $fields
+   *
+   * @return string|null
+   * @throws \CRM_Core_Exception
+   */
+  protected function getAutoRenewError(array $fields): ?string {
+    if (empty($fields['payment_processor_id'])) {
+      foreach ($this->getLineItems() as $lineItem) {
+        if ($lineItem['auto_renew'] === 2) {
+          return ts('You cannot have auto-renewal on if you are paying later.');
+        }
+      }
+    }
+    return FALSE;
+  }
+
+  /**
    * Get the active UFGroups (profiles) on this form
    * Many forms load one or more UFGroups (profiles).
    * This provides a standard function to retrieve the IDs of those profiles from the form
@@ -699,12 +716,7 @@ class CRM_Contribute_Form_Contribution_Main extends CRM_Contribute_Form_Contribu
       $this->assign('autoRenewOption', $autoRenewOption);
 
       if ((!$this->_values['is_pay_later'] || is_array($this->_paymentProcessors)) && ($allowAutoRenewMembership || $autoRenewOption)) {
-        if ($autoRenewOption == 2) {
-          $this->addElement('hidden', 'auto_renew', ts('Please renew my membership automatically.'));
-        }
-        else {
-          $this->addElement('checkbox', 'auto_renew', ts('Please renew my membership automatically.'));
-        }
+        $this->addElement('checkbox', 'auto_renew', ts('Please renew my membership automatically.'));
       }
 
     }
@@ -804,11 +816,10 @@ class CRM_Contribute_Form_Contribution_Main extends CRM_Contribute_Form_Contribu
    *   true if no errors, else array of errors
    */
   public static function formRule($fields, $files, $self) {
-    $errors = [];
+    $self->resetOrder($fields);
+    $errors = array_filter(['auto_renew' => $self->getAutoRenewError($fields)]);
+    // @todo - should just be $this->getOrder()->getTotalAmount()
     $amount = $self->computeAmount($fields, $self->_values);
-    if (!empty($fields['auto_renew']) && empty($fields['payment_processor_id'])) {
-      $errors['auto_renew'] = ts('You cannot have auto-renewal on if you are paying later.');
-    }
 
     if ((!empty($fields['selectMembership']) &&
         $fields['selectMembership'] != 'no_thanks'
@@ -1154,9 +1165,8 @@ class CRM_Contribute_Form_Contribution_Main extends CRM_Contribute_Form_Contribu
     $this->controller->resetPage('Confirm');
     // Update order to the submitted values (in case the back button has been used
     // and the submitted values have changed.
-    $this->set('lineItem', NULL);
-    $this->order->setPriceSelectionFromUnfilteredInput($this->getSubmittedValues());
-    $this->order->recalculateLineItems();
+    // This aleady happens in validate so might be overkill.
+    $this->resetOrder($this->getSubmittedValues());
 
     // get the submitted form values.
     $params = $this->controller->exportValues($this->_name);
@@ -1895,6 +1905,11 @@ class CRM_Contribute_Form_Contribution_Main extends CRM_Contribute_Form_Contribu
   }
 
   /**
+   * Get fields from the profiles in use that related to contacts.
+   *
+   * The fields are keyed by the field name and the keys are the metadata.
+   * Fields that extend Membership or Contribution are excluded.
+   *
    * @return array
    * @throws \CRM_Core_Exception
    */
@@ -1923,6 +1938,13 @@ class CRM_Contribute_Form_Contribution_Main extends CRM_Contribute_Form_Contribu
     return $fields;
   }
 
+  /**
+   * Get metadata for all custom fields in the attached profiles.
+   *
+   * Fields are keyed by the custom field ID.
+   *
+   * @return array
+   */
   private function getProfileCustomFields (): array {
     // remove component related fields
     $customFields = [];
@@ -1935,6 +1957,27 @@ class CRM_Contribute_Form_Contribution_Main extends CRM_Contribute_Form_Contribu
     }
     return $customFields;
 
+  }
+
+  /**
+   * @param array $fields
+   * @param bool $sanitized
+   *   Has Quickform already sanitised the input. If not
+   *   we will de-localize any money fields.
+   *
+   * @return void
+   * @throws \CRM_Core_Exception
+   */
+  protected function resetOrder(array $fields, bool $sanitized = TRUE): void {
+    if (!$sanitized) {
+      // This happens in validate.
+      foreach ($fields as $fieldName => $value) {
+        $fields[$fieldName] = $this->getUnLocalizedSubmittedValue($fieldName, $value);
+      }
+    }
+    $this->set('lineItem', NULL);
+    $this->order->setPriceSelectionFromUnfilteredInput($fields);
+    $this->order->recalculateLineItems();
   }
 
 }

@@ -2632,13 +2632,17 @@ LEFT JOIN civicrm_email    ON ( civicrm_contact.id = civicrm_email.contact_id )
         return CRM_Case_BAO_Case::caseCount($contactId);
 
       case 'activity':
-        $input = [
-          'contact_id' => $contactId,
-          'admin' => FALSE,
-          'caseId' => NULL,
-          'context' => 'activity',
-        ];
-        return CRM_Activity_BAO_Activity::getActivitiesCount($input);
+        $excludeCaseActivities = (CRM_Core_Component::isEnabled('CiviCase') && !\Civi::settings()->get('civicaseShowCaseActivities'));
+        $activityApi = \Civi\Api4\Activity::get(TRUE)
+          ->selectRowCount()
+          ->addJoin('ActivityContact AS activity_contact', 'INNER')
+          ->addWhere('activity_contact.contact_id', '=', $contactId)
+          ->addWhere('is_test', '=', FALSE)
+          ->addGroupBy('id');
+        if ($excludeCaseActivities) {
+          $activityApi->addWhere('case_id', 'IS EMPTY');
+        }
+        return $activityApi->execute()->count();
 
       case 'mailing':
         $params = ['contact_id' => $contactId];
@@ -3593,7 +3597,7 @@ LEFT JOIN civicrm_address ON ( civicrm_address.contact_id = civicrm_contact.id )
    * @param array $record
    * @param $userID
    * @return bool
-   * @see CRM_Core_DAO::checkAccess
+   * @see \Civi\Api4\Utils\CoreUtil::checkAccessRecord
    */
   public static function _checkAccess(string $entityName, string $action, array $record, $userID): bool {
     switch ($action) {

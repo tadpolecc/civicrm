@@ -239,6 +239,13 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
       CRM_Core_Error::statusBounce(ts('You do not have permission to access this page.'));
     }
 
+    if ($this->_action & CRM_Core_Action::UPDATE && !Contribution::checkAccess()
+      ->setAction('update')
+      ->addValue('id', $this->getContributionID())
+      ->execute()->first()['access']) {
+      CRM_Core_Error::statusBounce(ts('You do not have permission to access this page.'));
+    }
+
     parent::preProcess();
 
     $this->_formType = $_GET['formType'] ?? NULL;
@@ -580,18 +587,6 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
       ]);
       return;
     }
-
-    // FIXME: This probably needs to be done in preprocess
-    if (CRM_Financial_BAO_FinancialType::isACLFinancialTypeStatus()
-      && $this->_action & CRM_Core_Action::UPDATE
-      && !empty($this->_values['financial_type_id'])
-    ) {
-      $financialTypeID = CRM_Contribute_PseudoConstant::financialType($this->_values['financial_type_id']);
-      CRM_Financial_BAO_FinancialType::checkPermissionedLineItems($this->_id, 'edit');
-      if (!CRM_Core_Permission::check('edit contributions of type ' . $financialTypeID)) {
-        CRM_Core_Error::statusBounce(ts('You do not have permission to access this page.'));
-      }
-    }
     $allPanes = [];
 
     //tax rate from financialType
@@ -600,8 +595,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
 
     // build price set form.
     $buildPriceSet = FALSE;
-    $invoicing = CRM_Invoicing_Utils::isInvoicingEnabled();
-    $this->assign('invoicing', CRM_Invoicing_Utils::isInvoicingEnabled());
+    $this->assign('invoicing', \Civi::settings()->get('invoicing'));
     // This is a probably-deprecated approach to partial payments - assign here
     // & if true it will be overwritten.
     $this->assign('payNow', FALSE);
@@ -724,7 +718,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
       $checkPaymentID = array_search('Check', CRM_Contribute_BAO_Contribution::buildOptions('payment_instrument_id', 'validate'));
       $paymentInstrument = $this->add('select', 'payment_instrument_id',
         ts('Payment Method'),
-        ['' => ts('- select -')] + CRM_Contribute_BAO_Contribution::buildOptions('payment_instrument_id', 'create'),
+        ['' => ts('- select -')] + CRM_Contribute_BAO_Contribution::buildOptions('payment_instrument_id', 'create', ['filter' => 0]),
         $required,
         ['onChange' => "return showHideByValue('payment_instrument_id','{$checkPaymentID}','checkNumber','table-row','select',false);", 'class' => 'crm-select2']
       );
@@ -940,7 +934,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     $form->_priceSet = $priceSet[$priceSetId] ?? NULL;
     $validPriceFieldIds = array_keys($form->_priceSet['fields']);
 
-    $form->_priceSet['id'] = $form->_priceSet['id'] ?? $priceSetId;
+    $form->_priceSet['id'] ??= $priceSetId;
     $form->assign('priceSet', $form->_priceSet);
 
     $feeBlock = &$form->_priceSet['fields'];
@@ -1107,6 +1101,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     if (empty($this->_id) && !empty($contribution->id)) {
       $this->_id = $contribution->id;
     }
+    $this->ajaxResponse['updateTabs']['#tab_activity'] = TRUE;
     if (!empty($this->_id) && CRM_Core_Permission::access('CiviMember')) {
       $membershipPaymentCount = civicrm_api3('MembershipPayment', 'getCount', ['contribution_id' => $this->_id]);
       if ($membershipPaymentCount) {
@@ -1706,7 +1701,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
       ]);
       $this->_id = $params['id'];
       $this->_values = $existingContribution;
-      if (CRM_Invoicing_Utils::isInvoicingEnabled()) {
+      if (\Civi::settings()->get('invoicing')) {
         $this->_values['tax_amount'] = civicrm_api3('contribution', 'getvalue', [
           'id' => $params['id'],
           'return' => 'tax_amount',
@@ -2403,10 +2398,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
    */
   public function getPriceSetID(): ?int {
     $priceSetID = $this->getSubmittedValue('price_set_id') ?: CRM_Utils_Request::retrieve('priceSetId', 'Integer');
-    // Ideally we would use $this->isFormBuilt() here to know when to access the _POST
-    // array directly. However, the parent sets isBuilt before, building the form,
-    // rather than after.
-    if (!$priceSetID && !empty($this->getSubmitValue('price_set_id'))) {
+    if (!$this->isFormBuilt() && !empty($this->getSubmitValue('price_set_id'))) {
       return (int) $this->getSubmitValue('price_set_id');
     }
     return $priceSetID ?? NULL;

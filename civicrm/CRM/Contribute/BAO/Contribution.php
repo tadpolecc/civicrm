@@ -106,7 +106,7 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution im
     //set defaults in create mode
     if (!$contributionID) {
       CRM_Core_DAO::setCreateDefaults($params, self::getDefaults());
-      if (empty($params['invoice_number']) && CRM_Invoicing_Utils::isInvoicingEnabled()) {
+      if (empty($params['invoice_number']) && \Civi::settings()->get('invoicing')) {
         $nextContributionID = CRM_Core_DAO::singleValueQuery("SELECT COALESCE(MAX(id) + 1, 1) FROM civicrm_contribution");
         $params['invoice_number'] = self::getInvoiceNumber($nextContributionID);
       }
@@ -429,11 +429,11 @@ class CRM_Contribute_BAO_Contribution extends CRM_Contribute_DAO_Contribution im
    * To create an address we need state_province_id.
    *
    * @param array $params
-   * @param int $billingLocationTypeID
    *
    * @return array
    */
-  public static function getPaymentProcessorReadyAddressParams($params, $billingLocationTypeID) {
+  public static function getPaymentProcessorReadyAddressParams($params) {
+    $billingLocationTypeID = CRM_Core_BAO_LocationType::getBilling();
     [$hasBillingField, $addressParams] = self::getBillingAddressParams($params, $billingLocationTypeID);
     foreach ($addressParams as $name => $field) {
       if (substr($name, 0, 8) == 'billing_') {
@@ -2244,7 +2244,7 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
       }
     }
 
-    $contributionParams['source'] = $contributionParams['source'] ?? ts('Recurring contribution');
+    $contributionParams['source'] ??= ts('Recurring contribution');
 
     $createContribution = civicrm_api3('Contribution', 'create', $contributionParams);
     $temporaryObject = new CRM_Contribute_BAO_Contribution();
@@ -3507,6 +3507,13 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
         if ($context !== 'validate') {
           $params['condition'] = "v.name <> 'Template'";
         }
+        break;
+
+      case 'payment_instrument_id':
+        if (isset($props['filter'])) {
+          $params['condition'] = "v.filter = " . $props['filter'];
+        }
+        break;
     }
     return CRM_Core_PseudoConstant::get($className, $fieldName, $params, $context);
   }

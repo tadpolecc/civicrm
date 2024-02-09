@@ -6,10 +6,7 @@ namespace Civi\Test\LocalHttpClient;
  */
 class SuperGlobal {
 
-  /**
-   * @var string
-   */
-  protected $name;
+  protected string $name;
 
   /**
    * @param string $name
