@@ -928,6 +928,7 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
       ->addSelect('product_id')
       ->addSelect('premiums_id.*')
       ->addWhere('product_id.is_active', '=', TRUE)
+      ->addWhere('premiums_id.premiums_active', '=', TRUE)
       ->addWhere('premiums_id.entity_id', '=', $this->getContributionPageID())
       ->addWhere('premiums_id.entity_table', '=', 'civicrm_contribution_page')
       ->addOrderBy('weight')
@@ -1548,7 +1549,7 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
    * @throws \CRM_Core_Exception
    */
   public function getCurrency(): string {
-    $currency = $this->getContributionValue('currency');
+    $currency = $this->getContributionPageValue('currency');
     if (empty($currency)) {
       $currency = CRM_Utils_Request::retrieveValue('currency', 'String');
     }
