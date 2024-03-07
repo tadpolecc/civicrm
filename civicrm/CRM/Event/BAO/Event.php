@@ -9,6 +9,8 @@
  +--------------------------------------------------------------------+
  */
 
+use Civi\Api4\Event\AuthorizeRecordEvent;
+
 /**
  *
  * @package CRM
@@ -1187,13 +1189,13 @@ WHERE civicrm_event.is_active = 1
 
         $sendTemplateParams = [
           'workflow' => 'event_online_receipt',
-          'contactId' => $contactID,
           'isTest' => $isTest,
           'tplParams' => $tplParams,
           'PDFFilename' => ts('confirmation') . '.pdf',
           'modelProps' => [
             'participantID' => (int) $participantId,
             'eventID' => (int) $values['event']['id'],
+            'contactID' => (int) $contactID,
           ],
         ];
 
@@ -1597,10 +1599,11 @@ WHERE civicrm_event.is_active = 1
             $idx = $detailName . '_id';
             $values[$index] = $params[$idx];
           }
-          elseif ($fieldName == 'im') {
+          elseif ($fieldName === 'im') {
             $providerName = NULL;
             if ($providerId = $detailName . '-provider_id') {
-              $providerName = $imProviders[$params[$providerId]] ?? NULL;
+              $inputProvider = $params[$providerId] ?? '';
+              $providerName = $imProviders[$inputProvider] ?? NULL;
             }
             if ($providerName) {
               $values[$index] = $params[$detailName] . " (" . $providerName . ")";
@@ -1609,7 +1612,7 @@ WHERE civicrm_event.is_active = 1
               $values[$index] = $params[$detailName];
             }
           }
-          elseif ($fieldName == 'phone') {
+          elseif ($fieldName === 'phone') {
             $phoneExtField = str_replace('phone', 'phone_ext', $detailName);
             if (isset($params[$phoneExtField])) {
               $values[$index] = $params[$detailName] . " (" . $params[$phoneExtField] . ")";
@@ -1678,8 +1681,6 @@ WHERE  id = $cfID
                   $customVal = $params[$name];
                 }
                 //take the custom field options
-                $returnProperties = [$name => 1];
-                $query = new CRM_Contact_BAO_Query($params, $returnProperties, $fields);
                 if (!$skip) {
                   $displayValue = CRM_Core_BAO_CustomField::displayValue($customVal, $cfID);
                 }
@@ -2189,17 +2190,17 @@ WHERE  ce.loc_block_id = $locBlockId";
   }
 
   /**
-   * @param string $entityName
-   * @param string $action
-   * @param array $record
-   * @param int $userID
-   * @return bool
+   * Check event access.
    * @see \Civi\Api4\Utils\CoreUtil::checkAccessRecord
    */
-  public static function _checkAccess(string $entityName, string $action, array $record, $userID): bool {
-    switch ($action) {
+  public static function self_civi_api4_authorizeRecord(AuthorizeRecordEvent $e): void {
+    $record = $e->getRecord();
+    $userID = $e->getUserID();
+
+    switch ($e->getActionName()) {
       case 'create':
-        return CRM_Core_Permission::check('access CiviEvent', $userID);
+        $e->setAuthorized(CRM_Core_Permission::check('access CiviEvent', $userID));
+        return;
 
       case 'get':
         $actionType = CRM_Core_Permission::VIEW;
@@ -2214,7 +2215,7 @@ WHERE  ce.loc_block_id = $locBlockId";
         break;
     }
 
-    return self::checkPermission($record['id'], $actionType, $userID);
+    $e->setAuthorized(self::checkPermission($record['id'], $actionType, $userID));
   }
 
   /**

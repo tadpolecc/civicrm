@@ -277,6 +277,7 @@ INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1251", "Kosovo", "XK", "1", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1252", "Saint Barthélemy", "BL", "2", "0");
 INSERT INTO civicrm_country (id, name,iso_code,region_id,is_province_abbreviated) VALUES("1253", "Saint Martin (French part)", "MF", "2", "0");
+
 -- +--------------------------------------------------------------------+
 -- | Copyright CiviCRM LLC. All rights reserved.                        |
 -- |                                                                    |
@@ -4369,6 +4370,7 @@ INSERT INTO civicrm_state_province (country_id, abbreviation, name) VALUES
 (1016, "14", "Al Janūbīyah"),
 (1016, "16", "Al Wusţá"),
 (1016, "17", "Ash Shamālīyah");
+
 -- +--------------------------------------------------------------------+
 -- | Copyright CiviCRM LLC. All rights reserved.                        |
 -- |                                                                    |
@@ -4556,6 +4558,7 @@ INSERT INTO civicrm_currency (id, name, symbol, numeric_code, full_name) VALUES
 (183, "YER",  "﷼", "886", "Yemeni Rial"),
 (184, "ZMK", NULL, "894", "Zambian Kwacha"),
 (185, "ZWD", "Z$", "716", "Zimbabwe Dollar");
+
 -- +--------------------------------------------------------------------+
 -- | Copyright CiviCRM LLC. All rights reserved.                        |
 -- |                                                                    |
@@ -6210,6 +6213,7 @@ VALUES
   (@option_group_id_languages, 0, 0, 'yo_NG', 'yo', 'Yoruba', @counter := @counter + 1),
   (@option_group_id_languages, 0, 0, 'za_CN', 'za', 'Zhuang, Chuang', @counter := @counter + 1),
   (@option_group_id_languages, 0, 0, 'zu_ZA', 'zu', 'Zulu', @counter := @counter + 1);
+
 INSERT INTO civicrm_option_group (`description`,`is_active`,`is_reserved`,`name`,`option_value_fields`,`title`) VALUES
 ("Encounter medium for case activities (e.g. In Person, By Phone, etc.)","1","1","encounter_medium","name,label,description","Encounter Medium")
 ;
@@ -6818,47 +6822,7 @@ INSERT INTO civicrm_option_group
     (msg_title, msg_subject, msg_text, msg_html, workflow_name, workflow_id, is_default, is_reserved)
     VALUES
     ('Cases - Send Copy of an Activity', '{if !empty($idHash)}[case #{$idHash}]{/if} {$activitySubject}
-', '===========================================================
-{ts}Activity Summary{/ts} - {$activityTypeName}
-===========================================================
-{if !empty($isCaseActivity)}
-{ts}Your Case Role(s){/ts} : {$contact.role|default:\'\'}
-{if !empty($manageCaseURL)}
-{ts}Manage Case{/ts} : {$manageCaseURL}
-{/if}
-{/if}
-
-{if !empty($editActURL)}
-{ts}Edit activity{/ts} : {$editActURL}
-{/if}
-{if !empty($viewActURL)}
-{ts}View activity{/ts} : {$viewActURL}
-{/if}
-
-{foreach from=$activity.fields item=field}
-{if $field.type eq \'Date\'}
-{$field.label} : {$field.value|crmDate:$config->dateformatDatetime}
-{else}
-{$field.label} : {$field.value}
-{/if}
-{/foreach}
-
-{if !empty($activity.customGroups)}
-{foreach from=$activity.customGroups key=customGroupName item=customGroup}
-==========================================================
-{$customGroupName}
-==========================================================
-{foreach from=$customGroup item=field}
-{if $field.type eq \'Date\'}
-{$field.label} : {$field.value|crmDate:$config->dateformatDatetime}
-{else}
-{$field.label} : {$field.value}
-{/if}
-{/foreach}
-
-{/foreach}
-{/if}
-', '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+', '', '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -6883,7 +6847,7 @@ INSERT INTO civicrm_option_group
           <table style="border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse; width:100%;">
             <tr>
               <th {$headerStyle}>
-                {ts}Activity Summary{/ts} - {$activityTypeName}
+                {ts}Activity Summary{/ts} - {activity.activity_type_id:label}
               </th>
             </tr>
             {if !empty($isCaseActivity)}
@@ -6967,47 +6931,7 @@ INSERT INTO civicrm_option_group
     (msg_title, msg_subject, msg_text, msg_html, workflow_name, workflow_id, is_default, is_reserved)
     VALUES
     ('Cases - Send Copy of an Activity', '{if !empty($idHash)}[case #{$idHash}]{/if} {$activitySubject}
-', '===========================================================
-{ts}Activity Summary{/ts} - {$activityTypeName}
-===========================================================
-{if !empty($isCaseActivity)}
-{ts}Your Case Role(s){/ts} : {$contact.role|default:\'\'}
-{if !empty($manageCaseURL)}
-{ts}Manage Case{/ts} : {$manageCaseURL}
-{/if}
-{/if}
-
-{if !empty($editActURL)}
-{ts}Edit activity{/ts} : {$editActURL}
-{/if}
-{if !empty($viewActURL)}
-{ts}View activity{/ts} : {$viewActURL}
-{/if}
-
-{foreach from=$activity.fields item=field}
-{if $field.type eq \'Date\'}
-{$field.label} : {$field.value|crmDate:$config->dateformatDatetime}
-{else}
-{$field.label} : {$field.value}
-{/if}
-{/foreach}
-
-{if !empty($activity.customGroups)}
-{foreach from=$activity.customGroups key=customGroupName item=customGroup}
-==========================================================
-{$customGroupName}
-==========================================================
-{foreach from=$customGroup item=field}
-{if $field.type eq \'Date\'}
-{$field.label} : {$field.value|crmDate:$config->dateformatDatetime}
-{else}
-{$field.label} : {$field.value}
-{/if}
-{/foreach}
-
-{/foreach}
-{/if}
-', '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+', '', '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -7032,7 +6956,7 @@ INSERT INTO civicrm_option_group
           <table style="border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse; width:100%;">
             <tr>
               <th {$headerStyle}>
-                {ts}Activity Summary{/ts} - {$activityTypeName}
+                {ts}Activity Summary{/ts} - {activity.activity_type_id:label}
               </th>
             </tr>
             {if !empty($isCaseActivity)}
@@ -13990,71 +13914,72 @@ INSERT INTO civicrm_option_group
        {participant.role_id:label}
       </td>
      </tr>
-
-    {if !empty($isShowLocation)}
-          <tr>
-            <td colspan="2" {$valueStyle}>
-                {event.location}
-            </td>
-          </tr>
-        {/if}
+    {if {event.is_show_location|boolean}}
+        <tr>
+          <td colspan="2" {$valueStyle}>
+            {event.location}
+          </td>
+        </tr>
+      {/if}
 
     {if {event.loc_block_id.phone_id.phone|boolean} || {event.loc_block_id.email_id.email|boolean}}
+        <tr>
+          <td colspan="2" {$labelStyle}>
+            {ts}Event Contacts:{/ts}
+          </td>
+        </tr>
+
+        {if {event.loc_block_id.phone_id.phone|boolean}}
           <tr>
-            <td colspan="2" {$labelStyle}>
-                {ts}Event Contacts:{/ts}
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
             </td>
           </tr>
-
-            {if {event.loc_block_id.phone_id.phone|boolean}}
-              <tr>
-                <td {$labelStyle}>
-                    {if {event.loc_block_id.phone_id.phone_type_id|boolean}}
-                        {event.loc_block_id.phone_id.phone_type_id:label}
-                    {else}
-                        {ts}Phone{/ts}
-                    {/if}
-                </td>
-                <td {$valueStyle}>
-                    {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
-                </td>
-              </tr>
-            {/if}
-            {if {event.loc_block_id.phone_2_id.phone|boolean}}
-              <tr>
-                <td {$labelStyle}>
-                    {if {event.loc_block_id.phone_2_id.phone_type_id|boolean}}
-                        {event.loc_block_id.phone_2_id.phone_type_id:label}
-                    {else}
-                        {ts}Phone{/ts}
-                    {/if}
-                </td>
-                <td {$valueStyle}>
-                    {event.loc_block_id.phone_2_id.phone} {if {event.loc_block_id.phone_2_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_2_id.phone_ext}{/if}
-                </td>
-              </tr>
-            {/if}
-            {if {event.loc_block_id.email_id.email|boolean}}
-              <tr>
-                <td {$labelStyle}>
-                    {ts}Email{/ts}
-                </td>
-                <td {$valueStyle}>
-                    {event.loc_block_id.email_id.email}
-                </td>
-              </tr>
-            {/if}
-            {if {event.loc_block_id.email_2_id.email|boolean}}
-              <tr>
-                <td {$labelStyle}>
-                    {ts}Email{/ts}
-                </td>
-                <td {$valueStyle}>
-                    {event.loc_block_id.email_2_id.email}
-                </td>
-              </tr>
-            {/if}
         {/if}
+        {if {event.loc_block_id.phone_2_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_2_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_2_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_2_id.phone} {if {event.loc_block_id.phone_2_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_2_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_id.email}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_2_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_2_id.email}
+            </td>
+          </tr>
+        {/if}
+      {/if}
 
     {if \'{contact.email}\'}
       <tr>
@@ -14148,71 +14073,72 @@ INSERT INTO civicrm_option_group
        {participant.role_id:label}
       </td>
      </tr>
-
-    {if !empty($isShowLocation)}
-          <tr>
-            <td colspan="2" {$valueStyle}>
-                {event.location}
-            </td>
-          </tr>
-        {/if}
+    {if {event.is_show_location|boolean}}
+        <tr>
+          <td colspan="2" {$valueStyle}>
+            {event.location}
+          </td>
+        </tr>
+      {/if}
 
     {if {event.loc_block_id.phone_id.phone|boolean} || {event.loc_block_id.email_id.email|boolean}}
+        <tr>
+          <td colspan="2" {$labelStyle}>
+            {ts}Event Contacts:{/ts}
+          </td>
+        </tr>
+
+        {if {event.loc_block_id.phone_id.phone|boolean}}
           <tr>
-            <td colspan="2" {$labelStyle}>
-                {ts}Event Contacts:{/ts}
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
             </td>
           </tr>
-
-            {if {event.loc_block_id.phone_id.phone|boolean}}
-              <tr>
-                <td {$labelStyle}>
-                    {if {event.loc_block_id.phone_id.phone_type_id|boolean}}
-                        {event.loc_block_id.phone_id.phone_type_id:label}
-                    {else}
-                        {ts}Phone{/ts}
-                    {/if}
-                </td>
-                <td {$valueStyle}>
-                    {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
-                </td>
-              </tr>
-            {/if}
-            {if {event.loc_block_id.phone_2_id.phone|boolean}}
-              <tr>
-                <td {$labelStyle}>
-                    {if {event.loc_block_id.phone_2_id.phone_type_id|boolean}}
-                        {event.loc_block_id.phone_2_id.phone_type_id:label}
-                    {else}
-                        {ts}Phone{/ts}
-                    {/if}
-                </td>
-                <td {$valueStyle}>
-                    {event.loc_block_id.phone_2_id.phone} {if {event.loc_block_id.phone_2_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_2_id.phone_ext}{/if}
-                </td>
-              </tr>
-            {/if}
-            {if {event.loc_block_id.email_id.email|boolean}}
-              <tr>
-                <td {$labelStyle}>
-                    {ts}Email{/ts}
-                </td>
-                <td {$valueStyle}>
-                    {event.loc_block_id.email_id.email}
-                </td>
-              </tr>
-            {/if}
-            {if {event.loc_block_id.email_2_id.email|boolean}}
-              <tr>
-                <td {$labelStyle}>
-                    {ts}Email{/ts}
-                </td>
-                <td {$valueStyle}>
-                    {event.loc_block_id.email_2_id.email}
-                </td>
-              </tr>
-            {/if}
         {/if}
+        {if {event.loc_block_id.phone_2_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_2_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_2_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_2_id.phone} {if {event.loc_block_id.phone_2_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_2_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_id.email}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_2_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_2_id.email}
+            </td>
+          </tr>
+        {/if}
+      {/if}
 
     {if \'{contact.email}\'}
       <tr>
@@ -14287,7 +14213,7 @@ INSERT INTO civicrm_option_group
     <p>{ts}This is an invitation to complete your registration that was initially waitlisted.{/ts}</p>
    </td>
   </tr>
-  {if !$isAdditional and $participant.id}
+  {if !$isAdditional and {participant.id|boolean}}
    <tr>
     <th {$headerStyle}>
      {ts}Confirm Your Registration{/ts}
@@ -14295,14 +14221,14 @@ INSERT INTO civicrm_option_group
    </tr>
    <tr>
     <td colspan="2" {$valueStyle}>
-     {capture assign=confirmUrl}{crmURL p=\'civicrm/event/confirm\' q="reset=1&participantId=`$participant.id`&cs=`$checksumValue`" a=true h=0 fe=1}{/capture}
+     {capture assign=confirmUrl}{crmURL p=\'civicrm/event/confirm\' q="reset=1&participantId={participant.id}&cs=`$checksumValue`" a=true h=0 fe=1}{/capture}
      <a href="{$confirmUrl}">{ts}Click here to confirm and complete your registration{/ts}</a>
     </td>
    </tr>
   {/if}
-  {if $event.allow_selfcancelxfer}
+  {if {event.allow_selfcancelxfer|boolean}}
   {ts}This event allows for{/ts}
-  {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid=`$participant.id`&{contact.checksum}" h=0 a=1 fe=1}{/capture}
+  {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid={participant.id}&{contact.checksum}" h=0 a=1 fe=1}{/capture}
        <a href="{$selfService}"> {ts}self service cancel or transfer{/ts}</a>
   {/if}
 
@@ -14316,8 +14242,8 @@ INSERT INTO civicrm_option_group
      </tr>
      <tr>
       <td colspan="2" {$valueStyle}>
-       {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {event.title}<br />
+       {event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if {event.end_date|boolean}}-{if \'{event.end_date|crmDate:"%Y%m%d"}\' === \'{event.start_date|crmDate:"%Y%m%d"}\'}{event.end_date|crmDate:"Time"}{else}{event.end_date|crmDate:"%A"} {event.end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      <tr>
@@ -14325,60 +14251,86 @@ INSERT INTO civicrm_option_group
        {ts}Participant Role{/ts}:
       </td>
       <td {$valueStyle}>
-       {$participant.role}
+        {participant.role_id:label}
       </td>
      </tr>
-
-     {if $isShowLocation}
-      <tr>
-       <td colspan="2" {$valueStyle}>
-        {$event.location.address.1.display|nl2br}
-       </td>
-      </tr>
-     {/if}
-
-     {if $event.location.phone.1.phone || $event.location.email.1.email}
-      <tr>
-       <td colspan="2" {$labelStyle}>
-        {ts}Event Contacts:{/ts}
-       </td>
-      </tr>
-      {foreach from=$event.location.phone item=phone}
-       {if $phone.phone}
+     {if {event.is_show_location|boolean}}
         <tr>
-         <td {$labelStyle}>
-          {if $phone.phone_type}{$phone.phone_type_display}{else}{ts}Phone{/ts}{/if}
-         </td>
-         <td {$valueStyle}>
-          {$phone.phone}
-         </td>
+          <td colspan="2" {$valueStyle}>
+            {event.location}
+          </td>
         </tr>
-       {/if}
-      {/foreach}
-      {foreach from=$event.location.email item=eventEmail}
-       {if $eventEmail.email}
-        <tr>
-         <td {$labelStyle}>
-          {ts}Email{/ts}
-         </td>
-         <td {$valueStyle}>
-          {$eventEmail.email}
-         </td>
-        </tr>
-       {/if}
-      {/foreach}
-     {/if}
+      {/if}
 
-     {if $event.is_public}
+     {if {event.loc_block_id.phone_id.phone|boolean} || {event.loc_block_id.email_id.email|boolean}}
+        <tr>
+          <td colspan="2" {$labelStyle}>
+            {ts}Event Contacts:{/ts}
+          </td>
+        </tr>
+
+        {if {event.loc_block_id.phone_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+        {if {event.loc_block_id.phone_2_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_2_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_2_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_2_id.phone} {if {event.loc_block_id.phone_2_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_2_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_id.email}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_2_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_2_id.email}
+            </td>
+          </tr>
+        {/if}
+      {/if}
+
+     {if {event.is_public|boolean}}
      <tr>
        <td colspan="2" {$valueStyle}>
-           {capture assign=icalFeed}{crmURL p=\'civicrm/event/ical\' q="reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
+           {capture assign=icalFeed}{crmURL p=\'civicrm/event/ical\' q="reset=1&id={event.id}" h=0 a=1 fe=1}{/capture}
          <a href="{$icalFeed}">{ts}Download iCalendar entry for this event.{/ts}</a>
        </td>
      </tr>
      <tr>
        <td colspan="2" {$valueStyle}>
-           {capture assign=gCalendar}{crmURL p=\'civicrm/event/ical\' q="gCalendar=1&reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
+           {capture assign=gCalendar}{crmURL p=\'civicrm/event/ical\' q="gCalendar=1&reset=1&id={event.id}" h=0 a=1 fe=1}{/capture}
          <a href="{$gCalendar}">{ts}Add event to Google Calendar{/ts}</a>
        </td>
      </tr>
@@ -14397,13 +14349,13 @@ INSERT INTO civicrm_option_group
       </tr>
      {/if}
 
-     {if $register_date}
+     {if {participant.register_date|boolean}}
       <tr>
        <td {$labelStyle}>
         {ts}Registration Date{/ts}
        </td>
        <td {$valueStyle}>
-        {$participant.register_date|crmDate}
+         {participant.register_date}
        </td>
       </tr>
      {/if}
@@ -14411,11 +14363,11 @@ INSERT INTO civicrm_option_group
     </table>
    </td>
   </tr>
-  {if $event.allow_selfcancelxfer}
+  {if {event.allow_selfcancelxfer|boolean}}
    <tr>
      <td colspan="2" {$valueStyle}>
-       {ts 1=$selfcancelxfer_time 2=$selfservice_preposition}You may transfer your registration to another participant or cancel your registration up to %1 hours %2 the event.{/ts} {if $totalAmount}{ts}Cancellations are not refundable.{/ts}{/if}<br />
-         {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid=`$participant.id`&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
+       {ts 1=$selfcancelxfer_time 2=$selfservice_preposition}You may transfer your registration to another participant or cancel your registration up to %1 hours %2 the event.{/ts}<br />
+         {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid={participant.id}&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
        <a href="{$selfService}">{ts}Click here to transfer or cancel your registration.{/ts}</a>
      </td>
    </tr>
@@ -14461,7 +14413,7 @@ INSERT INTO civicrm_option_group
     <p>{ts}This is an invitation to complete your registration that was initially waitlisted.{/ts}</p>
    </td>
   </tr>
-  {if !$isAdditional and $participant.id}
+  {if !$isAdditional and {participant.id|boolean}}
    <tr>
     <th {$headerStyle}>
      {ts}Confirm Your Registration{/ts}
@@ -14469,14 +14421,14 @@ INSERT INTO civicrm_option_group
    </tr>
    <tr>
     <td colspan="2" {$valueStyle}>
-     {capture assign=confirmUrl}{crmURL p=\'civicrm/event/confirm\' q="reset=1&participantId=`$participant.id`&cs=`$checksumValue`" a=true h=0 fe=1}{/capture}
+     {capture assign=confirmUrl}{crmURL p=\'civicrm/event/confirm\' q="reset=1&participantId={participant.id}&cs=`$checksumValue`" a=true h=0 fe=1}{/capture}
      <a href="{$confirmUrl}">{ts}Click here to confirm and complete your registration{/ts}</a>
     </td>
    </tr>
   {/if}
-  {if $event.allow_selfcancelxfer}
+  {if {event.allow_selfcancelxfer|boolean}}
   {ts}This event allows for{/ts}
-  {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid=`$participant.id`&{contact.checksum}" h=0 a=1 fe=1}{/capture}
+  {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid={participant.id}&{contact.checksum}" h=0 a=1 fe=1}{/capture}
        <a href="{$selfService}"> {ts}self service cancel or transfer{/ts}</a>
   {/if}
 
@@ -14490,8 +14442,8 @@ INSERT INTO civicrm_option_group
      </tr>
      <tr>
       <td colspan="2" {$valueStyle}>
-       {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {event.title}<br />
+       {event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if {event.end_date|boolean}}-{if \'{event.end_date|crmDate:"%Y%m%d"}\' === \'{event.start_date|crmDate:"%Y%m%d"}\'}{event.end_date|crmDate:"Time"}{else}{event.end_date|crmDate:"%A"} {event.end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      <tr>
@@ -14499,60 +14451,86 @@ INSERT INTO civicrm_option_group
        {ts}Participant Role{/ts}:
       </td>
       <td {$valueStyle}>
-       {$participant.role}
+        {participant.role_id:label}
       </td>
      </tr>
-
-     {if $isShowLocation}
-      <tr>
-       <td colspan="2" {$valueStyle}>
-        {$event.location.address.1.display|nl2br}
-       </td>
-      </tr>
-     {/if}
-
-     {if $event.location.phone.1.phone || $event.location.email.1.email}
-      <tr>
-       <td colspan="2" {$labelStyle}>
-        {ts}Event Contacts:{/ts}
-       </td>
-      </tr>
-      {foreach from=$event.location.phone item=phone}
-       {if $phone.phone}
+     {if {event.is_show_location|boolean}}
         <tr>
-         <td {$labelStyle}>
-          {if $phone.phone_type}{$phone.phone_type_display}{else}{ts}Phone{/ts}{/if}
-         </td>
-         <td {$valueStyle}>
-          {$phone.phone}
-         </td>
+          <td colspan="2" {$valueStyle}>
+            {event.location}
+          </td>
         </tr>
-       {/if}
-      {/foreach}
-      {foreach from=$event.location.email item=eventEmail}
-       {if $eventEmail.email}
-        <tr>
-         <td {$labelStyle}>
-          {ts}Email{/ts}
-         </td>
-         <td {$valueStyle}>
-          {$eventEmail.email}
-         </td>
-        </tr>
-       {/if}
-      {/foreach}
-     {/if}
+      {/if}
 
-     {if $event.is_public}
+     {if {event.loc_block_id.phone_id.phone|boolean} || {event.loc_block_id.email_id.email|boolean}}
+        <tr>
+          <td colspan="2" {$labelStyle}>
+            {ts}Event Contacts:{/ts}
+          </td>
+        </tr>
+
+        {if {event.loc_block_id.phone_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+        {if {event.loc_block_id.phone_2_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_2_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_2_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_2_id.phone} {if {event.loc_block_id.phone_2_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_2_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_id.email}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_2_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_2_id.email}
+            </td>
+          </tr>
+        {/if}
+      {/if}
+
+     {if {event.is_public|boolean}}
      <tr>
        <td colspan="2" {$valueStyle}>
-           {capture assign=icalFeed}{crmURL p=\'civicrm/event/ical\' q="reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
+           {capture assign=icalFeed}{crmURL p=\'civicrm/event/ical\' q="reset=1&id={event.id}" h=0 a=1 fe=1}{/capture}
          <a href="{$icalFeed}">{ts}Download iCalendar entry for this event.{/ts}</a>
        </td>
      </tr>
      <tr>
        <td colspan="2" {$valueStyle}>
-           {capture assign=gCalendar}{crmURL p=\'civicrm/event/ical\' q="gCalendar=1&reset=1&id=`$event.id`" h=0 a=1 fe=1}{/capture}
+           {capture assign=gCalendar}{crmURL p=\'civicrm/event/ical\' q="gCalendar=1&reset=1&id={event.id}" h=0 a=1 fe=1}{/capture}
          <a href="{$gCalendar}">{ts}Add event to Google Calendar{/ts}</a>
        </td>
      </tr>
@@ -14571,13 +14549,13 @@ INSERT INTO civicrm_option_group
       </tr>
      {/if}
 
-     {if $register_date}
+     {if {participant.register_date|boolean}}
       <tr>
        <td {$labelStyle}>
         {ts}Registration Date{/ts}
        </td>
        <td {$valueStyle}>
-        {$participant.register_date|crmDate}
+         {participant.register_date}
        </td>
       </tr>
      {/if}
@@ -14585,11 +14563,11 @@ INSERT INTO civicrm_option_group
     </table>
    </td>
   </tr>
-  {if $event.allow_selfcancelxfer}
+  {if {event.allow_selfcancelxfer|boolean}}
    <tr>
      <td colspan="2" {$valueStyle}>
-       {ts 1=$selfcancelxfer_time 2=$selfservice_preposition}You may transfer your registration to another participant or cancel your registration up to %1 hours %2 the event.{/ts} {if $totalAmount}{ts}Cancellations are not refundable.{/ts}{/if}<br />
-         {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid=`$participant.id`&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
+       {ts 1=$selfcancelxfer_time 2=$selfservice_preposition}You may transfer your registration to another participant or cancel your registration up to %1 hours %2 the event.{/ts}<br />
+         {capture assign=selfService}{crmURL p=\'civicrm/event/selfsvcupdate\' q="reset=1&pid={participant.id}&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
        <a href="{$selfService}">{ts}Click here to transfer or cancel your registration.{/ts}</a>
      </td>
    </tr>
@@ -14637,7 +14615,7 @@ INSERT INTO civicrm_option_group
   <tr>
    <td>
     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
-    <p>{ts 1=$event.event_title}Your pending event registration for %1 has expired
+    <p>{ts 1="{event.title}"}Your pending event registration for %1 has expired
 because you did not confirm your registration.{/ts}</p>
     <p>{ts 1=\'{domain.phone}\' 2=\'{domain.email}\'}Please contact us at %1 or send email to %2 if you have questions
 or want to inquire about reinstating your registration for this event.{/ts}</p>
@@ -14653,8 +14631,8 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
      </tr>
      <tr>
       <td colspan="2" {$valueStyle}>
-       {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {event.title}<br />
+       {event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if {event.end_date|boolean}}-{if \'{event.end_date|crmDate:"%Y%m%d"}\' === \'{event.start_date|crmDate:"%Y%m%d"}\'}{event.end_date|crmDate:"Time"}{else}{event.end_date|crmDate:"%A"} {event.end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      <tr>
@@ -14662,70 +14640,84 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
        {ts}Participant Role{/ts}:
       </td>
       <td {$valueStyle}>
-       {$participant.role}
+        {participant.role_id:label}
       </td>
      </tr>
 
-     {if $isShowLocation}
-      <tr>
-       <td colspan="2" {$valueStyle}>
-        {$event.location.address.1.display|nl2br}
-       </td>
-      </tr>
-     {/if}
-
-     {if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
-      <tr>
-       <td colspan="2" {$labelStyle}>
-        {ts}Event Contacts:{/ts}
-       </td>
-      </tr>
-      {foreach from=$event.location.phone item=phone}
-       {if $phone.phone}
+    {if {event.is_show_location|boolean}}
         <tr>
-         <td {$labelStyle}>
-          {if $phone.phone_type}{$phone.phone_type_display}{else}{ts}Phone{/ts}{/if}
-         </td>
-         <td {$valueStyle}>
-          {$phone.phone}
-         </td>
+          <td colspan="2" {$valueStyle}>
+            {event.location}
+          </td>
         </tr>
-       {/if}
-      {/foreach}
-      {foreach from=$event.location.email item=eventEmail}
-       {if $eventEmail.email}
+      {/if}
+
+    {if {event.loc_block_id.phone_id.phone|boolean} || {event.loc_block_id.email_id.email|boolean}}
         <tr>
-         <td {$labelStyle}>
-          {ts}Email{/ts}
-         </td>
-         <td {$valueStyle}>
-          {$eventEmail.email}
-         </td>
+          <td colspan="2" {$labelStyle}>
+            {ts}Event Contacts:{/ts}
+          </td>
         </tr>
-       {/if}
-      {/foreach}
-     {/if}
 
-     {if \'{contact.email}\'}
-      <tr>
-       <th {$headerStyle}>
-        {ts}Registered Email{/ts}
-       </th>
-      </tr>
-      <tr>
-       <td colspan="2" {$valueStyle}>
-        {contact.email}
-       </td>
-      </tr>
-     {/if}
+        {if {event.loc_block_id.phone_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+        {if {event.loc_block_id.phone_2_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_2_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_2_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_2_id.phone} {if {event.loc_block_id.phone_2_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_2_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
 
-     {if $register_date}
+        {if {event.loc_block_id.email_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_id.email}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_2_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_2_id.email}
+            </td>
+          </tr>
+        {/if}
+      {/if}
+
+    {if {participant.register_date|boolean}}
       <tr>
        <td {$labelStyle}>
         {ts}Registration Date{/ts}
        </td>
        <td {$valueStyle}>
-        {$participant.register_date|crmDate}
+        {participant.register_date}
        </td>
       </tr>
      {/if}
@@ -14773,7 +14765,7 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
   <tr>
    <td>
     {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
-    <p>{ts 1=$event.event_title}Your pending event registration for %1 has expired
+    <p>{ts 1="{event.title}"}Your pending event registration for %1 has expired
 because you did not confirm your registration.{/ts}</p>
     <p>{ts 1=\'{domain.phone}\' 2=\'{domain.email}\'}Please contact us at %1 or send email to %2 if you have questions
 or want to inquire about reinstating your registration for this event.{/ts}</p>
@@ -14789,8 +14781,8 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
      </tr>
      <tr>
       <td colspan="2" {$valueStyle}>
-       {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {event.title}<br />
+       {event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if {event.end_date|boolean}}-{if \'{event.end_date|crmDate:"%Y%m%d"}\' === \'{event.start_date|crmDate:"%Y%m%d"}\'}{event.end_date|crmDate:"Time"}{else}{event.end_date|crmDate:"%A"} {event.end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      <tr>
@@ -14798,70 +14790,84 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
        {ts}Participant Role{/ts}:
       </td>
       <td {$valueStyle}>
-       {$participant.role}
+        {participant.role_id:label}
       </td>
      </tr>
 
-     {if $isShowLocation}
-      <tr>
-       <td colspan="2" {$valueStyle}>
-        {$event.location.address.1.display|nl2br}
-       </td>
-      </tr>
-     {/if}
-
-     {if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
-      <tr>
-       <td colspan="2" {$labelStyle}>
-        {ts}Event Contacts:{/ts}
-       </td>
-      </tr>
-      {foreach from=$event.location.phone item=phone}
-       {if $phone.phone}
+    {if {event.is_show_location|boolean}}
         <tr>
-         <td {$labelStyle}>
-          {if $phone.phone_type}{$phone.phone_type_display}{else}{ts}Phone{/ts}{/if}
-         </td>
-         <td {$valueStyle}>
-          {$phone.phone}
-         </td>
+          <td colspan="2" {$valueStyle}>
+            {event.location}
+          </td>
         </tr>
-       {/if}
-      {/foreach}
-      {foreach from=$event.location.email item=eventEmail}
-       {if $eventEmail.email}
+      {/if}
+
+    {if {event.loc_block_id.phone_id.phone|boolean} || {event.loc_block_id.email_id.email|boolean}}
         <tr>
-         <td {$labelStyle}>
-          {ts}Email{/ts}
-         </td>
-         <td {$valueStyle}>
-          {$eventEmail.email}
-         </td>
+          <td colspan="2" {$labelStyle}>
+            {ts}Event Contacts:{/ts}
+          </td>
         </tr>
-       {/if}
-      {/foreach}
-     {/if}
 
-     {if \'{contact.email}\'}
-      <tr>
-       <th {$headerStyle}>
-        {ts}Registered Email{/ts}
-       </th>
-      </tr>
-      <tr>
-       <td colspan="2" {$valueStyle}>
-        {contact.email}
-       </td>
-      </tr>
-     {/if}
+        {if {event.loc_block_id.phone_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+        {if {event.loc_block_id.phone_2_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_2_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_2_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_2_id.phone} {if {event.loc_block_id.phone_2_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_2_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
 
-     {if $register_date}
+        {if {event.loc_block_id.email_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_id.email}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_2_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_2_id.email}
+            </td>
+          </tr>
+        {/if}
+      {/if}
+
+    {if {participant.register_date|boolean}}
       <tr>
        <td {$labelStyle}>
         {ts}Registration Date{/ts}
        </td>
        <td {$valueStyle}>
-        {$participant.register_date|crmDate}
+        {participant.register_date}
        </td>
       </tr>
      {/if}
@@ -14926,8 +14932,8 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
      </tr>
      <tr>
       <td colspan="2" {$valueStyle}>
-       {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {event.title}<br />
+       {event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if {event.end_date|boolean}}-{if \'{event.end_date|crmDate:"%Y%m%d"}\' === \'{event.start_date|crmDate:"%Y%m%d"}\'}{event.end_date|crmDate:"Time"}{else}{event.end_date|crmDate:"%A"} {event.end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      <tr>
@@ -14935,49 +14941,76 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
        {ts}Participant Role{/ts}:
       </td>
       <td {$valueStyle}>
-       {$participant.role}
+       {participant.role_id:label}
       </td>
      </tr>
 
-     {if $isShowLocation}
-      <tr>
-       <td colspan="2" {$valueStyle}>
-        {$event.location.address.1.display|nl2br}
-       </td>
-      </tr>
-     {/if}
+     {if {event.is_show_location|boolean}}
+        <tr>
+          <td colspan="2" {$valueStyle}>
+            {event.location}
+          </td>
+        </tr>
+      {/if}
 
-     {if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
-      <tr>
-       <td colspan="2" {$labelStyle}>
-        {ts}Event Contacts:{/ts}
-       </td>
-      </tr>
-      {foreach from=$event.location.phone item=phone}
-       {if $phone.phone}
+     {if {event.loc_block_id.phone_id.phone|boolean} || {event.loc_block_id.email_id.email|boolean}}
         <tr>
-         <td {$labelStyle}>
-          {if $phone.phone_type}{$phone.phone_type_display}{else}{ts}Phone{/ts}{/if}
-         </td>
-         <td {$valueStyle}>
-          {$phone.phone}
-         </td>
+          <td colspan="2" {$labelStyle}>
+            {ts}Event Contacts:{/ts}
+          </td>
         </tr>
-       {/if}
-      {/foreach}
-      {foreach from=$event.location.email item=eventEmail}
-       {if $eventEmail.email}
-        <tr>
-         <td {$labelStyle}>
-          {ts}Email{/ts}
-         </td>
-         <td {$valueStyle}>
-          {$eventEmail.email}
-         </td>
-        </tr>
-       {/if}
-      {/foreach}
-     {/if}
+
+        {if {event.loc_block_id.phone_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+        {if {event.loc_block_id.phone_2_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_2_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_2_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_2_id.phone} {if {event.loc_block_id.phone_2_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_2_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_id.email}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_2_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_2_id.email}
+            </td>
+          </tr>
+        {/if}
+      {/if}
 
      {if \'{contact.email}\'}
       <tr>
@@ -14992,13 +15025,13 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
       </tr>
      {/if}
 
-     {if $register_date}
+      {if {participant.register_date|boolean}}
       <tr>
        <td {$labelStyle}>
         {ts}Registration Date{/ts}
        </td>
        <td {$valueStyle}>
-        {$participant.register_date|crmDate}
+        {participant.register_date}
        </td>
       </tr>
      {/if}
@@ -15059,8 +15092,8 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
      </tr>
      <tr>
       <td colspan="2" {$valueStyle}>
-       {$event.event_title}<br />
-       {$event.event_start_date|crmDate}{if $event.event_end_date}-{if $event.event_end_date|crmDate:"%Y%m%d" == $event.event_start_date|crmDate:"%Y%m%d"}{$event.event_end_date|crmDate:0:1}{else}{$event.event_end_date|crmDate}{/if}{/if}
+       {event.title}<br />
+       {event.start_date|crmDate:"%A"} {event.start_date|crmDate}{if {event.end_date|boolean}}-{if \'{event.end_date|crmDate:"%Y%m%d"}\' === \'{event.start_date|crmDate:"%Y%m%d"}\'}{event.end_date|crmDate:"Time"}{else}{event.end_date|crmDate:"%A"} {event.end_date|crmDate}{/if}{/if}
       </td>
      </tr>
      <tr>
@@ -15068,49 +15101,76 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
        {ts}Participant Role{/ts}:
       </td>
       <td {$valueStyle}>
-       {$participant.role}
+       {participant.role_id:label}
       </td>
      </tr>
 
-     {if $isShowLocation}
-      <tr>
-       <td colspan="2" {$valueStyle}>
-        {$event.location.address.1.display|nl2br}
-       </td>
-      </tr>
-     {/if}
+     {if {event.is_show_location|boolean}}
+        <tr>
+          <td colspan="2" {$valueStyle}>
+            {event.location}
+          </td>
+        </tr>
+      {/if}
 
-     {if !empty($event.location.phone.1.phone) || !empty($event.location.email.1.email)}
-      <tr>
-       <td colspan="2" {$labelStyle}>
-        {ts}Event Contacts:{/ts}
-       </td>
-      </tr>
-      {foreach from=$event.location.phone item=phone}
-       {if $phone.phone}
+     {if {event.loc_block_id.phone_id.phone|boolean} || {event.loc_block_id.email_id.email|boolean}}
         <tr>
-         <td {$labelStyle}>
-          {if $phone.phone_type}{$phone.phone_type_display}{else}{ts}Phone{/ts}{/if}
-         </td>
-         <td {$valueStyle}>
-          {$phone.phone}
-         </td>
+          <td colspan="2" {$labelStyle}>
+            {ts}Event Contacts:{/ts}
+          </td>
         </tr>
-       {/if}
-      {/foreach}
-      {foreach from=$event.location.email item=eventEmail}
-       {if $eventEmail.email}
-        <tr>
-         <td {$labelStyle}>
-          {ts}Email{/ts}
-         </td>
-         <td {$valueStyle}>
-          {$eventEmail.email}
-         </td>
-        </tr>
-       {/if}
-      {/foreach}
-     {/if}
+
+        {if {event.loc_block_id.phone_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_id.phone} {if {event.loc_block_id.phone_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+        {if {event.loc_block_id.phone_2_id.phone|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {if {event.loc_block_id.phone_2_id.phone_type_id|boolean}}
+                {event.loc_block_id.phone_2_id.phone_type_id:label}
+              {else}
+                {ts}Phone{/ts}
+              {/if}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.phone_2_id.phone} {if {event.loc_block_id.phone_2_id.phone_ext|boolean}}&nbsp;{ts}ext.{/ts} {event.loc_block_id.phone_2_id.phone_ext}{/if}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_id.email}
+            </td>
+          </tr>
+        {/if}
+
+        {if {event.loc_block_id.email_2_id.email|boolean}}
+          <tr>
+            <td {$labelStyle}>
+              {ts}Email{/ts}
+            </td>
+            <td {$valueStyle}>
+              {event.loc_block_id.email_2_id.email}
+            </td>
+          </tr>
+        {/if}
+      {/if}
 
      {if \'{contact.email}\'}
       <tr>
@@ -15125,13 +15185,13 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
       </tr>
      {/if}
 
-     {if $register_date}
+      {if {participant.register_date|boolean}}
       <tr>
        <td {$labelStyle}>
         {ts}Registration Date{/ts}
        </td>
        <td {$valueStyle}>
-        {$participant.register_date|crmDate}
+        {participant.register_date}
        </td>
       </tr>
      {/if}
@@ -16103,9 +16163,11 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
   <tr>
    <td>
      {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
-    {if $userText}
-     <p>{$userText}</p>
-    {/if}
+     {if $userText}
+       <p>{$userText}</p>
+     {elseif {contribution.contribution_page_id.receipt_text|boolean}}
+       <p>{contribution.contribution_page_id.receipt_text}</p>
+     {/if}
     {if {contribution.balance_amount|boolean} && {contribution.is_pay_later|boolean}}
       <p>{contribution.contribution_page_id.pay_later_receipt}</p>
     {/if}
@@ -16544,9 +16606,11 @@ or want to inquire about reinstating your registration for this event.{/ts}</p>
   <tr>
    <td>
      {assign var="greeting" value="{contact.email_greeting_display}"}{if $greeting}<p>{$greeting},</p>{/if}
-    {if $userText}
-     <p>{$userText}</p>
-    {/if}
+     {if $userText}
+       <p>{$userText}</p>
+     {elseif {contribution.contribution_page_id.receipt_text|boolean}}
+       <p>{contribution.contribution_page_id.receipt_text}</p>
+     {/if}
     {if {contribution.balance_amount|boolean} && {contribution.is_pay_later|boolean}}
       <p>{contribution.contribution_page_id.pay_later_receipt}</p>
     {/if}
@@ -19559,6 +19623,7 @@ INSERT INTO civicrm_option_value (`color`,`component_id`,`description`,`domain_i
 (NULL,NULL,"",NULL,NULL,NULL,NULL,"1","0","0","1","Campaigns","Campaign",@this_option_group_id,"Campaign",NULL,"1")
 ;
 
+
 -- +--------------------------------------------------------------------+
 -- | Copyright CiviCRM LLC. All rights reserved.                        |
 -- |                                                                    |
@@ -20304,4 +20369,6 @@ INSERT INTO `civicrm_report_instance`
     ( `domain_id`, `title`, `report_id`, `description`, `permission`, `form_values`)
 VALUES
     (  @domainID, 'Survey Details', 'survey/detail', 'Detailed report for canvassing, phone-banking, walk lists or other surveys.', 'access CiviReport', 'a:39:{s:6:"fields";a:2:{s:9:"sort_name";s:1:"1";s:6:"result";s:1:"1";}s:22:"assignee_contact_id_op";s:2:"eq";s:25:"assignee_contact_id_value";s:0:"";s:12:"sort_name_op";s:3:"has";s:15:"sort_name_value";s:0:"";s:17:"street_number_min";s:0:"";s:17:"street_number_max";s:0:"";s:16:"street_number_op";s:3:"lte";s:19:"street_number_value";s:0:"";s:14:"street_name_op";s:3:"has";s:17:"street_name_value";s:0:"";s:15:"postal_code_min";s:0:"";s:15:"postal_code_max";s:0:"";s:14:"postal_code_op";s:3:"lte";s:17:"postal_code_value";s:0:"";s:7:"city_op";s:3:"has";s:10:"city_value";s:0:"";s:20:"state_province_id_op";s:2:"in";s:23:"state_province_id_value";a:0:{}s:13:"country_id_op";s:2:"in";s:16:"country_id_value";a:0:{}s:12:"survey_id_op";s:2:"in";s:15:"survey_id_value";a:0:{}s:12:"status_id_op";s:2:"eq";s:15:"status_id_value";s:1:"1";s:11:"custom_1_op";s:2:"in";s:14:"custom_1_value";a:0:{}s:11:"custom_2_op";s:2:"in";s:14:"custom_2_value";a:0:{}s:17:"custom_3_relative";s:1:"0";s:13:"custom_3_from";s:0:"";s:11:"custom_3_to";s:0:"";s:11:"description";s:75:"Detailed report for canvassing, phone-banking, walk lists or other surveys.";s:13:"email_subject";s:0:"";s:8:"email_to";s:0:"";s:8:"email_cc";s:0:"";s:10:"permission";s:17:"access CiviReport";s:6:"groups";s:0:"";s:9:"domain_id";i:1;}');
-UPDATE civicrm_domain SET version = '5.70.2';
+
+UPDATE civicrm_domain SET version = '5.71.0';
+
