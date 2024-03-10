@@ -3,7 +3,7 @@
         'name' => 'civicrm/civicrm-core',
         'pretty_version' => '5.71.x-dev',
         'version' => '5.71.9999999.9999999-dev',
-        'reference' => 'e9b6e737ebad05e1b41d712f693b28f1112f1ec1',
+        'reference' => '601471eeb226f6f9e9b4dd2a23e00644ff6d1cce',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -40,7 +40,7 @@
         'civicrm/civicrm-core' => array(
             'pretty_version' => '5.71.x-dev',
             'version' => '5.71.9999999.9999999-dev',
-            'reference' => 'e9b6e737ebad05e1b41d712f693b28f1112f1ec1',
+            'reference' => '601471eeb226f6f9e9b4dd2a23e00644ff6d1cce',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
