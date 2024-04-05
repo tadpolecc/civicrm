@@ -1513,6 +1513,7 @@ CREATE TABLE `civicrm_job` (
   `domain_id` int unsigned NOT NULL COMMENT 'Which Domain is this scheduled job for',
   `run_frequency` varchar(8) DEFAULT "Daily" COMMENT 'Scheduled job run frequency.',
   `last_run` timestamp NULL DEFAULT NULL COMMENT 'When was this cron entry last run',
+  `last_run_end` timestamp NULL DEFAULT NULL COMMENT 'When did this cron entry last finish running',
   `scheduled_run_date` timestamp NULL DEFAULT NULL COMMENT 'When is this cron entry scheduled to run',
   `name` varchar(255) COMMENT 'Title of the job',
   `description` varchar(255) COMMENT 'Description of the job',

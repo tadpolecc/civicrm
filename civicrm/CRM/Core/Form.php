@@ -202,6 +202,11 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
   public $_tagsetInfo;
 
   /**
+   * @var true
+   */
+  private bool $isValidated = FALSE;
+
+  /**
    * @return string
    */
   public function getContext() {
@@ -734,7 +739,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     if (!empty($hookErrors)) {
       $this->_errors += $hookErrors;
     }
-
+    $this->isValidated = TRUE;
     return (0 == count($this->_errors));
   }
 
@@ -774,7 +779,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     }
 
     if (!empty($defaults)) {
-      $this->setDefaults($defaults);
+      $this->setPurifiedDefaults($defaults);
     }
 
     // call the form hook
@@ -803,6 +808,15 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     self::$_template->ensureVariablesAreAssigned($this->expectedSmartyVariables);
     self::$_template->addExpectedTabHeaderKeys();
     $this->_formBuilt = TRUE;
+  }
+
+  public function setPurifiedDefaults($defaults) {
+    foreach ($defaults as $index => $default) {
+      if (is_string($default) && !is_numeric($default)) {
+        $defaults[$index] = CRM_Utils_String::purifyHTML($default);
+      }
+    }
+    $this->setDefaults($defaults);
   }
 
   /**
@@ -1391,9 +1405,12 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
    *   Name of variable.
    * @param mixed $value
    *   Value of variable.
+   *
+   * @deprecated since 5.72 will be removed around 5.84
    */
   public function assign_by_ref($var, &$value) {
-    self::$_template->assign_by_ref($var, $value);
+    CRM_Core_Error::deprecatedFunctionWarning('assign');
+    self::$_template->assign($var, $value);
   }
 
   /**
@@ -2129,8 +2146,12 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
    */
   public function getVar($name) {
     try {
-      if (!empty(ReflectionUtils::getCodeDocs((new ReflectionProperty($this, $name)), 'Property')['deprecated'])) {
+      $property = ReflectionUtils::getCodeDocs((new ReflectionProperty($this, $name)), 'Property');
+      if (!empty($property['deprecated'])) {
         CRM_Core_Error::deprecatedWarning('deprecated property accessed :' . $name);
+      }
+      if (!empty($property['internal'])) {
+        CRM_Core_Error::deprecatedWarning('internal property accessed (this property could change without warning):' . $name);
       }
     }
     catch (\ReflectionException $e) {
@@ -3087,8 +3108,12 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
    *
    * These values have been validated against the fields added to the form.
    * https://pear.php.net/manual/en/package.html.html-quickform.html-quickform.exportvalues.php
+   * unless the function is being called during before the submission has
+   * been validated. In which the values are not yet validated & hence
+   * taking directly from $_POST.
    *
-   * Any money processing has also been done.
+   * Fields with money or number formats are converted from localised formats
+   * before returning.
    *
    * @param string $fieldName
    *
@@ -3100,6 +3125,18 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
    */
   public function getSubmittedValue(string $fieldName) {
     if (empty($this->exportedValues)) {
+      if (!$this->isValidated) {
+        // Trying to access the submitted value before during during validate.
+        // In this case we get the submitValue which is equivalent to the value
+        // in $_POST. By contrast exportValues will filter out fields
+        // that have not been added to QuickForm.
+        $value = $this->getSubmitValue($fieldName);
+        if (is_string($value)) {
+          // Precaution since we are dealing with values directly in $_POST.
+          $value = CRM_Utils_String::purifyHTML($value);
+        }
+        return $this->getUnLocalizedSubmittedValue($fieldName, $value);
+      }
       $this->exportedValues = $this->controller->exportValues($this->_name);
     }
     $value = $this->exportedValues[$fieldName] ?? NULL;

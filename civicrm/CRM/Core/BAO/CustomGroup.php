@@ -374,7 +374,7 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
    */
   public static function validateCustomGroupName(CRM_Core_DAO_CustomGroup $group) {
     $extends = in_array($group->extends, CRM_Contact_BAO_ContactType::basicTypes(TRUE)) ? 'Contact' : $group->extends;
-    $extendsDAO = CRM_Core_DAO_AllCoreTables::getFullName($extends);
+    $extendsDAO = CRM_Core_DAO_AllCoreTables::getDAONameForEntity($extends);
     if ($extendsDAO) {
       $fields = array_column($extendsDAO::fields(), 'name');
       if (in_array($group->name, $fields)) {
@@ -1196,8 +1196,8 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
    * @param bool $inactiveNeeded
    * @param int $action
    */
-  public static function setDefaults(&$groupTree, &$defaults, $viewMode = FALSE, $inactiveNeeded = FALSE, $action = CRM_Core_Action::NONE) {
-    foreach ($groupTree as $id => $group) {
+  public static function setDefaults($groupTree, &$defaults, $viewMode = FALSE, $inactiveNeeded = FALSE, $action = CRM_Core_Action::NONE) {
+    foreach ($groupTree as $group) {
       if (!isset($group['fields'])) {
         continue;
       }
@@ -1348,7 +1348,7 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
   }
 
   /**
-   * @deprecated function only called from one place...
+   * @deprecated since 5.71 will be remvoed around 5.77
    * @see CRM_Dedupe_Finder::formatParams
    *
    * @param array $groupTree
@@ -1356,6 +1356,7 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
    * @param bool $skipFile
    */
   public static function postProcess(&$groupTree, &$params, $skipFile = FALSE) {
+    CRM_Core_Error::deprecatedFunctionWarning('no alternative');
     // Get the Custom form values and groupTree
     foreach ($groupTree as $groupID => $group) {
       if ($groupID === 'info') {
@@ -1459,8 +1460,8 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
    *
    * @throws \CRM_Core_Exception
    */
-  public static function buildQuickForm(&$form, &$groupTree, $inactiveNeeded = FALSE, $prefix = '') {
-    $form->assign_by_ref("{$prefix}groupTree", $groupTree);
+  public static function buildQuickForm($form, $groupTree, $inactiveNeeded = FALSE, $prefix = '') {
+    $form->assign("{$prefix}groupTree", $groupTree);
 
     foreach ($groupTree as $id => $group) {
       foreach ($group['fields'] as $field) {
@@ -2115,10 +2116,11 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
 
   /**
    * Use APIv4 getFields (or self::getExtendsEntityColumnValueOptions) instead of this beast.
-   * @deprecated
+   * @deprecated as of 5.72 use getExtendsEntityColumnValueOptions - will be removed by 5.78
    * @return array
    */
   public static function getSubTypes(): array {
+    CRM_Core_Error::deprecatedFunctionWarning('CRM_Core_BAO_CustomGroup::getExtendsEntityColumnValueOptions');
     $sel2 = [];
     $activityType = CRM_Activity_BAO_Activity::buildOptions('activity_type_id', 'search');
 
