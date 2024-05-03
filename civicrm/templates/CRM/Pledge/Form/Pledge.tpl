@@ -96,7 +96,7 @@
         {/if}
           <tr id="fromEmail" style="display:none;">
             <td class="label">{$form.from_email_address.label}</td>
-            <td>{$form.from_email_address.html}  {help id="id-from_email" file="CRM/Contact/Form/Task/Help/Email/id-from_email.hlp"}</td>
+            <td>{$form.from_email_address.html}  {help id="id-from_email" file="CRM/Contact/Form/Task/Help/Email/id-from_email.hlp" title=$form.from_email_address.label}</td>
           </tr>
           <tr id="acknowledgeDate">
             <td class="label" class="crm-pledge-form-block-acknowledge_date">{$form.acknowledge_date.label}</td>
@@ -126,7 +126,7 @@
             </td>
           </tr>
           <tr>
-            <td colspan=2>{include file="CRM/Custom/Form/CustomData.tpl"}</td>
+            <td colspan=2>{include file="CRM/common/customDataBlock.tpl" groupID='' customDataType='Pledge' customDataSubType=false entityID=$pledgeID cid=false}</td>
           </tr>
        </table>
 {literal}

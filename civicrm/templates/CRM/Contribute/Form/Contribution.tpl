@@ -216,7 +216,7 @@
         {if empty($is_template)}
         <tr id="fromEmail" class="crm-contribution-form-block-receipt_date" style="display:none;">
           <td class="label">{$form.from_email_address.label}</td>
-          <td>{$form.from_email_address.html} {help id="id-from_email" file="CRM/Contact/Form/Task/Help/Email/id-from_email.hlp"}</td>
+          <td>{$form.from_email_address.html} {help id="id-from_email" file="CRM/Contact/Form/Task/Help/Email/id-from_email.hlp" title=$form.from_email_address.label}</td>
         </tr>
         {/if}
         {if empty($is_template)}
@@ -316,9 +316,8 @@
     <!-- end of PCP -->
 
     {if !$payNow}
-      {include file="CRM/common/customDataBlock.tpl" cid=$contactId}
+      {include file="CRM/common/customDataBlock.tpl" groupID='' customDataType='Contribution' cid=$contactId}
     {/if}
-
     {literal}
       <script type="text/javascript">
         CRM.$(function($) {

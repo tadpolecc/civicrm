@@ -10,8 +10,6 @@
 
 {foreach from=$groupTree item=cd_edit key=group_id}
   {if $cd_edit.is_multiple eq 1}
-    {assign var=tableID value=$cd_edit.table_id}
-    {assign var=divName value=$group_id|cat:"_$tableID"}
     <div></div>
     <details class="crm-accordion-bold crm-custom-accordion" {if $cd_edit.collapse_display and !$skipTitle}{else}open{/if}>
   {else}
@@ -20,7 +18,7 @@
     <summary>
       {$cd_edit.title}
     </summary>
-    <div id="customData{$group_id}" class="crm-accordion-body">
+    <div id="customData_{$contactType}{$group_id}" class="crm-accordion-body crm-customData-block">
       {include file="CRM/Custom/Form/Edit/CustomData.tpl" customDataEntity=''}
       {include file="CRM/Form/attachmentjs.tpl"}
     </div>

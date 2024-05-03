@@ -1204,9 +1204,7 @@ ORDER BY   civicrm_email.is_bulkmail DESC
       $mailParams['Subject'] = implode('', $mailParams['Subject']);
     }
 
-    $mailParams['toName'] = CRM_Utils_Array::value('display_name',
-      $contact
-    );
+    $mailParams['toName'] = $contact['display_name'] ?? NULL;
     $mailParams['toEmail'] = $email;
 
     // Add job ID to mailParams for external email delivery service to utilise
@@ -1592,10 +1590,6 @@ ORDER BY   civicrm_email.is_bulkmail DESC
 
     $mailing = self::add($params);
 
-    if (is_a($mailing, 'CRM_Core_Error')) {
-      $transaction->rollback();
-      return $mailing;
-    }
     // update mailings with hash values
     CRM_Contact_BAO_Contact_Utils::generateChecksum($mailing->id, NULL, NULL, NULL, 'mailing', 16);
 
@@ -1661,38 +1655,43 @@ ORDER BY   civicrm_email.is_bulkmail DESC
       }
       $mailing->copyValues($params);
     }
-
     $errors = [];
-    foreach (['subject', 'name', 'from_name', 'from_email'] as $field) {
-      if (empty($mailing->{$field})) {
-        $errors[$field] = ts('Field "%1" is required.', [
-          1 => $field,
-        ]);
+    if ($mailing->sms_provider_id) {
+      if (empty($mailing->body_text)) {
+        $errors['body'] = ts('Field "body_text" is required.');
       }
     }
-    if (empty($mailing->body_html) && empty($mailing->body_text)) {
-      $errors['body'] = ts('Field "body_html" or "body_text" is required.');
-    }
-
-    if (!Civi::settings()->get('disable_mandatory_tokens_check')) {
-      $header = $mailing->header_id && $mailing->header_id !== 'null' ? CRM_Mailing_BAO_MailingComponent::findById($mailing->header_id) : NULL;
-      $footer = $mailing->footer_id && $mailing->footer_id !== 'null' ? CRM_Mailing_BAO_MailingComponent::findById($mailing->footer_id) : NULL;
-      foreach (['body_html', 'body_text'] as $field) {
+    else {
+      foreach (['subject', 'name', 'from_name', 'from_email'] as $field) {
         if (empty($mailing->{$field})) {
-          continue;
+          $errors[$field] = ts('Field "%1" is required.', [
+            1 => $field,
+          ]);
         }
-        $str = ($header ? $header->{$field} : '') . $mailing->{$field} . ($footer ? $footer->{$field} : '');
-        $err = CRM_Utils_Token::requiredTokens($str);
-        if ($err !== TRUE) {
-          foreach ($err as $token => $desc) {
-            $errors["{$field}:{$token}"] = ts('This message is missing a required token - {%1}: %2',
-              [1 => $token, 2 => $desc]
-            );
+      }
+      if (empty($mailing->body_html) && empty($mailing->body_text)) {
+        $errors['body'] = ts('Field "body_html" or "body_text" is required.');
+      }
+
+      if (!Civi::settings()->get('disable_mandatory_tokens_check')) {
+        $header = $mailing->header_id && $mailing->header_id !== 'null' ? CRM_Mailing_BAO_MailingComponent::findById($mailing->header_id) : NULL;
+        $footer = $mailing->footer_id && $mailing->footer_id !== 'null' ? CRM_Mailing_BAO_MailingComponent::findById($mailing->footer_id) : NULL;
+        foreach (['body_html', 'body_text'] as $field) {
+          if (empty($mailing->{$field})) {
+            continue;
+          }
+          $str = ($header ? $header->{$field} : '') . $mailing->{$field} . ($footer ? $footer->{$field} : '');
+          $err = CRM_Utils_Token::requiredTokens($str);
+          if ($err !== TRUE) {
+            foreach ($err as $token => $desc) {
+              $errors["{$field}:{$token}"] = ts('This message is missing a required token - {%1}: %2',
+                [1 => $token, 2 => $desc]
+              );
+            }
           }
         }
       }
     }
-
     return $errors;
   }
 
