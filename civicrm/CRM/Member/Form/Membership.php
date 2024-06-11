@@ -323,7 +323,7 @@ DESC limit 1");
     $isUpdateToExistingRecurringMembership = $this->isUpdateToExistingRecurringMembership();
     // build price set form.
     $buildPriceSet = FALSE;
-    if ($this->_priceSetId || !empty($_POST['price_set_id'])) {
+    if ($this->isAjaxOverLoadMode() || !empty($_POST['price_set_id'])) {
       if (!empty($_POST['price_set_id'])) {
         $buildPriceSet = TRUE;
       }
@@ -333,11 +333,10 @@ DESC limit 1");
         $getOnlyPriceSetElements = FALSE;
       }
 
-      $this->set('priceSetId', $this->_priceSetId);
-      CRM_Price_BAO_PriceSet::buildPriceSet($this, 'membership', FALSE);
+      $this->buildMembershipPriceSet();
 
       $optionsMembershipTypes = [];
-      foreach ($this->_priceSet['fields'] as $pField) {
+      foreach ($this->getPriceFieldMetaData() as $pField) {
         if (empty($pField['options'])) {
           continue;
         }
@@ -577,6 +576,64 @@ DESC limit 1");
   }
 
   /**
+   * Build the price set form.
+   *
+   * @return void
+   *
+   * @deprecated this should be updated to align with the other forms that use getOrder()
+   */
+  private function buildMembershipPriceSet() {
+    $form = $this;
+
+    $this->_priceSet = $this->getOrder()->getPriceSetMetadata();
+    $validPriceFieldIds = array_keys($this->getPriceFieldMetaData());
+
+    // Mark which field should have the auto-renew checkbox, if any. CRM-18305
+    // This is probably never set & relates to another form from previously shared code.
+    if (!empty($form->_membershipTypeValues) && is_array($form->_membershipTypeValues)) {
+      $autoRenewMembershipTypes = [];
+      foreach ($form->_membershipTypeValues as $membershipTypeValue) {
+        if ($membershipTypeValue['auto_renew']) {
+          $autoRenewMembershipTypes[] = $membershipTypeValue['id'];
+        }
+      }
+      foreach ($form->getPriceFieldMetaData() as $field) {
+        if (array_key_exists('options', $field) && is_array($field['options'])) {
+          foreach ($field['options'] as $option) {
+            if (!empty($option['membership_type_id'])) {
+              if (in_array($option['membership_type_id'], $autoRenewMembershipTypes)) {
+                $form->_priceSet['auto_renew_membership_field'] = $field['id'];
+                // Only one field can offer auto_renew memberships, so break here.
+                // May not relate to this form? From previously shared code.
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    $form->assign('priceSet', $form->_priceSet);
+
+    $checklifetime = FALSE;
+    foreach ($this->getPriceFieldMetaData() as $id => $field) {
+      $options = $field['options'] ?? NULL;
+      if (!is_array($options) || !in_array($id, $validPriceFieldIds)) {
+        continue;
+      }
+      if (!empty($options)) {
+        CRM_Price_BAO_PriceField::addQuickFormElement($form,
+          'price_' . $field['id'],
+          $field['id'],
+          FALSE,
+          $field['is_required'] ?? FALSE,
+          NULL,
+          $options
+        );
+      }
+    }
+  }
+
+  /**
    * Validation.
    *
    * @param array $params
@@ -786,6 +843,44 @@ DESC limit 1");
     }
 
     return empty($errors) ? TRUE : $errors;
+  }
+
+  /**
+   * Get price field metadata.
+   *
+   * The returned value is an array of arrays where each array
+   * is an id-keyed price field and an 'options' key has been added to that
+   * array for any options.
+   *
+   * @api  - this is not yet being used by the form - only by a test but
+   * follows standard methodology so should stay the same.
+   *
+   * @return array
+   */
+  public function getPriceFieldMetaData(): array {
+    $this->_priceSet['fields'] = $this->getOrder()->getPriceFieldsMetadata();
+    return $this->_priceSet['fields'];
+  }
+
+  /**
+   * @return \CRM_Financial_BAO_Order
+   * @throws \CRM_Core_Exception
+   */
+  protected function getOrder(): CRM_Financial_BAO_Order {
+    if (!$this->order) {
+      $this->initializeOrder();
+    }
+    return $this->order;
+  }
+
+  /**
+   * @throws \CRM_Core_Exception
+   */
+  protected function initializeOrder(): void {
+    $this->order = new CRM_Financial_BAO_Order();
+    $this->order->setPriceSetID($this->getPriceSetID());
+    $this->order->setForm($this);
+    $this->order->setPriceSelectionFromUnfilteredInput($this->getSubmittedValues());
   }
 
   /**
@@ -1402,6 +1497,13 @@ DESC limit 1");
       $url = CRM_Utils_System::url('civicrm/contact/view',
         "reset=1&cid={$this->_contactID}&selectedChild=member"
       );
+      // Refresh other tabs with related data
+      $this->ajaxResponse['updateTabs'] = [
+        '#tab_activity' => TRUE,
+      ];
+      if (CRM_Core_Permission::access('CiviContribute')) {
+        $this->ajaxResponse['updateTabs']['#tab_contribute'] = CRM_Contact_BAO_Contact::getCountComponent('contribution', $this->_contactID);
+      }
     }
     $session->replaceUserContext($url);
   }

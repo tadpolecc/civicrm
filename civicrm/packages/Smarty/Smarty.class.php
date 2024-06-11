@@ -1107,8 +1107,8 @@ class Smarty
    *
    * @return \Smarty current Smarty instance for chaining
    */
-  public function setTemplateDir($template_dir, $isConfig = false) {
-    $this->addTemplateDir($template_dir, null, $isConfig);
+  public function setTemplateDir($template_dir) {
+    $this->template_dir = (array) $template_dir;
     return $this;
   }
 
@@ -2150,6 +2150,19 @@ class Smarty
 			return $function;
 		}
 	}
+
+  /**
+   * Adds directory of plugin files
+   *
+   * @param null|array|string $plugins_dir
+   *
+   * @return Smarty current Smarty instance for chaining
+   */
+  public function addPluginsDir($plugins_dir)
+  {
+    $this->plugins_dir = array_merge($this->plugins_dir, (array) $plugins_dir);
+    return $this;
+  }
 
     /**#@-*/
 

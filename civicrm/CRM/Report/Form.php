@@ -1083,7 +1083,7 @@ class CRM_Report_Form extends CRM_Core_Form {
           ) {
             $order_by = [
               'column' => $fieldName,
-              'order' => CRM_Utils_Array::value('default_order', $field, 'ASC'),
+              'order' => $field['default_order'] ?? 'ASC',
               'section' => $field['default_is_section'] ?? 0,
             ];
 
@@ -2525,7 +2525,7 @@ WHERE cg.extends IN ('" . implode("','", $this->_customGroupExtends) . "') AND
     if ($chartEnabled) {
       $this->buildChart($rows);
       $this->_chartId = "{$this->_params['charts']}_" .
-        ($this->_id ? $this->_id : substr(get_class($this), 16)) . '_' .
+        ($this->_id ?: substr(get_class($this), 16)) . '_' .
         CRM_Core_Config::singleton()->userSystem->getSessionId();
       $this->assign('chartId', $this->_chartId);
     }

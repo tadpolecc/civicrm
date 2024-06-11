@@ -28,8 +28,6 @@ if (!defined('DB_DSN_MODE')) {
 require_once 'PEAR.php';
 require_once 'DB/DataObject.php';
 
-require_once 'CRM/Core/I18n.php';
-
 /**
  * Class CRM_Core_DAO
  */
@@ -154,6 +152,10 @@ class CRM_Core_DAO extends DB_DataObject {
     $className = static::class;
     CRM_Core_Error::deprecatedWarning("$className needs to be regenerated. Missing getEntityTitle method.");
     return CRM_Core_DAO_AllCoreTables::getEntityNameForClass($className);
+  }
+
+  public static function getLabelField(): ?string {
+    return static::$_labelField;
   }
 
   /**
@@ -2298,6 +2300,9 @@ SELECT contact_id
     if ($string === NULL) {
       return '';
     }
+    if (isset($GLOBALS['CIVICRM_SQL_ESCAPER'])) {
+      return call_user_func($GLOBALS['CIVICRM_SQL_ESCAPER'], $string);
+    }
     static $_dao = NULL;
     if (!$_dao) {
       // If this is an atypical case (e.g. preparing .sql file before CiviCRM
@@ -3486,7 +3491,7 @@ SELECT contact_id
       // No unique index on "name", do nothing
       return;
     }
-    $labelField = $this::$_labelField;
+    $labelField = $this::getLabelField();
     $label = $this->$labelField ?? NULL;
     if (!$label && $label !== '0') {
       // No label supplied, do nothing
