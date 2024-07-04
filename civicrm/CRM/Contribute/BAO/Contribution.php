@@ -2635,16 +2635,12 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       if ($this->is_test) {
         $isTest = TRUE;
       }
+      $values['modelProps'] = $input['modelProps'] ?? [];
       if (!empty($this->_relatedObjects['membership'])) {
         foreach ($this->_relatedObjects['membership'] as $membership) {
           if ($membership->id) {
             $values['membership_id'] = $membership->id;
-            // need to set the membership values here
-            $template->assign('membership_name',
-              CRM_Member_PseudoConstant::membershipType($membership->membership_type_id)
-            );
             $membership_status = CRM_Member_PseudoConstant::membershipStatus($membership->status_id, NULL, 'label');
-            $template->assign('mem_status', $membership_status);
             if ($membership_status === 'Pending' && $membership->is_pay_later == 1) {
               $values['is_pay_later'] = 1;
             }
@@ -2672,7 +2668,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
         }
       }
       else {
-        $values['modelProps'] = $input['modelProps'] ?? [];
         return CRM_Contribute_BAO_ContributionPage::sendMail($ids['contact'], $values, $isTest, $returnMessageText);
       }
     }
@@ -3803,11 +3798,13 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    *   Is this being called from the payment.create api. If so the api has taken care of financial entities.
    *   Note that our goal is that this would only ever be called from payment.create and never handle financials (only
    *   transitioning related elements).
+   * @param bool $disableActionsOnCompleteOrder Should we not do any processing for memberships,participants when completing the order.
+   *   At the moment this is only passed through by the APIv4 Payment.create and this should not be relied on by extensions as will likely change.
    *
    * @return array
    * @throws \CRM_Core_Exception
    */
-  public static function completeOrder($input, $recurringContributionID, $contributionID, $isPostPaymentCreate = FALSE) {
+  public static function completeOrder($input, $recurringContributionID, $contributionID, $isPostPaymentCreate = FALSE, $disableActionsOnCompleteOrder = FALSE) {
     if (!$contributionID) {
       CRM_Core_Error::deprecatedFunctionWarning('v3api Contribution.repeattransaction. This handling will be removed around 5.70 (calling this function directly has never been supported outside core anyway)');
       return self::repeatTransaction($input, $recurringContributionID);
@@ -3848,7 +3845,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       $contributionParams['contribution_recur_id'] = $recurringContributionID;
     }
 
-    if ($contributionParams['contribution_status_id'] === $completedContributionStatusID) {
+    if ($contributionParams['contribution_status_id'] === $completedContributionStatusID && !$disableActionsOnCompleteOrder) {
       self::updateMembershipBasedOnCompletionOfContribution(
         $contributionID,
         $input['trxn_date'] ?? date('YmdHis')
@@ -3856,7 +3853,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     }
 
     $participantPayments = civicrm_api3('ParticipantPayment', 'get', ['contribution_id' => $contributionID, 'return' => 'participant_id', 'sequential' => 1])['values'];
-    if (!empty($participantPayments) && empty($input['IAmAHorribleNastyBeyondExcusableHackInTheCRMEventFORMTaskClassThatNeedsToBERemoved'])) {
+    if (!empty($participantPayments) && empty($input['IAmAHorribleNastyBeyondExcusableHackInTheCRMEventFORMTaskClassThatNeedsToBERemoved']) && !$disableActionsOnCompleteOrder) {
       foreach ($participantPayments as $participantPayment) {
         $participantParams['id'] = $participantPayment['participant_id'];
         $participantParams['status_id'] = 'Registered';
@@ -3877,7 +3874,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       ->addWhere('pcp_id', '>', 0)
       ->addSelect('*')
       ->execute()->first();
-    if (!empty($contributionSoft)) {
+    if (!empty($contributionSoft) && ((isset($input['is_email_receipt']) && !$input['is_email_receipt']) || !isset($input['is_email_receipt']))) {
       CRM_Contribute_BAO_ContributionSoft::pcpNotifyOwner($contributionID, $contributionSoft);
     }
 
