@@ -97,11 +97,6 @@
       $calendar = IntlGregorianCalendar::createInstance();
       $calendar->setGregorianChange(PHP_INT_MIN);
 
-      // AW 2023-10-29 Temporary fix for compatibility with PHP 8.1.25
-      if ($locale == 'C') {
-        $locale = 'en-US';
-        }
-
       return (new IntlDateFormatter($locale, $date_type, $time_type, $tz, $calendar, $pattern))->format($timestamp);
     };
 
