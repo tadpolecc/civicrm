@@ -321,21 +321,6 @@ return [
       'description' => ts('Discount Amount'),
       'add' => '4.1',
     ],
-    'cart_id' => [
-      'title' => ts('Event Cart ID'),
-      'sql_type' => 'int unsigned',
-      'input_type' => 'EntityRef',
-      'description' => ts('FK to civicrm_event_carts'),
-      'add' => '4.1',
-      'input_attrs' => [
-        'label' => ts('Event Cart'),
-      ],
-      'entity_reference' => [
-        'entity' => 'Cart',
-        'key' => 'id',
-        'on_delete' => 'SET NULL',
-      ],
-    ],
     'must_wait' => [
       'title' => ts('Must Wait on List'),
       'sql_type' => 'int',
