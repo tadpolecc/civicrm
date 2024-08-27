@@ -1,17 +1,17 @@
 <?xml version="1.0"?>
-<extension key="legacycustomsearches" type="module">
-  <file>legacycustomsearches</file>
-  <name>Custom search framework</name>
-  <description>Custom search framework for legacy style custom search</description>
+<extension key="tellafriend" type="module">
+  <file>tellafriend</file>
+  <name>Tell a Friend</name>
+  <description>Provides the Tell a Friend feature previously part of CiviCRM core.</description>
   <license>AGPL-3.0</license>
   <maintainer>
     <author>CiviCRM</author>
     <email>info@civicrm.org</email>
   </maintainer>
   <urls>
-    <url desc="Main Extension Page">http://FIXME</url>
-    <url desc="Documentation">http://FIXME</url>
-    <url desc="Support">http://FIXME</url>
+    <url desc="Main Extension Page">https://lab.civicrm.org/dev/core/-/issues</url>
+    <url desc="Documentation">https://lab.civicrm.org/dev/core/-/issues/1036</url>
+    <url desc="Support">https://lab.civicrm.org/dev/core/-/issues</url>
     <url desc="Licensing">http://www.gnu.org/licenses/agpl-3.0.html</url>
   </urls>
   <releaseDate>2024-08-15</releaseDate>
@@ -20,7 +20,7 @@
   <compatibility>
     <ver>5.76</ver>
   </compatibility>
-  <comments>This is our old search system which has limited support. All new effort is on SearchKit</comments>
+  <comments>This used to be a core CiviCRM functionality and is slowly being phased out. See dev/core#1036</comments>
   <classloader>
     <psr0 prefix="CRM_" path="."/>
     <psr4 prefix="Civi\" path="Civi"/>
@@ -28,11 +28,11 @@
   <mixins>
     <mixin>menu-xml@1.0.0</mixin>
     <mixin>mgd-php@1.0.0</mixin>
-    <mixin>smarty@1.0.0</mixin>
     <mixin>setting-php@1.0.0</mixin>
+    <mixin>smarty-v2@1.0.1</mixin>
   </mixins>
   <civix>
-    <namespace>CRM/Legacycustomsearches</namespace>
+    <namespace>CRM/Friend</namespace>
     <format>23.02.1</format>
   </civix>
 </extension>
