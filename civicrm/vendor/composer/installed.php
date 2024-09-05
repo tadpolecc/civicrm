@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'civicrm/civicrm-core',
-        'pretty_version' => '5.76.x-dev',
-        'version' => '5.76.9999999.9999999-dev',
-        'reference' => 'b2dbbed3435c497cd5f8d4137fff8db7f2bc0718',
+        'pretty_version' => '5.77.x-dev',
+        'version' => '5.77.9999999.9999999-dev',
+        'reference' => '786deb637f93a0b885c2c1455dd83fac52e59150',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -47,9 +47,9 @@
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-core' => array(
-            'pretty_version' => '5.76.x-dev',
-            'version' => '5.76.9999999.9999999-dev',
-            'reference' => 'b2dbbed3435c497cd5f8d4137fff8db7f2bc0718',
+            'pretty_version' => '5.77.x-dev',
+            'version' => '5.77.9999999.9999999-dev',
+            'reference' => '786deb637f93a0b885c2c1455dd83fac52e59150',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

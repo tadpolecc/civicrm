@@ -1380,6 +1380,23 @@ CREATE TABLE `civicrm_setting` (
   UNIQUE INDEX `index_domain_contact_name`(`domain_id`, `contact_id`, `name`)
 )
 ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+CREATE TABLE `civicrm_site_token` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `domain_id` int unsigned NOT NULL,
+  `name` varchar(64) NOT NULL COMMENT 'Token string, e.g. {site.[name]}',
+  `label` varchar(255) NOT NULL COMMENT 'User-visible label in token UI',
+  `body_html` text COMMENT 'Value of the token in html format.',
+  `body_text` text COMMENT 'Value of the token in text format.',
+  `is_active` boolean NOT NULL DEFAULT TRUE COMMENT 'Is this token active?',
+  `is_reserved` boolean NOT NULL DEFAULT FALSE COMMENT 'Is this token reserved?',
+  `created_id` int unsigned COMMENT 'Contact responsible for creating this token',
+  `modified_id` int unsigned COMMENT 'FK to contact table.',
+  `modified_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'When the token was created or modified or deleted.',
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `UI_name_domain_id`(`name`, `domain_id`),
+  UNIQUE INDEX `UI_label_domain_id`(`label`, `domain_id`)
+)
+ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 CREATE TABLE `civicrm_state_province` (
   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'State/Province ID',
   `name` varchar(64) COMMENT 'Name of State/Province',
@@ -1448,7 +1465,7 @@ CREATE TABLE `civicrm_translation` (
   `entity_id` int NOT NULL COMMENT 'ID of the relevant entity.',
   `language` varchar(5) NOT NULL COMMENT 'Relevant language',
   `status_id` tinyint NOT NULL DEFAULT 1 COMMENT 'Specify whether the string is active, draft, etc',
-  `string` longtext NOT NULL COMMENT 'Translated string',
+  `string` longtext COMMENT 'Translated string',
   PRIMARY KEY (`id`),
   INDEX `index_entity_lang`(`entity_id`, `entity_table`, `language`)
 )
@@ -1626,13 +1643,6 @@ CREATE TABLE `civicrm_dedupe_rule_group` (
   UNIQUE INDEX `UI_name`(`name`)
 )
 ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
-CREATE TABLE `civicrm_event_carts` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Cart ID',
-  `user_id` int unsigned COMMENT 'FK to civicrm_contact who created this cart',
-  `completed` boolean NOT NULL DEFAULT FALSE,
-  PRIMARY KEY (`id`)
-)
-ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 CREATE TABLE `civicrm_event` (
   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Event',
   `title` varchar(255) COMMENT 'Event Title (e.g. Fall Fundraiser Dinner)',
@@ -1710,13 +1720,6 @@ CREATE TABLE `civicrm_event` (
   INDEX `index_parent_event_id`(`parent_event_id`)
 )
 ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
-CREATE TABLE `civicrm_events_in_carts` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Event In Cart ID',
-  `event_id` int unsigned COMMENT 'FK to Event ID',
-  `event_cart_id` int unsigned COMMENT 'FK to Event Cart ID',
-  PRIMARY KEY (`id`)
-)
-ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 CREATE TABLE `civicrm_participant` (
   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Participant ID',
   `contact_id` int unsigned NOT NULL COMMENT 'FK to Contact ID',
@@ -1734,7 +1737,6 @@ CREATE TABLE `civicrm_participant` (
   `fee_currency` varchar(3) DEFAULT NULL COMMENT '3 character string, value derived from config setting.',
   `campaign_id` int unsigned COMMENT 'The campaign for which this participant has been registered.',
   `discount_amount` int unsigned COMMENT 'Discount Amount',
-  `cart_id` int unsigned COMMENT 'FK to civicrm_event_carts',
   `must_wait` int COMMENT 'On Waiting List',
   `transferred_to_contact_id` int unsigned DEFAULT NULL COMMENT 'FK to Contact ID',
   `created_id` int unsigned COMMENT 'Contact responsible for registering this participant',
@@ -2001,6 +2003,9 @@ CREATE TABLE `civicrm_mailing` (
   `modified_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'When the mailing (or closely related entity) was created or modified or deleted.',
   `scheduled_id` int unsigned COMMENT 'FK to Contact ID who scheduled this mailing',
   `scheduled_date` timestamp NULL DEFAULT NULL COMMENT 'Date and time this mailing was scheduled.',
+  `start_date` timestamp NULL DEFAULT NULL COMMENT 'When the mailing started to go out',
+  `end_date` timestamp NULL DEFAULT NULL COMMENT 'When the mailing finished going out.',
+  `status` varchar(32) DEFAULT 'Draft' COMMENT 'The status of this mailing',
   `approver_id` int unsigned COMMENT 'FK to Contact ID who approved this mailing',
   `approval_date` timestamp NULL DEFAULT NULL COMMENT 'Date and time this mailing was approved.',
   `approval_status_id` int unsigned COMMENT 'The status of this mailing. Values: none, approved, rejected',
@@ -2477,7 +2482,7 @@ CREATE TABLE `civicrm_price_set_entity` (
 ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 CREATE TABLE `civicrm_queue` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) NOT NULL COMMENT 'Name of the queue',
+  `name` varchar(128) NOT NULL COMMENT 'Name of the queue',
   `type` varchar(64) NOT NULL COMMENT 'Type of the queue',
   `runner` varchar(64) COMMENT 'Name of the task runner',
   `batch_limit` int unsigned NOT NULL DEFAULT 1 COMMENT 'Maximum number of items in a batch.',
@@ -2493,7 +2498,7 @@ CREATE TABLE `civicrm_queue` (
 ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 CREATE TABLE `civicrm_queue_item` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `queue_name` varchar(64) NOT NULL COMMENT 'Name of the queue which includes this item',
+  `queue_name` varchar(128) NOT NULL COMMENT 'Name of the queue which includes this item',
   `weight` int NOT NULL,
   `submit_time` timestamp NOT NULL COMMENT 'date on which this item was submitted to the queue',
   `release_time` timestamp NULL DEFAULT NULL COMMENT 'date on which this job becomes available; null if ASAP',
@@ -2743,6 +2748,10 @@ ALTER TABLE `civicrm_setting`
   ADD CONSTRAINT `FK_civicrm_setting_contact_id` FOREIGN KEY (`contact_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `FK_civicrm_setting_component_id` FOREIGN KEY (`component_id`) REFERENCES `civicrm_component`(`id`),
   ADD CONSTRAINT `FK_civicrm_setting_created_id` FOREIGN KEY (`created_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL;
+ALTER TABLE `civicrm_site_token`
+  ADD CONSTRAINT `FK_civicrm_site_token_domain_id` FOREIGN KEY (`domain_id`) REFERENCES `civicrm_domain`(`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `FK_civicrm_site_token_created_id` FOREIGN KEY (`created_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `FK_civicrm_site_token_modified_id` FOREIGN KEY (`modified_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL;
 ALTER TABLE `civicrm_state_province`
   ADD CONSTRAINT `FK_civicrm_state_province_country_id` FOREIGN KEY (`country_id`) REFERENCES `civicrm_country`(`id`);
 ALTER TABLE `civicrm_status_pref`
@@ -2776,16 +2785,11 @@ ALTER TABLE `civicrm_dedupe_exception`
   ADD CONSTRAINT `FK_civicrm_dedupe_exception_contact_id2` FOREIGN KEY (`contact_id2`) REFERENCES `civicrm_contact`(`id`) ON DELETE CASCADE;
 ALTER TABLE `civicrm_dedupe_rule`
   ADD CONSTRAINT `FK_civicrm_dedupe_rule_dedupe_rule_group_id` FOREIGN KEY (`dedupe_rule_group_id`) REFERENCES `civicrm_dedupe_rule_group`(`id`);
-ALTER TABLE `civicrm_event_carts`
-  ADD CONSTRAINT `FK_civicrm_event_carts_user_id` FOREIGN KEY (`user_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL;
 ALTER TABLE `civicrm_event`
   ADD CONSTRAINT `FK_civicrm_event_loc_block_id` FOREIGN KEY (`loc_block_id`) REFERENCES `civicrm_loc_block`(`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `FK_civicrm_event_created_id` FOREIGN KEY (`created_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `FK_civicrm_event_campaign_id` FOREIGN KEY (`campaign_id`) REFERENCES `civicrm_campaign`(`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `FK_civicrm_event_dedupe_rule_group_id` FOREIGN KEY (`dedupe_rule_group_id`) REFERENCES `civicrm_dedupe_rule_group`(`id`);
-ALTER TABLE `civicrm_events_in_carts`
-  ADD CONSTRAINT `FK_civicrm_events_in_carts_event_id` FOREIGN KEY (`event_id`) REFERENCES `civicrm_event`(`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `FK_civicrm_events_in_carts_event_cart_id` FOREIGN KEY (`event_cart_id`) REFERENCES `civicrm_event_carts`(`id`) ON DELETE CASCADE;
 ALTER TABLE `civicrm_participant`
   ADD CONSTRAINT `FK_civicrm_participant_contact_id` FOREIGN KEY (`contact_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `FK_civicrm_participant_event_id` FOREIGN KEY (`event_id`) REFERENCES `civicrm_event`(`id`) ON DELETE CASCADE,
@@ -2793,7 +2797,6 @@ ALTER TABLE `civicrm_participant`
   ADD CONSTRAINT `FK_civicrm_participant_registered_by_id` FOREIGN KEY (`registered_by_id`) REFERENCES `civicrm_participant`(`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `FK_civicrm_participant_discount_id` FOREIGN KEY (`discount_id`) REFERENCES `civicrm_discount`(`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `FK_civicrm_participant_campaign_id` FOREIGN KEY (`campaign_id`) REFERENCES `civicrm_campaign`(`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `FK_civicrm_participant_cart_id` FOREIGN KEY (`cart_id`) REFERENCES `civicrm_event_carts`(`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `FK_civicrm_participant_transferred_to_contact_id` FOREIGN KEY (`transferred_to_contact_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `FK_civicrm_participant_created_id` FOREIGN KEY (`created_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL;
 ALTER TABLE `civicrm_participant_payment`

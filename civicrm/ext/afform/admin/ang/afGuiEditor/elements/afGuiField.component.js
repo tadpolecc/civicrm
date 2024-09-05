@@ -65,7 +65,6 @@
         if (ctrl.fieldDefn.operators && ctrl.fieldDefn.operators.length) {
           this.searchOperators = _.pick(this.searchOperators, ctrl.fieldDefn.operators);
         }
-        setDateOptions();
       };
 
       this.getFkEntity = function() {
@@ -154,6 +153,10 @@
             entityRefOptions = newOptions;
           }
           return entityRefOptions;
+        }
+        if (_.includes(['Date', 'Timestamp'], $scope.getProp('data_type'))) {
+          ctrl.node.defn = ctrl.node.defn || {};
+          return $scope.getProp('search_range') ? CRM.afGuiEditor.dateRanges : CRM.afGuiEditor.dateRanges.slice(1);
         }
         return ctrl.getDefn().options || (ctrl.getDefn().data_type === 'Boolean' ? yesNo : null);
       };
@@ -247,7 +250,6 @@
         if (ctrl.hasDefaultValue) {
           $scope.toggleDefaultValue();
         }
-        setDateOptions();
       };
 
       $scope.toggleAttr = function(attr) {
@@ -264,15 +266,7 @@
       }
 
       function setFieldDefn() {
-        ctrl.fieldDefn = angular.extend({}, ctrl.getDefn(), ctrl.node.defn);
-      }
-
-      function setDateOptions() {
-        if (_.includes(['Date', 'Timestamp'], $scope.getProp('data_type'))) {
-          ctrl.node.defn = ctrl.node.defn || {};
-          ctrl.node.defn.options = $scope.getProp('search_range') ? CRM.afGuiEditor.dateRanges : CRM.afGuiEditor.dateRanges.slice(1);
-          setFieldDefn();
-        }
+        ctrl.fieldDefn = angular.merge({}, ctrl.getDefn(), ctrl.node.defn);
       }
 
       $scope.toggleDefaultValue = function() {
