@@ -149,7 +149,7 @@ class CRM_Event_Page_EventInfo extends CRM_Core_Page {
 
     // fix phone type labels
     if (!empty($values['location']['phone'])) {
-      $phoneTypes = CRM_Core_PseudoConstant::get('CRM_Core_DAO_Phone', 'phone_type_id');
+      $phoneTypes = CRM_Core_DAO_Phone::buildOptions('phone_type_id');
       foreach ($values['location']['phone'] as &$val) {
         if (!empty($val['phone_type_id'])) {
           $val['phone_type_display'] = $phoneTypes[$val['phone_type_id']];
@@ -246,10 +246,16 @@ class CRM_Event_Page_EventInfo extends CRM_Core_Page {
       $this->getEventID(), 'register for events'
     );
     if ($hasPermission && $this->isAvailableForOnlineRegistration()) {
+      // Copy over the checksum, if one was present
+      $checksum_query = CRM_Utils_Request::retrieveValue('cs', 'String');
+      if ($checksum_query) {
+        $checksum_query = '&cs=' . $checksum_query . '&cid=' . CRM_Utils_Request::retrieveValue('cid', 'Positive');
+      }
+
       // we always generate urls for the front end in joomla
       $action_query = $action === CRM_Core_Action::PREVIEW ? "&action=$action" : '';
       $url = CRM_Utils_System::url('civicrm/event/register',
-        "id={$this->_id}&reset=1{$action_query}",
+        "id={$this->_id}&reset=1{$action_query}{$checksum_query}",
         FALSE, NULL, TRUE,
         TRUE
       );

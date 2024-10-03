@@ -40,8 +40,33 @@ final class EntityProvider {
     return $this->getMetaProvider()->getFields();
   }
 
+  public function getCustomFields(array $customGroupFilters = []): array {
+    return $this->getMetaProvider()->getCustomFields($customGroupFilters);
+  }
+
+  public function getSupportedFields(): array {
+    $fields = $this->getMetaProvider()->getFields();
+    if ($this->getMeta('module') === 'civicrm') {
+      // Exclude fields yet not added by pending upgrades
+      $dbVer = \CRM_Core_BAO_Domain::version();
+      $fields = array_filter($fields, function($field) use ($dbVer) {
+        $add = $field['add'] ?? '1.0.0';
+        if (substr_count($add, '.') < 2) {
+          $add .= '.alpha1';
+        }
+        return version_compare($dbVer, $add, '>=');
+      });
+    }
+    return $fields;
+  }
+
   public function getField(string $fieldName): ?array {
-    return $this->getFields()[$fieldName] ?? NULL;
+    $field = $this->getFields()[$fieldName] ?? NULL;
+    if (!$field && str_contains($fieldName, '.')) {
+      [$customGroupName] = explode('.', $fieldName);
+      $field = $this->getCustomFields(['name' => $customGroupName])[$fieldName] ?? NULL;
+    }
+    return $field;
   }
 
   public function getOptions(string $fieldName, ?array $values = NULL): ?array {

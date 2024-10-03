@@ -89,7 +89,10 @@ return [
       'pseudoconstant' => [
         'table' => 'civicrm_location_type',
         'key_column' => 'id',
+        'name_column' => 'name',
+        'description_column' => 'description',
         'label_column' => 'display_name',
+        'abbr_column' => 'vcard_name',
       ],
     ],
     'is_primary' => [
@@ -237,6 +240,10 @@ return [
       'input_type' => 'ChainSelect',
       'description' => ts('Which County does this address belong to.'),
       'add' => '1.1',
+      'usage' => [
+        'import',
+        'duplicate_matching',
+      ],
       'input_attrs' => [
         'control_field' => 'state_province_id',
         'label' => ts('County'),
@@ -263,6 +270,10 @@ return [
       'input_type' => 'ChainSelect',
       'description' => ts('Which State_Province does this address belong to.'),
       'add' => '1.1',
+      'usage' => [
+        'import',
+        'duplicate_matching',
+      ],
       'localize_context' => 'province',
       'input_attrs' => [
         'control_field' => 'country_id',
@@ -328,6 +339,10 @@ return [
       'input_type' => 'Select',
       'description' => ts('Which Country does this address belong to.'),
       'add' => '1.1',
+      'usage' => [
+        'import',
+        'duplicate_matching',
+      ],
       'localize_context' => 'country',
       'input_attrs' => [
         'label' => ts('Country'),

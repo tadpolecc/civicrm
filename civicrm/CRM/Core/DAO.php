@@ -2892,9 +2892,11 @@ SELECT contact_id
   /**
    * Populate option labels for this object's fields.
    *
+   * @deprecated
    * @throws exception if called directly on the base class
    */
   public function getOptionLabels() {
+    CRM_Core_Error::deprecatedFunctionWarning('Civi::entity()->getOptions');
     $fields = $this->fields();
     if ($fields === NULL) {
       throw new Exception('Cannot call getOptionLabels on CRM_Core_DAO');
@@ -3342,7 +3344,7 @@ SELECT contact_id
     }
     switch ($serializationType) {
       case self::SERIALIZE_SEPARATOR_BOOKEND:
-        return $value === [] ? '' : CRM_Utils_Array::implodePadded($value);
+        return ($value === [] || $value === '') ? '' : CRM_Utils_Array::implodePadded($value);
 
       case self::SERIALIZE_SEPARATOR_TRIMMED:
         return is_array($value) ? implode(self::VALUE_SEPARATOR, $value) : $value;
