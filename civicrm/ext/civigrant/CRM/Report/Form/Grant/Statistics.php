@@ -299,6 +299,10 @@ WHERE {$this->_aliases['civicrm_grant']}.amount_total IS NOT NULL
     }
   }
 
+  public function preProcess() {
+    \Civi::resources()->addBundle('visual');
+  }
+
   public function postProcess() {
     // get ready with post process params
     $this->beginPostProcess();
@@ -514,8 +518,7 @@ SELECT COUNT({$this->_aliases['civicrm_grant']}.id) as count ,
       return;
     }
 
-    $currencies = CRM_Core_PseudoConstant::get('CRM_Grant_DAO_Grant', 'currency', ['labelColumn' => 'name']);
-    $currency = $currencies[$values['civicrm_grant_currency']];
+    $currency = CRM_Core_PseudoConstant::getName('CRM_Grant_DAO_Grant', 'currency', $values['civicrm_grant_currency']);
 
     if (!$customData) {
       if (!isset($grantStatistics['value'][$fieldValue]['currency'][$currency])

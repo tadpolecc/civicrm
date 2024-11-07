@@ -112,21 +112,6 @@ class CRM_Contact_Form_Task_Label extends CRM_Contact_Form_Task {
       unset($mailingFormatProperties['addressee']);
     }
 
-    $customFormatProperties = [];
-    if (stristr($mailingFormat, 'custom_')) {
-      foreach ($mailingFormatProperties as $token => $true) {
-        if (substr($token, 0, 7) == 'custom_') {
-          if (empty($customFormatProperties[$token])) {
-            $customFormatProperties[$token] = $mailingFormatProperties[$token];
-          }
-        }
-      }
-    }
-
-    if (!empty($customFormatProperties)) {
-      $returnProperties = array_merge($returnProperties, $customFormatProperties);
-    }
-
     if (isset($fv['merge_same_address'])) {
       // we need first name/last name for summarising to avoid spillage
       $returnProperties['first_name'] = 1;
@@ -174,24 +159,11 @@ class CRM_Contact_Form_Task_Label extends CRM_Contact_Form_Task {
     // fix for CRM-2613
     $params[] = ['is_deceased', '=', 0, 0, 0];
 
-    $custom = [];
-    foreach ($returnProperties as $name => $dontCare) {
-      $cfID = CRM_Core_BAO_CustomField::getKeyID($name);
-      if ($cfID) {
-        $custom[] = $cfID;
-      }
-    }
-
     //get the total number of contacts to fetch from database.
     $numberofContacts = count($this->_contactIds);
     [$details] = CRM_Contact_BAO_Query::apiQuery($params, $returnProperties, NULL, NULL, 0, $numberofContacts, TRUE, FALSE, TRUE, CRM_Contact_BAO_Query::MODE_CONTACTS, NULL, $primaryLocationOnly);
 
     foreach ($this->_contactIds as $value) {
-      foreach ($custom as $cfID) {
-        if (isset($details[$value]["custom_{$cfID}"])) {
-          $details[$value]["custom_{$cfID}"] = CRM_Core_BAO_CustomField::displayValue($details[$value]["custom_{$cfID}"], $cfID);
-        }
-      }
       $contact = $details[$value] ?? NULL;
 
       // we need to remove all the "_id"
@@ -230,16 +202,6 @@ class CRM_Contact_Form_Task_Label extends CRM_Contact_Form_Task {
 
     // format the addresses according to CIVICRM_ADDRESS_FORMAT (CRM-1327)
     foreach ($rows as $id => $row) {
-      $commMethods = $row['preferred_communication_method'] ?? NULL;
-      if ($commMethods) {
-        $val = array_filter(explode(CRM_Core_DAO::VALUE_SEPARATOR, $commMethods));
-        $comm = CRM_Contact_DAO_Contact::buildOptions('preferred_communication_method');
-        $temp = [];
-        foreach ($val as $vals) {
-          $temp[] = $comm[$vals];
-        }
-        $row['preferred_communication_method'] = implode(', ', $temp);
-      }
       $row['id'] = $id;
       $formatted = CRM_Utils_Address::formatMailingLabel($row);
       $rows[$id] = [$formatted];

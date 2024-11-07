@@ -2336,7 +2336,7 @@ abstract class CRM_Utils_Hook {
    *     - description: string (ex: "Register for events online")
    *     - is_synthetic: bool (TRUE for synthetic permissions with a bespoke evaluation. FALSE for concrete permissions that registered+granted in the UF user-management layer.
    *        Default TRUE iff name begins with '@')
-   *     - is_active: bool (TRUE if this permission is defined by. Default: TRUE)
+   *     - is_active: bool (FALSE for permissions belonging to disabled components, TRUE otherwise)
    *
    * @return null
    *   The return value is ignored
@@ -2424,18 +2424,21 @@ abstract class CRM_Utils_Hook {
   }
 
   /**
-   * This hook is called for declaring managed entities via API.
+   * This hook is called for declaring entities.
    *
    * Note: This is a pre-boot hook. It will dispatch via the extension/module
    * subsystem but *not* the Symfony EventDispatcher.
    *
    * @param array[] $entityTypes
-   *   List of entity types; each entity-type is an array with keys:
-   *   - name: string, a unique short name (e.g. "ReportInstance")
-   *   - class: string, a PHP DAO class (e.g. "CRM_Report_DAO_Instance")
-   *   - table: string, a SQL table name (e.g. "civicrm_report_instance")
-   *   - fields_callback: array, list of callables which manipulates field list
-   *   - links_callback: array, list of callables which manipulates fk list
+   *   List of entity definitions; each item is keyed by entity name.
+   *   Each entity-type is an array with values:
+   *   - `name`: string, a unique short name (e.g. "ReportInstance")
+   *   - `module`: string, full_name of extension declaring the entity (e.g. "search_kit")
+   *   - `class`: string|null, a PHP DAO class (e.g. "CRM_Report_DAO_Instance")
+   *   - `table`: string|null, a SQL table name (e.g. "civicrm_report_instance")
+   *
+   * Other possible values in the entity definition array are documented here:
+   * @see https://docs.civicrm.org/dev/en/latest/framework/entities/
    *
    * @return null
    *   The return value is ignored

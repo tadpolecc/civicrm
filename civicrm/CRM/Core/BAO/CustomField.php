@@ -18,7 +18,7 @@
 use Civi\Api4\Utils\CoreUtil;
 
 /**
- * Business objects for managing custom data fields.
+ * Class CRM_Core_BAO_CustomField
  */
 class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
 
@@ -591,6 +591,36 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
       if (isset($customGroup['fields'][$id])) {
         $customGroup['fields'][$id]['custom_group'] = array_diff_key($customGroup, ['fields' => 1]);
         return $customGroup['fields'][$id];
+      }
+    }
+    return NULL;
+  }
+
+  /**
+   * Converts `custom_123` to `GroupName.FieldName`.
+   */
+  public static function getLongNameFromShortName(string $shortName): ?string {
+    [, $id] = explode('_', $shortName);
+    foreach (CRM_Core_BAO_CustomGroup::getAll() as $customGroup) {
+      if (isset($customGroup['fields'][$id])) {
+        return $customGroup['name'] . '.' . $customGroup['fields'][$id]['name'];
+      }
+    }
+    return NULL;
+  }
+
+  /**
+   * Converts `GroupName.FieldName` to `custom_123`.
+   */
+  public static function getShortNameFromLongName(string $longName): ?string {
+    [$groupName, $fieldName] = explode('.', $longName);
+    foreach (CRM_Core_BAO_CustomGroup::getAll() as $customGroup) {
+      if ($customGroup['name'] === $groupName) {
+        foreach ($customGroup['fields'] as $id => $field) {
+          if ($field['name'] === $fieldName) {
+            return "custom_$id";
+          }
+        }
       }
     }
     return NULL;
@@ -1417,23 +1447,21 @@ SELECT id
 
     //fix checkbox, now check box always submits values
     if ($customFields[$customFieldId]['html_type'] == 'CheckBox') {
-      if ($value) {
-        // Note that only during merge this is not an array, and you can directly use value
-        if (is_array($value)) {
-          $selectedValues = [];
-          foreach ($value as $selId => $val) {
-            if ($val) {
-              $selectedValues[] = $selId;
-            }
+      // Note that only during merge this is not an array, and you can directly use value
+      if (is_array($value)) {
+        $selectedValues = [];
+        foreach ($value as $selId => $val) {
+          if ($val) {
+            $selectedValues[] = $selId;
           }
-          if (!empty($selectedValues)) {
-            $value = CRM_Core_DAO::VALUE_SEPARATOR . implode(CRM_Core_DAO::VALUE_SEPARATOR,
-                $selectedValues
-              ) . CRM_Core_DAO::VALUE_SEPARATOR;
-          }
-          else {
-            $value = '';
-          }
+        }
+        if (!empty($selectedValues)) {
+          $value = CRM_Core_DAO::VALUE_SEPARATOR . implode(CRM_Core_DAO::VALUE_SEPARATOR,
+              $selectedValues
+            ) . CRM_Core_DAO::VALUE_SEPARATOR;
+        }
+        else {
+          $value = '';
         }
       }
     }
@@ -1958,6 +1986,7 @@ WHERE  id IN ( %1, %2 )
           // Don't set reserved as it's not a built-in option group and may be useful for other custom fields.
           'is_reserved' => 0,
           'data_type' => $dataType,
+          'option_value_fields' => self::getOptionValueFields($params),
         ]);
         $params['option_group_id'] = $optionGroup->id;
         if (!empty($params['option_value']) && is_array($params['option_value'])) {
@@ -1996,6 +2025,23 @@ WHERE  id IN ( %1, %2 )
       $params['attributes'] = 'rows=4, cols=60';
     }
     return $params;
+  }
+
+  /**
+   * Get option_value_fields for auto-creating a group
+   *
+   * This checks option values to see if any contain
+   * extra fields like description, color, icon, etc.
+   */
+  private static function getOptionValueFields(array $params): array {
+    $fields = ['name', 'label'];
+    $extras = array_diff(array_keys(CRM_Core_SelectValues::optionValueFields()), $fields);
+    foreach ($extras as $extra) {
+      if (!empty($params["option_$extra"]) && array_filter($params["option_$extra"])) {
+        $fields[] = $extra;
+      }
+    }
+    return $fields;
   }
 
   /**

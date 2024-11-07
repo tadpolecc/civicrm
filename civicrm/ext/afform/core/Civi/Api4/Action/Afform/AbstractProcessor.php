@@ -153,14 +153,20 @@ abstract class AbstractProcessor extends \Civi\Api4\Generic\AbstractAction {
    */
   protected function prePopulateSubmissionData() {
     // if submission id is passed then get the data from submission
-    // we should prepopulate only pending submissions
-    $afformSubmissionData = \Civi\Api4\AfformSubmission::get(FALSE)
+    $afformSubmissionData = \Civi\Api4\AfformSubmission::get(TRUE)
       ->addSelect('data')
       ->addWhere('id', '=', $this->args['sid'])
       ->addWhere('afform_name', '=', $this->name)
       ->execute()->first();
 
-    $this->_entityValues = array_intersect_key($this->_formDataModel->getEntities(), $afformSubmissionData['data'] ?? []);
+    $this->_entityValues = $this->_formDataModel->getEntities();
+    foreach ($this->_entityValues as $entity => &$values) {
+      foreach ($afformSubmissionData['data'] as $e => $submission) {
+        if ($entity === $e) {
+          $values = $submission ?? [];
+        }
+      }
+    }
   }
 
   /**
@@ -181,6 +187,15 @@ abstract class AbstractProcessor extends \Civi\Api4\Generic\AbstractAction {
    *   'update' or 'create' ('create' is only used in special cases like `Event.template_id`)
    */
   public function loadEntity(array $entity, array $values, string $mode = 'update'): void {
+    // Backward-compat, prior to 5.78 $values was an array of ids
+    if (isset($values[0]) && is_scalar($values[0])) {
+      \CRM_Core_Error::deprecatedWarning("Afform.loadEntity should be called with an array of values (array of ids was provided for {$entity['type']})");
+      $idField = CoreUtil::getIdFieldName($entity['type']);
+      foreach ($values as $key => $value) {
+        $values[$key] = [$idField => $value];
+      }
+    }
+
     // Limit number of records based on af-repeat settings
     // If 'min' is set then it is repeatable, and max will either be a number or NULL for unlimited.
     if (isset($entity['min']) && isset($entity['max'])) {
@@ -562,8 +577,10 @@ abstract class AbstractProcessor extends \Civi\Api4\Generic\AbstractAction {
           $idData['joins'] = $this->combineValuesAndIds($val['joins'] ?? [], $idData['joins'] ?? [], TRUE);
         }
         // $item = array_merge($isJoin ? $val : ($val['fields'] ?? []), $idData);
-        $item = array_merge(($val ?? []), $idData);
-        $combined[$name][$idx] = $item;
+        if (is_array($val) || empty($val)) {
+          $item = array_merge(($val ?? []), $idData);
+          $combined[$name][$idx] = $item;
+        }
       }
     }
     return $combined;

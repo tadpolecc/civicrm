@@ -36,6 +36,13 @@ final class EntityProvider {
     return $this->getMetaProvider()->getProperty($property);
   }
 
+  /**
+   * @return array
+   *   List of field descriptors, keyed by name.
+   *   Fields may or may not be defined in the underlying data-store, depending on the status of upgrade.
+   *
+   *   Ex: ['field_1' => ['title' => ..., 'sqlType' => ...]]
+   */
   public function getFields(): array {
     return $this->getMetaProvider()->getFields();
   }
@@ -44,6 +51,13 @@ final class EntityProvider {
     return $this->getMetaProvider()->getCustomFields($customGroupFilters);
   }
 
+  /**
+   * @return array
+   *   List of field descriptors, keyed by name.
+   *   Only include fields that are currently expected to be active/supported.
+   *
+   *   Ex: ['field_1' => ['title' => ..., 'sqlType' => ...]]
+   */
   public function getSupportedFields(): array {
     $fields = $this->getMetaProvider()->getFields();
     if ($this->getMeta('module') === 'civicrm') {
@@ -61,16 +75,11 @@ final class EntityProvider {
   }
 
   public function getField(string $fieldName): ?array {
-    $field = $this->getFields()[$fieldName] ?? NULL;
-    if (!$field && str_contains($fieldName, '.')) {
-      [$customGroupName] = explode('.', $fieldName);
-      $field = $this->getCustomFields(['name' => $customGroupName])[$fieldName] ?? NULL;
-    }
-    return $field;
+    return $this->getMetaProvider()->getField($fieldName);
   }
 
-  public function getOptions(string $fieldName, ?array $values = NULL): ?array {
-    return $this->getMetaProvider()->getOptions($fieldName, $values);
+  public function getOptions(string $fieldName, array $values = [], bool $includeDisabled = FALSE, bool $checkPermissions = FALSE, ?int $userId = NULL): ?array {
+    return $this->getMetaProvider()->getOptions($fieldName, $values, $includeDisabled, $checkPermissions, $userId);
   }
 
   public function writeRecords(array $records): array {

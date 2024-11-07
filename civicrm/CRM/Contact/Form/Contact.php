@@ -171,11 +171,11 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
       }
 
       $this->_gid = CRM_Utils_Request::retrieve('gid', 'Integer',
-        CRM_Core_DAO::$_nullObject,
+        NULL,
         FALSE, NULL, 'GET'
       );
       $this->_tid = CRM_Utils_Request::retrieve('tid', 'Integer',
-        CRM_Core_DAO::$_nullObject,
+        NULL,
         FALSE, NULL, 'GET'
       );
       $typeLabel = CRM_Contact_BAO_ContactType::contactTypePairs(TRUE, $this->_contactSubType ?
@@ -454,7 +454,7 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
       $updateMode = array_key_exists($name, $defaults) && !CRM_Utils_System::isNull($defaults[$name]);
       if ($updateMode) {
         foreach ($defaults[$name] as $locationEntity) {
-          $hasPrimary = $locationEntity['is_primary'] ?: $hasPrimary;
+          $hasPrimary = (bool) ($locationEntity['is_primary'] ?? $hasPrimary);
         }
       }
       else {
