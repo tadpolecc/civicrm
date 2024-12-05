@@ -30,6 +30,10 @@
 
         $element.addClass('af-field-type-' + _.kebabCase(ctrl.defn.input_type));
 
+        if (this.defn.input_attrs && this.defn.input_attrs.multiple) {
+          $element.addClass('af-field-type-multiple');
+        }
+
         if (this.defn.name !== this.fieldName) {
           namePrefix = this.fieldName.substr(0, this.fieldName.length - this.defn.name.length);
         }
@@ -113,6 +117,10 @@
 
         // Wait for parent controllers to initialize
         $timeout(function() {
+          initializeValue(true);
+        });
+
+        function initializeValue(firstLoad) {
           // Unique field name = entity_name index . join . field_name
           var entityName = ctrl.afFieldset.getName(),
             joinEntity = ctrl.afJoin ? ctrl.afJoin.entity : null,
@@ -130,7 +138,7 @@
           else if (urlArgs && (ctrl.fieldName in urlArgs)) {
             setValue(urlArgs[ctrl.fieldName]);
           }
-          else if (ctrl.afFieldset.getStoredValue(ctrl.fieldName) !== undefined) {
+          else if (firstLoad && ctrl.afFieldset.getStoredValue(ctrl.fieldName) !== undefined) {
             setValue(ctrl.afFieldset.getStoredValue(ctrl.fieldName));
           }
           // Set default value based on field defn
@@ -157,6 +165,12 @@
               }
             }
           }
+        }
+
+        // Reinitialize value when resetting form
+        $scope.$on('afFormReset', function() {
+          delete $scope.dataProvider.getFieldData()[ctrl.fieldName];
+          initializeValue(false);
         });
       };
 
@@ -208,7 +222,7 @@
         }
 
         if (ctrl.defn.input_type === 'Date' && typeof value === 'string' && value.startsWith('now')) {
-          value = getRelativeDate(value);
+          value = getRelativeDate(value, ctrl.defn.input_attrs.time);
         }
         if (ctrl.defn.input_type === 'Number' && ctrl.defn.search_range) {
           if (!_.isPlainObject(value)) {
@@ -244,7 +258,7 @@
       };
 
       ctrl.isReadonly = function() {
-        if (ctrl.defn.input_attrs && ctrl.defn.input_attrs.autofill) {
+        if (ctrl.defn.input_attrs && ctrl.defn.input_attrs.autofill && !ctrl.afJoin) {
           return ctrl.afFieldset.getEntity().actions[ctrl.defn.input_attrs.autofill] === false;
         }
         // TODO: Not actually used, but could be used if we wanted to render displayOnly
@@ -374,7 +388,7 @@
         return currentVal;
       };
 
-      function getRelativeDate(dateString) {
+      function getRelativeDate(dateString, includeTime) {
         const parts = dateString.split(' ');
         const baseDate = new Date();
         let unit = parts[2] || 'day';
@@ -389,7 +403,11 @@
             offset *= 365;
         }
         let newDate = new Date(baseDate.getTime() + offset * 24 * 60 * 60 * 1000);
-        return newDate.toISOString().split('T')[0];
+        let defaultDate = newDate.toISOString().split('T')[0];
+        if (includeTime) {
+          defaultDate += ' ' + newDate.toTimeString().slice(0,8);
+        }
+        return defaultDate;
       }
 
     }

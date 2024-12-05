@@ -151,17 +151,28 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       foreach ($this->display['settings']['columns'] as $column) {
         $columns[] = $this->formatColumn($column, $data);
       }
-      $style = $this->getCssStyles($this->display['settings']['cssRules'] ?? [], $data);
-      // Add hierarchical styles
-      if (!empty($this->display['settings']['hierarchical'])) {
-        $style[] = 'crm-hierarchical-row crm-hierarchical-depth-' . ($data['_depth'] ?? '0');
-        $style[] = empty($data['_depth']) ? 'crm-hierarchical-parent' : 'crm-hierarchical-child';
-      }
       $row = [
         'data' => $data,
         'columns' => $columns,
-        'cssClass' => implode(' ', $style),
       ];
+      $style = $this->getCssStyles($this->display['settings']['cssRules'] ?? [], $data);
+      // Add hierarchical styles
+      if (!empty($this->display['settings']['hierarchical'])) {
+        $depth = $data['_depth'] ?? 0;
+        $style[] = 'crm-hierarchical-row crm-hierarchical-depth-' . $depth;
+        if ($depth) {
+          $style[] = 'crm-hierarchical-child';
+        }
+        if (!empty($data['_descendents'])) {
+          $style[] = 'crm-hierarchical-parent';
+          if (($this->display['settings']['collapsible'] ?? FALSE) === 'closed') {
+            $row['collapsed'] = TRUE;
+          }
+        }
+      }
+      if ($style) {
+        $row['cssClass'] = implode(' ', $style);
+      }
       if (isset($record[$keyName])) {
         $row['key'] = $record[$keyName];
       }
@@ -325,7 +336,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       // Convert dots to nested arrays which are more Smarty-friendly
       foreach ($data as $key => $value) {
         $parent = &$vars;
-        $allKeys = $keys = array_map('CRM_Utils_String::munge', explode('.', $key));
+        $allKeys = $keys = array_map(fn($s) => \CRM_Utils_String::munge($s, '_', 0), explode('.', $key));
         while (count($keys) > 1) {
           $level = array_shift($keys);
           $parent[$level] = $parent[$level] ?? [];
@@ -1352,6 +1363,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     // Add `depth_` column for hierarchical entity displays
     if (!empty($this->display['settings']['hierarchical'])) {
       $this->addSelectExpression('_depth');
+      $this->addSelectExpression('_descendents');
     }
     // Add draggable column (typically "weight")
     if (!empty($this->display['settings']['draggable'])) {

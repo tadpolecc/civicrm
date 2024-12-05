@@ -1197,6 +1197,15 @@ class CRM_Utils_System {
   }
 
   /**
+   * Set the html header to direct robots not to index the page.
+   *
+   * @return void
+   */
+  public static function setNoRobotsFlag(): void {
+    CRM_Utils_System::addHTMLHead('<META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW">');
+  }
+
+  /**
    * Wraps or emulates PHP's getallheaders() function.
    */
   public static function getAllHeaders() {
@@ -1552,9 +1561,7 @@ class CRM_Utils_System {
     }
     $config = CRM_Core_Config::singleton();
     $result = $config->userSystem->loadBootStrap($params, $loadUser, $throwError, $realPath);
-    if (is_callable([$config->userSystem, 'setMySQLTimeZone'])) {
-      $config->userSystem->setMySQLTimeZone();
-    }
+    $config->userSystem->setTimeZone();
     return $result;
   }
 
