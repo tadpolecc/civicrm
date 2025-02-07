@@ -65,6 +65,7 @@ return array(
     'Firebase\\JWT\\' => array($vendorDir . '/firebase/php-jwt/src'),
     'Dompdf\\' => array($vendorDir . '/dompdf/dompdf/src'),
     'DMore\\ChromeDriver\\' => array($vendorDir . '/dmore/chrome-mink-driver/src'),
+    'Composer\\Pcre\\' => array($vendorDir . '/composer/pcre/src'),
     'Complex\\' => array($vendorDir . '/markbaker/complex/classes/src'),
     'Civi\\Cxn\\Rpc\\' => array($vendorDir . '/civicrm/civicrm-cxn-rpc/src'),
     'Civi\\CompilePlugin\\' => array($vendorDir . '/civicrm/composer-compile-plugin/src'),

@@ -807,7 +807,6 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
     // our ensured variables get blown away, so we need to set them even if
     // it's already been initialized.
     self::$_template->ensureVariablesAreAssigned($this->expectedSmartyVariables);
-    self::$_template->addExpectedTabHeaderKeys();
     $this->_formBuilt = TRUE;
   }
 

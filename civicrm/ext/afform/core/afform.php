@@ -38,7 +38,7 @@ function afform_civicrm_config(&$config) {
   Civi::$statics[__FUNCTION__] = 1;
 
   $dispatcher = Civi::dispatcher();
-  $dispatcher->addListener('civi.afform.validate', ['\Civi\Api4\Action\Afform\Submit', 'validateRequiredFields'], 50);
+  $dispatcher->addListener('civi.afform.validate', ['\Civi\Api4\Action\Afform\Submit', 'validateFieldInput'], 50);
   $dispatcher->addListener('civi.afform.validate', ['\Civi\Api4\Action\Afform\Submit', 'validateEntityRefFields'], 45);
   $dispatcher->addListener('civi.afform.submit', ['\Civi\Api4\Action\Afform\Submit', 'processGenericEntity'], 0);
   $dispatcher->addListener('civi.afform.submit', ['\Civi\Api4\Action\Afform\Submit', 'preprocessContact'], 10);
@@ -174,9 +174,12 @@ function afform_civicrm_tabset($tabsetName, &$tabs, $context) {
         // custom group tab forms use name, but need to replace tabs using ID
         // remove 'afsearchTabCustom_' from the form name to get the group name
         $groupName = substr($afform['name'], 18);
-        $group = \CRM_Core_BAO_CustomGroup::getGroup(['name' => $groupName]);
-        if ($group) {
-          $tabId = 'custom_' . $group['id'];
+        $groupId = \Civi\Api4\CustomGroup::get(FALSE)
+          ->addSelect('id')
+          ->addWhere('name', '=', $groupName)
+          ->execute()->first()['id'] ?? NULL;
+        if ($groupId) {
+          $tabId = 'custom_' . $groupId;
         }
       }
       // If a tab with that id already exists, allow the afform to replace it.
@@ -191,12 +194,20 @@ function afform_civicrm_tabset($tabsetName, &$tabs, $context) {
         'icon' => 'crm-i ' . ($afform['icon'] ?: 'fa-list-alt'),
         'is_active' => TRUE,
         'contact_type' => _afform_get_contact_types($summaryContactType) ?: NULL,
-        'template' => 'afform/contactSummary/AfformTab.tpl',
+        'template' => 'afform/InlineAfform.tpl',
         'module' => $afform['module_name'],
         'directive' => $afform['directive_name'],
       ];
-      // If this is the real contact summary page (and not a callback from ContactLayoutEditor), load module.
+      // If this is the real contact summary page (and not a callback from ContactLayoutEditor), load module
+      // and assign contact id to required smarty variable
       if (empty($context['caller'])) {
+        // note we assign the contact id to entity_id as preferred key
+        // but also contact_id to maintain backwards compatibility with older
+        // afforms
+        CRM_Core_Smarty::singleton()->assign('afformOptions', [
+          'entity_id' => $context['contact_id'],
+          'contact_id' => $context['contact_id'],
+        ]);
         Civi::service('angularjs.loader')->addModules($afform['module_name']);
       }
     }
@@ -470,7 +481,11 @@ function afform_civicrm_permission_check($permission, &$granted, $contactId) {
   elseif ($permission === '@afformPageToken') {
     $session = CRM_Core_Session::singleton();
     $data = $session->get('authx');
-    $granted = isset($data['jwt']['scope'], $data['flow']) && $data['jwt']['scope'] === 'afform' && $data['flow'] === 'afformpage';
+    $granted =
+      // Check authx token
+      isset($data['jwt']['scope'], $data['flow']) && $data['jwt']['scope'] === 'afform' && $data['flow'] === 'afformpage'
+      // Allow admins to edit forms without requiring a token
+      || CRM_Core_Permission::check('administer afform');
   }
 }
 
@@ -484,7 +499,10 @@ function afform_civicrm_permissionList(&$permissions) {
     'group' => 'const',
     'title' => E::ts('Generic: Anyone with secret link'),
     'description' => E::ts('If you link to the form with a secure token, then no other permission is needed.'),
+    'parent' => 'administer afform',
   ];
+  $permissions['administer afform']['implies'] ??= [];
+  $permissions['administer afform']['implies'][] = '@afformPageToken';
   $scanner = Civi::service('afform_scanner');
   foreach ($scanner->getMetas() as $name => $meta) {
     $permissions['@afform:' . $name] = [
