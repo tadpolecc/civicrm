@@ -8,7 +8,6 @@
  +--------------------------------------------------------------------+
 *}
 {include file="CRM/common/pager.tpl" location="top"}
-{include file="CRM/common/pagerAToZ.tpl"}
 <table summary="{ts}Search results listings.{/ts}" class="selector row-highlight">
   <thead class="sticky">
     <tr>
@@ -120,6 +119,7 @@
     {/foreach}
   {/if}
 </table>
+{include file="CRM/common/pagerAToZ.tpl"}
 {include file="CRM/common/pager.tpl" location="bottom"}
 <script type="text/javascript">
   {literal}
