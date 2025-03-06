@@ -156,20 +156,6 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
         'columns' => $columns,
       ];
       $style = $this->getCssStyles($this->display['settings']['cssRules'] ?? [], $data);
-      // Add hierarchical styles
-      if (!empty($this->display['settings']['hierarchical'])) {
-        $depth = $data['_depth'] ?? 0;
-        $style[] = 'crm-hierarchical-row crm-hierarchical-depth-' . $depth;
-        if ($depth) {
-          $style[] = 'crm-hierarchical-child';
-        }
-        if (!empty($data['_descendents'])) {
-          $style[] = 'crm-hierarchical-parent';
-          if (($this->display['settings']['collapsible'] ?? FALSE) === 'closed') {
-            $row['collapsed'] = TRUE;
-          }
-        }
-      }
       if ($style) {
         $row['cssClass'] = implode(' ', $style);
       }
@@ -719,7 +705,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     if (empty($link['path']) && empty($link['task'])) {
       return FALSE;
     }
-    if (!empty($link['entity']) && !empty($link['action']) && !in_array($link['action'], ['view', 'preview'], TRUE) && $this->getCheckPermissions()) {
+    if (!empty($link['entity']) && !empty($link['action']) && !in_array($link['action'], ['view', 'preview', 'get'], TRUE) && $this->getCheckPermissions()) {
       $actionName = $this->getPermittedLinkAction($link['entity'], $link['action']);
       if (!$actionName) {
         return FALSE;
@@ -942,6 +928,8 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
           }
           // Fill in the api action if known, for the sake of $this->checkLinkAccess
           $link['action'] = $task['apiBatch']['action'] ?? NULL;
+          // Used by inlineEdit action when running inline tasks
+          $link['api_params'] = $task['apiBatch']['params'] ?? [];
         }
       }
       $link['key'] = $link['prefix'] . $idKey;
@@ -1242,13 +1230,20 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
    * @param string|null $format
    * @return array|string
    */
-  protected function formatViewValue($key, $rawValue, $data, $dataType, $format = NULL) {
+  protected function formatViewValue(string $key, $rawValue, $data, $dataType, $format = NULL) {
     if (is_array($rawValue)) {
       return array_map(function($val) use ($key, $data, $dataType, $format) {
         return $this->formatViewValue($key, $val, $data, $dataType, $format);
       }, $rawValue);
     }
 
+    if (!isset($rawValue) || $rawValue === '') {
+      return '';
+    }
+    // Do not reformat pseudoconstant suffixes
+    if (FormattingUtil::getSuffix($key)) {
+      return $rawValue;
+    }
     $formatted = $rawValue;
 
     switch ($dataType) {
@@ -1262,6 +1257,10 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
         $currencyField = $this->getCurrencyField($key);
         $currency = is_string($data[$currencyField] ?? NULL) ? $data[$currencyField] : NULL;
         $formatted = \Civi::format()->money($rawValue, $currency);
+        break;
+
+      case 'Float':
+        $formatted = \CRM_Utils_Number::formatLocaleNumeric($rawValue);
         break;
 
       case 'Date':
@@ -1380,14 +1379,18 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     if ($this->savedSearch['api_entity'] === 'EntitySet') {
       return;
     }
-    // Add `depth_` column for hierarchical entity displays
-    if (!empty($this->display['settings']['hierarchical'])) {
+    // Add `depth_` column for hierarchical entity displays (but not during inline-edit)
+    if (!empty($this->display['settings']['hierarchical']) && !is_a($this, 'Civi\Api4\Action\SearchDisplay\InlineEdit')) {
       $this->addSelectExpression('_depth');
       $this->addSelectExpression('_descendents');
     }
     // Add draggable column (typically "weight")
     if (!empty($this->display['settings']['draggable'])) {
       $this->addSelectExpression($this->display['settings']['draggable']);
+    }
+    // Add parent_field column for tree displays
+    if (!empty($this->display['settings']['parent_field'])) {
+      $this->addSelectExpression($this->display['settings']['parent_field']);
     }
     // Add style conditions for the display
     foreach ($this->getCssRulesSelect($this->display['settings']['cssRules'] ?? []) as $addition) {

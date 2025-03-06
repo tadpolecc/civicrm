@@ -14,11 +14,12 @@ class AfformAdminMeta {
    */
   public static function getAdminSettings() {
     $afformPlacement = \CRM_Utils_Array::formatForSelect2((array) \Civi\Api4\OptionValue::get(FALSE)
-      ->addSelect('value', 'label', 'icon', 'description')
+      ->addSelect('value', 'label', 'icon', 'description', 'grouping', 'filter')
       ->addWhere('is_active', '=', TRUE)
       ->addWhere('option_group_id:name', '=', 'afform_placement')
       ->addOrderBy('weight')
       ->execute(), 'label', 'value');
+    $afformTags = \CRM_Utils_Array::formatForSelect2((array) \Civi\Api4\Utils\AfformTags::getTagOptions());
     $afformTypes = (array) \Civi\Api4\OptionValue::get(FALSE)
       ->addSelect('name', 'label', 'icon')
       ->addWhere('is_active', '=', TRUE)
@@ -38,6 +39,7 @@ class AfformAdminMeta {
     return [
       'afform_type' => $afformTypes,
       'afform_placement' => $afformPlacement,
+      'afform_tags' => $afformTags,
       'search_operators' => \Civi\Afform\Utils::getSearchOperators(),
     ];
   }
@@ -263,6 +265,20 @@ class AfformAdminMeta {
             'ng-if' => 'afform.showSubmitButton',
             '#children' => [
               ['#text' => E::ts('Submit')],
+            ],
+          ],
+        ],
+        'save_draft' => [
+          'title' => E::ts('Save Draft Button'),
+          'afform_type' => ['form'],
+          'element' => [
+            '#tag' => 'button',
+            'class' => 'af-button btn btn-primary',
+            'crm-icon' => 'fa-floppy-disk',
+            'ng-click' => 'afform.submitDraft()',
+            'ng-if' => 'afform.showSubmitButton',
+            '#children' => [
+              ['#text' => E::ts('Save Draft')],
             ],
           ],
         ],

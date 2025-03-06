@@ -1,13 +1,14 @@
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/TYPO3/phar-stream-wrapper/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/TYPO3/phar-stream-wrapper/?branch=master)
-[![Travis CI Build Status](https://travis-ci.org/TYPO3/phar-stream-wrapper.svg?branch=master)](https://travis-ci.org/TYPO3/phar-stream-wrapper)
-[![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/q4ls5tg4w1d6sf4i/branch/master?svg=true)](https://ci.appveyor.com/project/ohader/phar-stream-wrapper)
+[![GitHub Build Status Ubuntu](https://github.com/typo3/phar-stream-wrapper/actions/workflows/tests-ubuntu.yml/badge.svg)](https://github.com/typo3/phar-stream-wrapper/actions/workflows/tests-ubuntu.yml)
+[![GitHub Build Status Windows](https://github.com/typo3/phar-stream-wrapper/actions/workflows/tests-windows.yml/badge.svg)](https://github.com/typo3/phar-stream-wrapper/actions/workflows/tests-windows.yml)
+[![Downloads](https://poser.pugx.org/typo3/phar-stream-wrapper/downloads.svg)](https://packagist.org/packages/typo3/phar-stream-wrapper)
 
 # PHP Phar Stream Wrapper
 
 ## Abstract & History
 
 Based on Sam Thomas' findings concerning
-[insecure deserialization in combination with obfuscation strategies](https://blog.secarma.co.uk/labs/near-phar-dangerous-unserialization-wherever-you-are)
+[insecure deserialization in combination with obfuscation strategies](https://www.secarma.com/labs/near-phar-dangerous-unserialization-wherever-you-are.html)
 allowing to hide Phar files inside valid image resources, the TYPO3 project
 decided back then to introduce a `PharStreamWrapper` to intercept invocations
 of the `phar://` stream in PHP and only allow usage for defined locations in
@@ -27,6 +28,12 @@ July 2018.
 * https://typo3.org/security/advisory/typo3-psa-2018-001/
 * https://typo3.org/security/advisory/typo3-psa-2019-007/
 * https://typo3.org/security/advisory/typo3-psa-2019-008/
+
+With PHP 8.0.0 the default behavior changed and meta-data is not
+deserialized automatically anymore:
+
+* [`typo3/phar-stream-wrapper` issue #64](https://github.com/TYPO3/phar-stream-wrapper/issues/64)
+* https://php.watch/versions/8.0/phar-stream-wrapper-unserialize
 
 ## License
 

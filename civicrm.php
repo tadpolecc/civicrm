@@ -2,9 +2,9 @@
 /**
  * Plugin Name: CiviCRM
  * Description: CiviCRM - Growing and Sustaining Relationships
- * Version: 5.82.0
+ * Version: 6.0.0
  * Requires at least: 4.9
- * Requires PHP:      7.4
+ * Requires PHP:      8.0
  * Author: CiviCRM LLC
  * Author URI: https://civicrm.org/
  * Plugin URI: https://docs.civicrm.org/sysadmin/en/latest/install/wordpress/
@@ -36,7 +36,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Set version here: changing it forces Javascript and CSS to reload.
-define('CIVICRM_PLUGIN_VERSION', '5.82.0');
+define('CIVICRM_PLUGIN_VERSION', '6.0.0');
 
 // Store reference to this file.
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -65,7 +65,7 @@ if (!defined('CIVICRM_PLUGIN_DIR')) {
  * @see CiviWP\PhpVersionTest::testConstantMatch()
  */
 if (!defined('CIVICRM_WP_PHP_MINIMUM')) {
-  define('CIVICRM_WP_PHP_MINIMUM', '7.4.0');
+  define('CIVICRM_WP_PHP_MINIMUM', '8.0.0');
 }
 
 /*
@@ -257,6 +257,12 @@ class CiviCRM_For_WordPress {
         include_once CIVICRM_PLUGIN_DIR . 'wp-cli/wp-cli-civicrm.php';
       }
 
+      if (self::$instance->is_iframe()) {
+        define('CIVICRM_IFRAME', 1);
+        // Must run before WP starts processing cookies.
+        self::$instance->activate_iframe();
+      }
+
       // Delay setup until 'plugins_loaded' to allow other plugins to load as well.
       add_action('plugins_loaded', [self::$instance, 'setup_instance']);
 
@@ -290,6 +296,42 @@ class CiviCRM_For_WordPress {
    */
   public function __wakeup() {
     _doing_it_wrong(__FUNCTION__, __('Please do not serialize CiviCRM_For_WordPress', 'civicrm'), '4.4');
+  }
+
+  protected function is_iframe(): bool {
+    if (is_admin()) {
+      // We intend to process IFRAMEs through WP-frontend not WP-backend.
+      // This is separate from the actual content of the page (which isn't really WP-frontend or WP-backend).
+      return FALSE;
+    }
+
+    // return (1 == get_query_var('_cvwpif')); // Too Early
+    return !empty($_REQUEST['_cvwpif']);
+    // return 'iframe' === $_SERVER['HTTP_SEC_FETCH_DEST']; // Harder to test. And Safari only gained support a year ago.
+  }
+
+  protected function activate_iframe(): void {
+    // By default, internal links should stay in the iframe.
+    $GLOBALS['civicrm_url_defaults'][]['scheme'] = 'iframe';
+
+    // Strict browsers (eg Safari) will quietly disregard cookies when loading a page within an IFRAME.
+    // But it's quite awkward to test behavior with two variables (browser-type and page-context).
+    // For consistent testing/UX, we force similar behavior for any request with IFRAME-style URL.
+
+    // Variant A: Disregard specific pieces
+    remove_filter('determine_current_user', 'wp_validate_auth_cookie');
+    remove_filter('determine_current_user', 'wp_validate_logged_in_cookie', 20);
+    remove_filter('determine_current_user', 'wp_validate_application_password', 20);
+
+    // Variant B: This sounds more thorough, but interferes with co-session. Probably a timing issue.
+    // $_COOKIE = [];
+    // self::$instance->wp_cookie = [];
+
+    // Variant C: Filter $_COOKIE by name. However, this might not work if local site has renamed the cookies.
+    // $ignoreKeys = preg_grep('/^(wp|wordpress)/', array_keys($_COOKIE));
+    // foreach ($ignoreKeys as $key) {
+    //   unset($_COOKIE[$key]);
+    // }
   }
 
   /**
@@ -1228,7 +1270,18 @@ class CiviCRM_For_WordPress {
     }
 
     // Do the business.
-    CRM_Core_Invoke::invoke($argdata['args']);
+    if (defined('CIVICRM_IFRAME') && CIVICRM_IFRAME && \Civi::service('iframe.router')->getLayout() !== 'cms') {
+      \Civi::service('iframe.router')->invoke([
+        'route' => implode('/', $argdata['args']),
+        'printPage' => function ($content) {
+          echo $content;
+          \CRM_Utils_System::civiExit();
+        },
+      ]);
+    }
+    else {
+      CRM_Core_Invoke::invoke($argdata['args']);
+    }
 
     // Restore original timezone.
     if ($original_timezone) {

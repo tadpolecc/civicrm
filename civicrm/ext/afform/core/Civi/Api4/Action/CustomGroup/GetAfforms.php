@@ -48,6 +48,7 @@ class GetAfforms extends \Civi\Api4\Generic\BasicBatchAction {
   protected function getSelect() {
     return ['id', 'name', 'title', 'is_multiple',
       'help_pre', 'help_post', 'extends', 'icon', 'style',
+      'extends_entity_column_value', 'weight',
     ];
   }
 
@@ -61,6 +62,14 @@ class GetAfforms extends \Civi\Api4\Generic\BasicBatchAction {
       ->addWhere('is_active', '=', TRUE)
       ->execute()
       ->column('name');
+
+    // Custom group has no enabled fields; nothing to generate.
+    if (!$item['field_names']) {
+      return [
+        'id' => $item['id'],
+        'forms' => $forms,
+      ];
+    }
 
     // restrict forms other than block to if Admin UI is enabled
     $hasAdminUi = \CRM_Extension_System::singleton()->getMapper()->isActiveModule('civicrm_admin_ui');
@@ -285,13 +294,19 @@ class GetAfforms extends \Civi\Api4\Generic\BasicBatchAction {
       'permission' => ['access all custom data'],
       'title' => $item['title'],
       'icon' => $item['icon'],
+      'summary_weight' => 100 + ($item['weight'] ?? 0),
     ];
-    if ($item['extends'] === 'Contact') {
+    $entityIdFilter = \CRM_Utils_String::convertStringToSnakeCase($item['extends']) . '_id';
+    if (CoreUtil::isContact($item['extends'])) {
+      // override e.g. "individual_id", we want "contact_id"
+      $entityIdFilter = 'contact_id';
       $afform['placement'] = ['contact_summary_tab'];
-    }
-    elseif (CoreUtil::isContact($item['extends'])) {
-      $afform['placement'] = ['contact_summary_tab'];
-      $afform['summary_contact_type'] = [$item['extends']];
+      if (!empty($item['extends_entity_column_value'])) {
+        $afform['summary_contact_type'] = (array) $item['extends_entity_column_value'];
+      }
+      elseif ($item['extends'] !== 'Contact') {
+        $afform['summary_contact_type'] = [$item['extends']];
+      }
     }
     else {
       // tabs for other entities are placed without any
@@ -308,6 +323,8 @@ class GetAfforms extends \Civi\Api4\Generic\BasicBatchAction {
           'saved_search' => 'Custom_' . $item['name'] . '_Search',
           'display_type' => 'table',
           'search_display' => 'Custom_' . $item['name'] . '_Tab',
+          // 'contact_id', 'event_id', etc.
+          'entity_id_filter' => $entityIdFilter,
         ]
       );
     }

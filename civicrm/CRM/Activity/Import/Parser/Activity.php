@@ -112,15 +112,6 @@ class CRM_Activity_Import_Parser_Activity extends CRM_Import_Parser {
             }
           }
         }
-
-        if (!empty($params['external_identifier'])) {
-          if ($disp) {
-            $disp .= "AND {$params['external_identifier']}";
-          }
-          else {
-            $disp = $params['external_identifier'];
-          }
-        }
         if (empty($params['id'])) {
           throw new CRM_Core_Exception('No matching Contact found for (' . $disp . ')');
         }
@@ -194,7 +185,6 @@ class CRM_Activity_Import_Parser_Activity extends CRM_Import_Parser {
    */
   protected function setFieldMetadata(): void {
     if (empty($this->importableFieldsMetadata)) {
-      $activityContact = CRM_Activity_BAO_ActivityContact::import();
       $fields = ['' => ['title' => ts('- do not import -')]];
 
       $tmpFields = CRM_Activity_DAO_Activity::import();

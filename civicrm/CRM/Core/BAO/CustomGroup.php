@@ -78,6 +78,13 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
       $permittedIds = CRM_Core_Permission::customGroup($permissionType, FALSE, $userId);
       $allGroups = array_intersect_key($allGroups, array_flip($permittedIds));
     }
+    // Boolean filters e.g. is_active should be unset if NULL
+    // For other types of fields, NULL is a valid comparison value, but not booleans
+    foreach ($filters as $filterKey => $filterValue) {
+      if (str_starts_with($filterKey, 'is_') && $filterValue === NULL) {
+        unset($filters[$filterKey]);
+      }
+    }
     if (!$filters) {
       return $allGroups;
     }
@@ -201,13 +208,13 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
       if (is_array($extendsChildType)) {
         foreach ($extendsChildType as $childType) {
           if (!array_key_exists($childType, $registeredSubTypes) && !in_array($childType, $registeredSubTypes, TRUE)) {
-            throw new CRM_Core_Exception('Supplied Sub type is not valid for the specified entity');
+            throw new CRM_Core_Exception(ts('The Sub Type ID %1 is not valid for the specified entity or it has been disabled. If the Sub Type was disabled, re-enable it temporarily and re-save this form in order to remove the setting.', [1 => $childType]));
           }
         }
       }
       else {
         if (!array_key_exists($extendsChildType, $registeredSubTypes) && !in_array($extendsChildType, $registeredSubTypes, TRUE)) {
-          throw new CRM_Core_Exception('Supplied Sub type is not valid for the specified entity');
+          throw new CRM_Core_Exception(ts('The Sub Type ID %1 is not valid for the specified entity or it has been disabled. If the Sub Type was disabled, re-enable it temporarily and re-save this form in order to remove the setting.', [1 => $childType]));
         }
         $extendsChildType = [$extendsChildType];
       }
@@ -230,7 +237,7 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
 
     // Assign new weight
     if (empty($params['id'])) {
-      $group->weight = CRM_Utils_Weight::updateOtherWeights('CRM_Core_DAO_CustomGroup', 0, $params['weight'] ?? CRM_Utils_Weight::getMax('CRM_Core_DAO_CustomGroup'));
+      $group->weight = CRM_Utils_Weight::updateOtherWeights('CRM_Core_DAO_CustomGroup', NULL, $params['weight'] ?? CRM_Utils_Weight::getMax('CRM_Core_DAO_CustomGroup'));
     }
     // Update weight
     if (isset($params['weight']) && !empty($params['id'])) {
@@ -1270,105 +1277,6 @@ class CRM_Core_BAO_CustomGroup extends CRM_Core_DAO_CustomGroup implements \Civi
               $defaults[$elementName] = $value;
             }
           }
-        }
-      }
-    }
-  }
-
-  /**
-   * @deprecated since 5.71 will be remvoed around 5.77
-   * @see CRM_Dedupe_Finder::formatParams
-   *
-   * @param array $groupTree
-   * @param array $params
-   * @param bool $skipFile
-   */
-  public static function postProcess(&$groupTree, &$params, $skipFile = FALSE) {
-    CRM_Core_Error::deprecatedFunctionWarning('no alternative');
-    // Get the Custom form values and groupTree
-    foreach ($groupTree as $groupID => $group) {
-      if ($groupID === 'info') {
-        continue;
-      }
-      foreach ($group['fields'] as $field) {
-        $fieldId = $field['id'];
-        $serialize = CRM_Core_BAO_CustomField::isSerialized($field);
-
-        // Reset all checkbox, radio and multiselect data
-        if ($field['html_type'] == 'Radio' || $serialize) {
-          $groupTree[$groupID]['fields'][$fieldId]['customValue']['data'] = 'NULL';
-        }
-
-        $v = NULL;
-        foreach ($params as $key => $val) {
-          if (preg_match('/^custom_(\d+)_?(-?\d+)?$/', $key, $match) &&
-            $match[1] == $field['id']
-          ) {
-            $v = $val;
-          }
-        }
-
-        if (!isset($groupTree[$groupID]['fields'][$fieldId]['customValue'])) {
-          // field exists in db so populate value from "form".
-          $groupTree[$groupID]['fields'][$fieldId]['customValue'] = [];
-        }
-
-        // Serialize checkbox and multi-select data (using array keys for checkbox)
-        if ($serialize) {
-          $v = ($v && $field['html_type'] === 'Checkbox') ? array_keys($v) : $v;
-          $v = $v ? CRM_Utils_Array::implodePadded($v) : NULL;
-        }
-
-        switch ($field['html_type']) {
-
-          case 'Select Date':
-            $date = CRM_Utils_Date::processDate($v);
-            $groupTree[$groupID]['fields'][$fieldId]['customValue']['data'] = $date;
-            break;
-
-          case 'File':
-            if ($skipFile) {
-              break;
-            }
-
-            // store the file in d/b
-            $entityId = explode('=', $groupTree['info']['where'][0]);
-            $fileParams = ['upload_date' => date('YmdHis')];
-
-            if ($groupTree[$groupID]['fields'][$fieldId]['customValue']['fid']) {
-              $fileParams['id'] = $groupTree[$groupID]['fields'][$fieldId]['customValue']['fid'];
-            }
-            if (!empty($v)) {
-              $fileParams['uri'] = $v['name'];
-              $fileParams['mime_type'] = $v['type'];
-              CRM_Core_BAO_File::filePostProcess($v['name'],
-                $groupTree[$groupID]['fields'][$fieldId]['customValue']['fid'],
-                $groupTree[$groupID]['table_name'],
-                trim($entityId[1]),
-                FALSE,
-                TRUE,
-                $fileParams,
-                'custom_' . $fieldId,
-                $v['type']
-              );
-            }
-            $defaults = [];
-            $paramsFile = [
-              'entity_table' => $groupTree[$groupID]['table_name'],
-              'entity_id' => $entityId[1],
-            ];
-
-            CRM_Core_DAO::commonRetrieve('CRM_Core_DAO_EntityFile',
-              $paramsFile,
-              $defaults
-            );
-
-            $groupTree[$groupID]['fields'][$fieldId]['customValue']['data'] = $defaults['file_id'];
-            break;
-
-          default:
-            $groupTree[$groupID]['fields'][$fieldId]['customValue']['data'] = $v;
-            break;
         }
       }
     }

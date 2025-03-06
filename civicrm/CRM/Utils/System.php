@@ -976,7 +976,7 @@ class CRM_Utils_System {
    *   The fixed URL.
    */
   public static function fixURL($url) {
-    $components = parse_url($url);
+    $components = parse_url($url ?? '');
 
     if (!$components) {
       return NULL;
@@ -1521,7 +1521,6 @@ class CRM_Utils_System {
       Civi::cache('metadata')->clear();
       \Civi\Core\ClassScanner::cache('index')->flush();
       CRM_Extension_System::singleton()->getCache()->flush();
-      CRM_Cxn_CiviCxnHttp::singleton()->getCache()->flush();
     }
 
     // also reset the various static memory caches

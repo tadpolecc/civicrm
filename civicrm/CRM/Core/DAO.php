@@ -332,7 +332,7 @@ class CRM_Core_DAO extends DB_DataObject {
     }
     else {
       //if it is required we need to generate the dependency object first
-      $depObject = CRM_Core_DAO::createTestObject($FKClassName, CRM_Utils_Array::value($dbName, $params, 1));
+      $depObject = CRM_Core_DAO::createTestObject($FKClassName, $params[$dbName] ?? 1);
       $this->$dbName = $depObject->id;
     }
   }
@@ -524,6 +524,9 @@ class CRM_Core_DAO extends DB_DataObject {
 
     if ($i18nRewrite and $dbLocale) {
       $query = CRM_Core_I18n_Schema::rewriteQuery($query);
+    }
+    if (CIVICRM_UF === 'UnitTests' && CRM_Utils_Time::isOverridden()) {
+      $query = CRM_Utils_Time::rewriteQuery($query);
     }
 
     $ret = parent::query($query);
@@ -2937,6 +2940,7 @@ SELECT contact_id
   public static function buildOptions($fieldName, $context = NULL, $values = []) {
     $entityName = CRM_Core_DAO_AllCoreTables::getEntityNameForClass(get_called_class());
     $entity = Civi::entity($entityName);
+    $legacyFieldName = $fieldName;
     // Legacy handling for custom field names in `custom_123` format
     if (str_starts_with($fieldName, 'custom_') && is_numeric($fieldName[7] ?? '')) {
       $fieldName = CRM_Core_BAO_CustomField::getLongNameFromShortName($fieldName) ?? $fieldName;
@@ -2948,7 +2952,7 @@ SELECT contact_id
     }
     // Legacy handling for hook-based fields from `fields_callback`
     if (!$entity->getField($fieldName)) {
-      return CRM_Core_PseudoConstant::get(static::class, $fieldName, [], $context);
+      return CRM_Core_PseudoConstant::get(static::class, $legacyFieldName, [], $context);
     }
     $checkPermissions = (bool) ($values['check_permissions'] ?? ($context == 'create' || $context == 'search'));
     $includeDisabled = ($context == 'validate' || $context == 'get');
@@ -3332,23 +3336,21 @@ SELECT contact_id
    *
    * With acls from related entities + additional clauses from hook_civicrm_selectWhereClause
    *
-   * DO NOT OVERRIDE THIS FUNCTION
-   *
-   * @TODO: ADD `final` keyword to function signature
-   *
    * @param string|null $tableAlias
    * @param string|null $entityName
    * @param array $conditions
    *   Values from WHERE or ON clause
-   * @return array
+   * @param int|null $userId
+   *
+   * @return string[]
    */
-  public static function getSelectWhereClause($tableAlias = NULL, $entityName = NULL, $conditions = []) {
+  final public static function getSelectWhereClause(?string $tableAlias = NULL, ?string $entityName = NULL, array $conditions = [], ?int $userId = NULL) {
     $bao = new static();
     $tableAlias ??= $bao->tableName();
     $entityName ??= CRM_Core_DAO_AllCoreTables::getEntityNameForClass(get_class($bao));
     $finalClauses = [];
     $fields = static::getSupportedFields();
-    $selectWhereClauses = $bao->addSelectWhereClause($entityName, NULL, $conditions);
+    $selectWhereClauses = $bao->addSelectWhereClause($entityName, $userId, $conditions);
     foreach ($selectWhereClauses as $fieldName => $fieldClauses) {
       $finalClauses[$fieldName] = NULL;
       if ($fieldClauses) {
