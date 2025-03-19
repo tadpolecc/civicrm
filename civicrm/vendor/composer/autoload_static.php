@@ -456,8 +456,8 @@ class ComposerStaticInitf31d9afa29112903a0ec52390903c67a
         array (
             'Mail' => 
             array (
-                0 => __DIR__ . '/..' . '/pear/mail_mime',
-                1 => __DIR__ . '/..' . '/pear/mail',
+                0 => __DIR__ . '/..' . '/pear/mail',
+                1 => __DIR__ . '/..' . '/pear/mail_mime',
             ),
         ),
         'L' => 
