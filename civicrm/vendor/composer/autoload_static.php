@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInitf31d9afa29112903a0ec52390903c67a
+class ComposerStaticInit820ae3d2b9073cda56584c6046fd7450
 {
     public static $files = array (
         'a4a119a56e50fbb293281d9a48007e0e' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
@@ -19,6 +19,8 @@ class ComposerStaticInitf31d9afa29112903a0ec52390903c67a
         'decc78cc4436b1292c6c0d151b19445c' => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib/bootstrap.php',
         'def43f6c87e4f8dfd0c9e1b1bab14fe8' => __DIR__ . '/..' . '/symfony/polyfill-iconv/bootstrap.php',
         '5897ea0ac4cccf14d323035e65887801' => __DIR__ . '/..' . '/symfony/polyfill-php82/bootstrap.php',
+        '662a729f963d39afe703c9d9b7ab4a8c' => __DIR__ . '/..' . '/symfony/polyfill-php83/bootstrap.php',
+        '9d2b9fc6db0f153a0a149fefb182415e' => __DIR__ . '/..' . '/symfony/polyfill-php84/bootstrap.php',
         '667aeda72477189d0494fecd327c3641' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
         'bad842bce63596a608e2623519fb382c' => __DIR__ . '/..' . '/xkerman/restricted-unserialize/src/function.php',
         '23c7c9fb739a56c448f3bc838e8b186d' => __DIR__ . '/../..' . '/functions.php',
@@ -57,6 +59,8 @@ class ComposerStaticInitf31d9afa29112903a0ec52390903c67a
         ),
         'S' => 
         array (
+            'Symfony\\Polyfill\\Php84\\' => 23,
+            'Symfony\\Polyfill\\Php83\\' => 23,
             'Symfony\\Polyfill\\Php82\\' => 23,
             'Symfony\\Polyfill\\Php81\\' => 23,
             'Symfony\\Polyfill\\Php80\\' => 23,
@@ -178,6 +182,14 @@ class ComposerStaticInitf31d9afa29112903a0ec52390903c67a
         'TYPO3\\PharStreamWrapper\\' => 
         array (
             0 => __DIR__ . '/..' . '/typo3/phar-stream-wrapper/src',
+        ),
+        'Symfony\\Polyfill\\Php84\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/symfony/polyfill-php84',
+        ),
+        'Symfony\\Polyfill\\Php83\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/symfony/polyfill-php83',
         ),
         'Symfony\\Polyfill\\Php82\\' => 
         array (
@@ -539,8 +551,19 @@ class ComposerStaticInitf31d9afa29112903a0ec52390903c67a
         'DOMDocumentWrapper' => __DIR__ . '/..' . '/rubobaquero/phpquery/phpQuery/phpQuery/DOMDocumentWrapper.php',
         'DOMEvent' => __DIR__ . '/..' . '/rubobaquero/phpquery/phpQuery/phpQuery/DOMEvent.php',
         'Datamatrix' => __DIR__ . '/..' . '/tecnickcom/tcpdf/include/barcodes/datamatrix.php',
+        'DateError' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateError.php',
+        'DateException' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateException.php',
+        'DateInvalidOperationException' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateInvalidOperationException.php',
+        'DateInvalidTimeZoneException' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateInvalidTimeZoneException.php',
+        'DateMalformedIntervalStringException' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateMalformedIntervalStringException.php',
+        'DateMalformedPeriodStringException' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateMalformedPeriodStringException.php',
+        'DateMalformedStringException' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateMalformedStringException.php',
+        'DateObjectError' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateObjectError.php',
+        'DateRangeError' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateRangeError.php',
+        'Deprecated' => __DIR__ . '/..' . '/symfony/polyfill-php84/Resources/stubs/Deprecated.php',
         'Dompdf\\Cpdf' => __DIR__ . '/..' . '/dompdf/dompdf/lib/Cpdf.php',
         'ICallbackNamed' => __DIR__ . '/..' . '/rubobaquero/phpquery/phpQuery/phpQuery/Callback.php',
+        'Override' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/Override.php',
         'PDF417' => __DIR__ . '/..' . '/tecnickcom/tcpdf/include/barcodes/pdf417.php',
         'PEAR_Exception' => __DIR__ . '/..' . '/pear/pear_exception/PEAR/Exception.php',
         'PhpToken' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/PhpToken.php',
@@ -552,6 +575,7 @@ class ComposerStaticInitf31d9afa29112903a0ec52390903c67a
         'Random\\RandomError' => __DIR__ . '/..' . '/symfony/polyfill-php82/Resources/stubs/Random/RandomError.php',
         'Random\\RandomException' => __DIR__ . '/..' . '/symfony/polyfill-php82/Resources/stubs/Random/RandomException.php',
         'ReturnTypeWillChange' => __DIR__ . '/..' . '/symfony/polyfill-php81/Resources/stubs/ReturnTypeWillChange.php',
+        'SQLite3Exception' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/SQLite3Exception.php',
         'SensitiveParameter' => __DIR__ . '/..' . '/symfony/polyfill-php82/Resources/stubs/SensitiveParameter.php',
         'SensitiveParameterValue' => __DIR__ . '/..' . '/symfony/polyfill-php82/Resources/stubs/SensitiveParameterValue.php',
         'Stringable' => __DIR__ . '/..' . '/myclabs/php-enum/stubs/Stringable.php',
@@ -684,11 +708,11 @@ class ComposerStaticInitf31d9afa29112903a0ec52390903c67a
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInitf31d9afa29112903a0ec52390903c67a::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInitf31d9afa29112903a0ec52390903c67a::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInitf31d9afa29112903a0ec52390903c67a::$prefixesPsr0;
-            $loader->fallbackDirsPsr0 = ComposerStaticInitf31d9afa29112903a0ec52390903c67a::$fallbackDirsPsr0;
-            $loader->classMap = ComposerStaticInitf31d9afa29112903a0ec52390903c67a::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit820ae3d2b9073cda56584c6046fd7450::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit820ae3d2b9073cda56584c6046fd7450::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInit820ae3d2b9073cda56584c6046fd7450::$prefixesPsr0;
+            $loader->fallbackDirsPsr0 = ComposerStaticInit820ae3d2b9073cda56584c6046fd7450::$fallbackDirsPsr0;
+            $loader->classMap = ComposerStaticInit820ae3d2b9073cda56584c6046fd7450::$classMap;
 
         }, null, ClassLoader::class);
     }

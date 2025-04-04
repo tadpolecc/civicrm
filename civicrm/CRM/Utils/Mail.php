@@ -60,15 +60,7 @@ class CRM_Utils_Mail {
        * Use the host name of the web server, falling back to the base URL
        * (eg when using the PHP CLI), and then falling back to localhost.
        */
-      $params['localhost'] = CRM_Utils_Array::value(
-        'SERVER_NAME',
-        $_SERVER,
-        CRM_Utils_Array::value(
-          'host',
-          parse_url(CIVICRM_UF_BASEURL),
-          'localhost'
-        )
-      );
+      $params['localhost'] = $_SERVER['SERVER_NAME'] ?? parse_url(CIVICRM_UF_BASEURL)['host'] ?? 'localhost';
 
       // also set the timeout value, lets set it to 30 seconds
       // CRM-7510
@@ -345,12 +337,12 @@ class CRM_Utils_Mail {
     $headers['Return-Path'] = $params['returnPath'] ?? $defaultReturnPath;
 
     // CRM-11295: Omit reply-to headers if empty; this avoids issues with overzealous mailservers
-    // dev/core#5301: Allow Reply-To to be set directly.
-    $replyTo = $params['Reply-To'] ?? ($params['replyTo'] ?? ($params['from'] ?? NULL));
+    $replyTo = $params['Reply-To'] ?? ($params['replyTo'] ?? NULL);
 
     if (!empty($replyTo)) {
       $headers['Reply-To'] = $replyTo;
     }
+
     $headers['Date'] = date('r');
     if ($includeMessageId) {
       $headers['Message-ID'] = $params['messageId'] ?? '<' . uniqid('civicrm_', TRUE) . "@$emailDomain>";
@@ -367,13 +359,18 @@ class CRM_Utils_Mail {
     }
 
     // quote FROM, if comma is detected AND is not already quoted. CRM-7053
-    if (strpos($headers['From'], ',') !== FALSE) {
+    if (str_contains($headers['From'], ',')) {
       $from = explode(' <', $headers['From']);
       $headers['From'] = self::formatRFC822Email(
         $from[0],
         substr(trim($from[1]), 0, -1),
         TRUE
       );
+    }
+
+    // dev/core#5301: Allow Reply-To to be set directly.
+    if (empty($replyTo)) {
+      $headers['Reply-To'] = $headers['From'];
     }
 
     require_once 'Mail/mime.php';
@@ -395,7 +392,7 @@ class CRM_Utils_Mail {
           TRUE,
           'base64',
           'attachment',
-          (isset($attach['charset']) ? $attach['charset'] : ''),
+          ($attach['charset'] ?? ''),
           '',
           '',
           NULL,
@@ -537,7 +534,7 @@ class CRM_Utils_Mail {
         ['\<', '\"', '\>'],
         $name
       );
-      if (strpos($name, ',') !== FALSE ||
+      if (str_contains($name, ',') ||
         $useQuote
       ) {
         // quote the string if it has a comma

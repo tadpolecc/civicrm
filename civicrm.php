@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CiviCRM
  * Description: CiviCRM - Growing and Sustaining Relationships
- * Version: 6.0.3
+ * Version: 6.1.0
  * Requires at least: 4.9
  * Requires PHP:      8.0
  * Author: CiviCRM LLC
@@ -36,7 +36,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Set version here: changing it forces Javascript and CSS to reload.
-define('CIVICRM_PLUGIN_VERSION', '6.0.3');
+define('CIVICRM_PLUGIN_VERSION', '6.1.0');
 
 // Store reference to this file.
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -257,8 +257,8 @@ class CiviCRM_For_WordPress {
         include_once CIVICRM_PLUGIN_DIR . 'wp-cli/wp-cli-civicrm.php';
       }
 
-      if (self::$instance->is_iframe()) {
-        define('CIVICRM_IFRAME', 1);
+      define('CIVICRM_IFRAME', self::$instance->is_iframe());
+      if (CIVICRM_IFRAME) {
         // Must run before WP starts processing cookies.
         self::$instance->activate_iframe();
       }
@@ -1270,7 +1270,7 @@ class CiviCRM_For_WordPress {
     }
 
     // Do the business.
-    if (defined('CIVICRM_IFRAME') && CIVICRM_IFRAME && \Civi::service('iframe.router')->getLayout() !== 'cms') {
+    if (CIVICRM_IFRAME && \Civi::service('iframe.router')->getLayout() !== 'cms') {
       \Civi::service('iframe.router')->invoke([
         'route' => implode('/', $argdata['args']),
         'printPage' => function ($content) {
