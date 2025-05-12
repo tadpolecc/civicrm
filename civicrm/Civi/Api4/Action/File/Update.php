@@ -1,4 +1,6 @@
-{*
+<?php
+
+/*
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC. All rights reserved.                        |
  |                                                                    |
@@ -6,5 +8,14 @@
  | permitted exceptions and without any warranty. For full license    |
  | and copyright information, see https://civicrm.org/licensing       |
  +--------------------------------------------------------------------+
-*}
-{include file="CRM/Import/Form/MapField.tpl"}
+ */
+
+namespace Civi\Api4\Action\File;
+
+/**
+ * @inheritDoc
+ */
+class Update extends \Civi\Api4\Generic\DAOUpdateAction {
+  use FileSaveTrait;
+
+}

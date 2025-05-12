@@ -619,12 +619,11 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField implements \Civi
     if (empty($groupName) || empty($fieldName)) {
       return NULL;
     }
-    foreach (CRM_Core_BAO_CustomGroup::getAll() as $customGroup) {
-      if ($customGroup['name'] === $groupName) {
-        foreach ($customGroup['fields'] as $id => $field) {
-          if ($field['name'] === $fieldName) {
-            return "custom_$id";
-          }
+    $customGroup = CRM_Core_BAO_CustomGroup::getGroup(['name' => $groupName]);
+    if ($customGroup) {
+      foreach ($customGroup['fields'] as $id => $field) {
+        if ($field['name'] === $fieldName) {
+          return "custom_$id";
         }
       }
     }
@@ -2645,6 +2644,14 @@ WHERE      f.id IN ($ids)";
     }
     // Otherwise this is the new standard as of 5.27
     return is_object($field) ? !empty($field->serialize) : !empty($field['serialize']);
+  }
+
+  public static function getFkEntity(array $field): ?string {
+    $dataTypeToFK = [
+      'ContactReference' => 'Contact',
+      'File' => 'File',
+    ];
+    return $field['fk_entity'] ?? $dataTypeToFK[$field['data_type']] ?? NULL;
   }
 
   public static function getFkEntityOnDeleteOptions(): array {

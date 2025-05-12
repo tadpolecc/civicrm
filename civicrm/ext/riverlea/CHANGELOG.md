@@ -1,3 +1,19 @@
+1.4.2-6.2alpha
+ - FIXED - today's date background on date-picker (https://lab.civicrm.org/dev/core/-/issues/5807).
+ - FIXED - restore .nowrap class (https://lab.civicrm.org/extensions/riverlea/-/issues/125).
+ - FIXED - inconsistent padding around 'add address' block on contact dashboard (https://lab.civicrm.org/extensions/riverlea/-/issues/122).
+ - FIXED - stange alignment on summary modals (https://lab.civicrm.org/extensions/riverlea/-/issues/121).
+
+1.4.1-6.2alpha
+ - FIXED - start/end date appears inline (https://lab.civicrm.org/extensions/riverlea/-/issues/120)
+ - FIXED - float of prev/next on contact dashboard on WordPress in some contexts (https://lab.civicrm.org/extensions/riverlea/-/issues/118).
+ - ADDED - new multi-buttons wrapper `.crm-buttons` to provide uniform gap and wrap around multiple buttons, as no other class provides this - and instead it's handled on a case-by-case basis which is a waste of css. Not used anywhere currently, but referenced in discussion: https://github.com/civicrm/civicrm-core/pull/32344 & https://lab.civicrm.org/extensions/riverlea/-/issues/101.
+
+1.4.0-6.2alpha
+ - FIXED - right-align of event participant contact details removed (https://lab.civicrm.org/extensions/riverlea/-/issues/119).
+ - FIXED - FormBuilder left tabs squash and become illegible when too many items (https://lab.civicrm.org/extensions/riverlea/-/issues/116)
+ - CHANGED - only bottom align delete button when there are a limited number of custom activities (default list plus up to three more custom activities), otherwise keep inline (https://lab.civicrm.org/extensions/riverlea/-/issues/117)
+
 1.3.8-6.0alpha
  - FIXED - solves various issues around the naming of crm-text-light and crm-text-dark (https://github.com/civicrm/civicrm-core/pull/31994);
  - FIXED - Bootstrap Time input fields limit width, not 100%.

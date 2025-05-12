@@ -1,4 +1,5 @@
 <?php
+
 /*
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC. All rights reserved.                        |
@@ -8,16 +9,13 @@
  | and copyright information, see https://civicrm.org/licensing       |
  +--------------------------------------------------------------------+
  */
-namespace Civi\Api4;
+
+namespace Civi\Api4\Action\File;
 
 /**
- * Tracks when a contact forwards a mailing to a (new) contact
- *
- * @see \Civi\Api4\Mailing
- * @since 5.64
- * @package Civi\Api4
+ * @inheritDoc
  */
-class MailingEventForward extends Generic\DAOEntity {
-  use Generic\Traits\ReadOnlyEntity;
+class Create extends \Civi\Api4\Generic\DAOCreateAction {
+  use FileSaveTrait;
 
 }
