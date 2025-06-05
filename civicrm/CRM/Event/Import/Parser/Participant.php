@@ -74,13 +74,11 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
         'default_action' => $this->isUpdateExisting() ? 'update' : 'create',
         'entity_name' => 'Participant',
         'entity_title' => ts('Participant'),
-        'entity_field_prefix' => 'Participant.',
         'selected' => ['action' => $this->isUpdateExisting() ? 'update' : 'create'],
       ],
       'Contact' => [
         'text' => ts('Contact Fields'),
         'is_contact' => TRUE,
-        'entity_field_prefix' => 'Contact.',
         'unique_fields' => ['external_identifier', 'id'],
         'supports_multiple' => FALSE,
         'actions' => $this->isUpdateExisting() ? $this->getActions(['ignore', 'update']) : $this->getActions(['select', 'update', 'save']),
@@ -103,6 +101,7 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
    *   The array of values belonging to this line.
    */
   public function import(array $values): void {
+    $values = array_values($values);
     $rowNumber = (int) ($values[array_key_last($values)]);
     try {
       $params = $this->getMappedRow($values);
@@ -112,7 +111,7 @@ class CRM_Event_Import_Parser_Participant extends CRM_Import_Parser {
       if (!empty($participantParams['id'])) {
         $existingParticipant = $this->checkEntityExists('Participant', $participantParams['id']);
         if (!$this->isUpdateExisting()) {
-          throw new CRM_Core_Exception(ts('% record found and update not selected', [1 => 'Participant']));
+          throw new CRM_Core_Exception(ts('%1 record found and update not selected', [1 => 'Participant']));
         }
         $participantParams['contact_id'] = !empty($participantParams['contact_id']) ? (int) $participantParams['contact_id'] : $existingParticipant['contact_id'];
       }

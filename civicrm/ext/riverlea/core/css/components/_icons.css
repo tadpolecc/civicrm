@@ -80,7 +80,7 @@ div.civicrm-community-messages a.civicrm-community-message-dismiss::before,
 
 /* Close icon */
 #crm-notification-container .ui-notify-message a.ui-notify-cross,
-div.civicrm-community-messages a.civicrm-community-message-dismiss,
+.crm-container div.civicrm-community-messages a.civicrm-community-message-dismiss,
 .crm-container .ui-icon-circle-close {
   font-size: 0;
   float: right;
@@ -211,7 +211,7 @@ div.civicrm-community-messages a.civicrm-community-message-dismiss::before,
 /* Trash icons */
 .crm-container .delete-icon {
   background-image: none;
-  color: var(--crm-alert-text-danger);
+  color: var(--crm-alert-danger-text);
 }
 .crm-container .delete-button > .delete-icon {
   color: inherit;

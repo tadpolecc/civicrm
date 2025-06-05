@@ -60,6 +60,7 @@ class CRM_Activity_Import_Parser_Activity extends CRM_Import_Parser {
    *   The array of values belonging to this line.
    */
   public function import(array $values): void {
+    $values = array_values($values);
     $rowNumber = (int) ($values[array_key_last($values)]);
     // First make sure this is a valid line
     try {
@@ -111,7 +112,6 @@ class CRM_Activity_Import_Parser_Activity extends CRM_Import_Parser {
         'text' => ts('Activity Fields'),
         'entity_title' => ts('Activity'),
         'is_contact' => FALSE,
-        'entity_field_prefix' => 'Activity.',
         'actions' => [
           ['id' => 'save', 'text' => ts('Create or Update using ID'), 'description' => ts('Skip if no match found')],
         ],
@@ -125,7 +125,6 @@ class CRM_Activity_Import_Parser_Activity extends CRM_Import_Parser {
         'text' => ts('Target Contact Fields'),
         'entity_title' => ts('Target Contact'),
         'is_contact' => TRUE,
-        'entity_field_prefix' => 'target_contact.',
         'unique_fields' => ['external_identifier', 'id'],
         'supports_multiple' => TRUE,
         'actions' => $this->getActions(['select', 'ignore', 'update']),
@@ -140,7 +139,6 @@ class CRM_Activity_Import_Parser_Activity extends CRM_Import_Parser {
         'text' => ts('Source Contact Fields'),
         'entity_title' => ts('Source Contact'),
         'is_contact' => TRUE,
-        'entity_field_prefix' => 'source_contact.',
         'unique_fields' => ['external_identifier', 'id'],
         'supports_multiple' => FALSE,
         'actions' => $this->isUpdateExisting() ? $this->getActions(['ignore']) : $this->getActions(['select', 'update', 'save']),
@@ -154,7 +152,6 @@ class CRM_Activity_Import_Parser_Activity extends CRM_Import_Parser {
         'text' => ts('assignee Contact Fields'),
         'entity_title' => ts('Assignee Contact'),
         'is_contact' => TRUE,
-        'entity_field_prefix' => 'AssigneeContact.',
         'unique_fields' => ['external_identifier', 'id'],
         'supports_multiple' => TRUE,
         'actions' => $this->getActions(['select', 'ignore']),

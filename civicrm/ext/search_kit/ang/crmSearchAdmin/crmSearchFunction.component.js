@@ -209,7 +209,8 @@
         if (ctrl.fnName) {
           const args = ctrl.args.map((arg, index) => {
             const value = arg.value === undefined ? '' : arg.value;
-            const prefix = arg.flag_before || arg.name ? (index ? ' ' : '') + (arg.flag_before || arg.name) + (value === '' ? '' : ' ') : (index ? ', ' : '');
+            const prefix = arg.name ? (index ? ' ' : '') + (arg.name) + (value === '' ? '' : ' ') : (index ? ', ' : '');
+            const flag = arg.flag_before ? arg.flag_before + ' ' : '';
             const suffix = arg.flag_after ? ' ' + arg.flag_after : '';
             let content = '';
             // Skip empty optional args
@@ -219,7 +220,7 @@
             if (ctrl.getParam(index).max_expr) {
               content = (arg.type === 'string' || value === '' ? JSON.stringify(value) : value);
             }
-            return prefix + content + suffix;
+            return prefix + flag + content + suffix;
           });
           // Replace fake function "e"
           ctrl.expr = (ctrl.fnName === 'e' ? '' : ctrl.fnName) + '(';

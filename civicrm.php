@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CiviCRM
  * Description: CiviCRM - Growing and Sustaining Relationships
- * Version: 6.2.0
+ * Version: 6.3.0
  * Requires at least: 4.9
  * Requires PHP:      8.0
  * Author: CiviCRM LLC
@@ -36,7 +36,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Set version here: changing it forces Javascript and CSS to reload.
-define('CIVICRM_PLUGIN_VERSION', '6.2.0');
+define('CIVICRM_PLUGIN_VERSION', '6.3.0');
 
 // Store reference to this file.
 if (!defined('CIVICRM_PLUGIN_FILE')) {

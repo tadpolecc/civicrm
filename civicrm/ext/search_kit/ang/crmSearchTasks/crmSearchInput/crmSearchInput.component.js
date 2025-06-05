@@ -42,7 +42,11 @@
           if (ctrl.optionKey && ctrl.optionKey !== 'id') {
             return val;
           }
-          if (_.isArray(val)) {
+          // A regex is always a string
+          if (ctrl.op && ctrl.op.includes('REGEXP')) {
+            return val;
+          }
+          if (Array.isArray(val)) {
             const formatted = angular.copy(val);
             formatted.forEach((v, i) => formatted[i] = formatDataType(v));
             return formatted;
