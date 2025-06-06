@@ -3,7 +3,7 @@
         'name' => 'civicrm/civicrm-core',
         'pretty_version' => '6.3.x-dev',
         'version' => '6.3.9999999.9999999-dev',
-        'reference' => '0c26fe90e6fbac060f93f3a17c103a433da786bf',
+        'reference' => '0667dcc3ea3a45bb40e1b7d7c18d2490a6f677df',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -49,7 +49,7 @@
         'civicrm/civicrm-core' => array(
             'pretty_version' => '6.3.x-dev',
             'version' => '6.3.9999999.9999999-dev',
-            'reference' => '0c26fe90e6fbac060f93f3a17c103a433da786bf',
+            'reference' => '0667dcc3ea3a45bb40e1b7d7c18d2490a6f677df',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -431,14 +431,12 @@
             'dev_requirement' => false,
         ),
         'phpoffice/phpword' => array(
-            'pretty_version' => 'dev-master',
-            'version' => 'dev-master',
-            'reference' => '44e6c268e3c03b0ce5e5ca2665c400a211d34d8b',
+            'pretty_version' => '1.4.0',
+            'version' => '1.4.0.0',
+            'reference' => '6d75328229bc93790b37e93741adf70646cea958',
             'type' => 'library',
             'install_path' => __DIR__ . '/../phpoffice/phpword',
-            'aliases' => array(
-                0 => '9999999-dev',
-            ),
+            'aliases' => array(),
             'dev_requirement' => false,
         ),
         'phpseclib/phpseclib' => array(
