@@ -11,6 +11,8 @@
  * License: AGPL3
  * Text Domain: civicrm
  * Domain Path: /languages
+ * GitHub Plugin URI: tadpolecc/civicrm
+ * GitHub Plugin URI: https://github.com/tadpolecc/civicrm
  */
 
 /*
