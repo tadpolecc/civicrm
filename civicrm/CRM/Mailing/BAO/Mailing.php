@@ -880,7 +880,7 @@ ORDER BY   civicrm_email.is_bulkmail DESC
     $emailDomain = CRM_Core_BAO_MailSettings::defaultDomain();
     // Make sure the user configured the site correctly, otherwise you just get "Could not identify any recipients. Perhaps the group is empty?" from the mailing UI
     if (empty($emailDomain)) {
-      CRM_Core_Error::debug_log_message('Error setting verp parameters, defaultDomain is NULL.  Did you configure the bounce processing account for this domain?');
+      Civi::log()->error('Error setting verp parameters, defaultDomain is NULL.  Did you configure the bounce processing account for this domain?');
     }
 
     foreach ($verpTokens as $key => $value) {
@@ -2490,6 +2490,8 @@ ORDER BY civicrm_mailing.id DESC";
       $types = [];
       $types[] = [
         'name' => 'traditional',
+        'label' => ts('Traditional'),
+        'description' => ts('Standard CiviMail interface with wysiwyg editor.'),
         'editorUrl' => CRM_Mailing_Info::workflowEnabled() ? '~/crmMailing/EditMailingCtrl/workflow.html' : '~/crmMailing/EditMailingCtrl/2step.html',
         'weight' => 0,
       ];
@@ -2514,17 +2516,21 @@ ORDER BY civicrm_mailing.id DESC";
   }
 
   /**
-   * Get a list of template types.
+   * Pseudoconstant callback for `template_type` field.
    *
    * @return array
-   *   Array(string $name => string $label).
    */
-  public static function getTemplateTypeNames() {
-    $r = [];
+  public static function getTemplateTypeNames(): array {
+    $types = [];
     foreach (self::getTemplateTypes() as $type) {
-      $r[$type['name']] = $type['name'];
+      $types[] = [
+        'id' => $type['name'],
+        'name' => $type['name'],
+        'label' => $type['label'] ?? ucfirst($type['name']),
+        'description' => $type['description'] ?? NULL,
+      ];
     }
-    return $r;
+    return $types;
   }
 
 }

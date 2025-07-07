@@ -1823,7 +1823,6 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
 
     while ($dao->fetch()) {
       $componentDetails['component'] = $dao->participant_id ? 'event' : 'contribute';
-      $componentDetails['contact_id'] = $dao->contact_id;
       if ($dao->event_id) {
         $componentDetails['event'] = $dao->event_id;
       }
@@ -1839,9 +1838,6 @@ LEFT JOIN  civicrm_contribution contribution ON ( componentPayment.contribution_
       }
       if ($dao->pledge_payment_id) {
         $pledgePayment[] = $dao->pledge_payment_id;
-      }
-      if ($dao->contribution_recur_id) {
-        $componentDetails['contributionRecur'] = $dao->contribution_recur_id;
       }
     }
 
@@ -2158,10 +2154,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
 
     $this->loadRelatedEntitiesByID($ids);
 
-    if (!empty($ids['contributionRecur']) && !$paymentProcessorID) {
-      $paymentProcessorID = $this->_relatedObjects['contributionRecur']->payment_processor_id;
-    }
-
     if (!empty($ids['pledge_payment'])) {
       foreach ($ids['pledge_payment'] as $key => $paymentID) {
         if (empty($paymentID)) {
@@ -2257,9 +2249,14 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
    */
   public function composeMessageArray($input, $ids, $values = [], $returnMessageText = TRUE) {
     $ids = array_merge(self::getComponentDetails($this->id), $ids);
-    if (empty($ids['contact']) && isset($this->contact_id)) {
-      $ids['contact'] = $this->contact_id;
-    }
+    $contributionID = (int) $this->id;
+
+    $contribution = Contribution::get(FALSE)
+      ->addWhere('id', '=', $contributionID)
+      ->addSelect('*', 'contribution_recur_id.payment_processor_id')
+      ->execute()->single();
+    $contactID = $contribution['contact_id'];
+
     if (!empty($ids['event'])) {
       $this->_component = 'event';
     }
@@ -2273,31 +2270,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       $this->find(TRUE);
     }
 
-    $paymentProcessorID = $input['payment_processor_id'] ?? NULL;
-
-    $ids['contributionType'] = $this->financial_type_id;
-    $ids['financialType'] = $this->financial_type_id;
-    if ($this->contribution_page_id) {
-      $ids['contributionPage'] = $this->contribution_page_id;
-    }
-
-    $entities = [
-      'contact' => 'CRM_Contact_BAO_Contact',
-      'contributionRecur' => 'CRM_Contribute_BAO_ContributionRecur',
-    ];
-    foreach ($entities as $entity => $bao) {
-      if (!empty($ids[$entity])) {
-        $this->_relatedObjects[$entity] = new $bao();
-        $this->_relatedObjects[$entity]->id = $ids[$entity];
-        if (!$this->_relatedObjects[$entity]->find(TRUE)) {
-          throw new CRM_Core_Exception($entity . ' could not be loaded');
-        }
-      }
-    }
-
-    if (!empty($ids['contributionRecur']) && !$paymentProcessorID) {
-      $paymentProcessorID = $this->_relatedObjects['contributionRecur']->payment_processor_id;
-    }
+    $paymentProcessorID = $input['payment_processor_id'] ?? $contribution['contribution_recur_id.payment_processor_id'];
 
     // These are probably no longer accessed from anywhere
     $query = "
@@ -2333,8 +2306,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
 
     $eventID = isset($ids['event']) ? (int) $ids['event'] : NULL;
     $participantID = isset($ids['participant']) ? (int) $ids['participant'] : NULL;
-    $contributionID = (int) $this->id;
-    $contactID = (int) $ids['contact'];
     $onbehalfDedupeAlert = $ids['onbehalf_dupe_alert'] ?? NULL;
     // not sure whether it is possible for this not to be an array - load related contacts loads an array but this code was expecting a string
     // the addition of the casting is in case it could get here & be a string. Added in 4.6 - maybe remove later? This AuthorizeNetIPN & PaypalIPN tests hit this
@@ -2406,13 +2377,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       $values['event'] = [];
 
       CRM_Event_BAO_Event::retrieve($eventParams, $values['event']);
-
-      //get location details
-      $locationParams = [
-        'entity_id' => $eventID,
-        'entity_table' => 'civicrm_event',
-      ];
-      $values['location'] = CRM_Core_BAO_Location::getValues($locationParams);
 
       //for tasks 'Change Participant Status' and 'Update multiple Contributions' case
       //and cases involving status updation through ipn
@@ -2761,15 +2725,8 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     }
     if ($this->_component === 'event') {
       $template->assign('title', $values['event']['title']);
-      $participantRoles = CRM_Event_PseudoConstant::participantRole();
-      $viewRoles = [];
-      foreach (explode(CRM_Core_DAO::VALUE_SEPARATOR, $this->_relatedObjects['participant']->role_id) as $k => $v) {
-        $viewRoles[] = $participantRoles[$v];
-      }
-      $values['event']['participant_role'] = implode(', ', $viewRoles);
       $template->assign('event', $values['event']);
       $template->assign('participant', $values['participant']);
-      $template->assign('location', $values['location']);
       $template->assign('customPre', $values['custom_pre_id']);
       $template->assign('customPost', $values['custom_post_id']);
 
@@ -3143,7 +3100,7 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
         $params['trxnParams']['total_amount'] = $trxnParams['total_amount'] = $params['total_amount'] = $totalAmount;
         $params['trxnParams']['trxn_id'] = $params['contribution']->trxn_id;
         if (isset($totalAmount) &&
-          $totalAmount != $params['prevContribution']->total_amount
+          bccomp($totalAmount, $params['prevContribution']->total_amount, 5) !== 0
         ) {
           //Update Financial Records
           $params['trxnParams']['from_financial_account_id'] = NULL;
@@ -4436,7 +4393,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
     CRM_Core_Error::deprecatedFunctionWarning('use api');
     $entities = [
       'contact' => 'CRM_Contact_BAO_Contact',
-      'contributionRecur' => 'CRM_Contribute_BAO_ContributionRecur',
     ];
     foreach ($entities as $entity => $bao) {
       if (!empty($ids[$entity])) {
@@ -4587,13 +4543,6 @@ INNER JOIN civicrm_activity ON civicrm_activity_contact.activity_id = civicrm_ac
       }
     }
     $values['participant']['customGroup'] = $participantCustomGroup;
-
-    //get location details
-    $locationParams = [
-      'entity_id' => $eventID,
-      'entity_table' => 'civicrm_event',
-    ];
-    $values['location'] = CRM_Core_BAO_Location::getValues($locationParams);
 
     $ufJoinParams = [
       'entity_table' => 'civicrm_event',
