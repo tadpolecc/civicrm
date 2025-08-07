@@ -1,6 +1,4 @@
-<?php
-
-/*
+{*
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC. All rights reserved.                        |
  |                                                                    |
@@ -8,14 +6,12 @@
  | permitted exceptions and without any warranty. For full license    |
  | and copyright information, see https://civicrm.org/licensing       |
  +--------------------------------------------------------------------+
- */
-
-namespace Civi\Api4\Action\Relationship;
-
-/**
- * @inheritDoc
- */
-class Update extends \Civi\Api4\Generic\DAOUpdateAction {
-  use RelationshipSaveTrait;
-
-}
+*}
+{* this template is used for confirmation of delete of contact image  *}
+<div class="crm-block crm-form-block crm-contact-imagedelete-form-block">
+  <div class="messages status no-popup">
+    {icon icon="fa-info-circle"}{/icon}
+    {ts}Are you sure you want to delete the contact image?{/ts}
+  </div>
+  <div class="crm-submit-buttons">{include file="CRM/common/formButtons.tpl" location="bottom"}</div>
+</div>
