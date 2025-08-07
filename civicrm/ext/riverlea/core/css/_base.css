@@ -169,6 +169,13 @@ body {
   color: var(--crm-c-text);
 }
 
+/* iFrame */
+
+body.civicrm-iframe-page {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  font-size: 100%;
+}
+
 /* Core type */
 
 .crm-container strong,
@@ -241,6 +248,7 @@ dl dl {
 #bootstrap-theme .has-error.radio-inline label,
 #bootstrap-theme .has-error.checkbox-inline label {
   color: var(--crm-c-danger-on-page-bg);
+  --crm-c-text: var(--crm-c-danger-on-page-bg);
 }
 .crm-container td.tasklist a:visited,
 #bootstrap-theme .has-success .help-block,

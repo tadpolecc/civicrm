@@ -38,7 +38,7 @@ class CRM_Core_Invoke {
       return self::_invoke($args);
     }
     catch (Exception $e) {
-      CRM_Core_Error::handleUnhandledException($e);
+      CRM_Core_Config::singleton()->userSystem->handleUnhandledException($e);
     }
   }
 
@@ -85,7 +85,11 @@ class CRM_Core_Invoke {
     if (['civicrm', 'menu', 'rebuild'] == $args || ['civicrm', 'clearcache'] == $args) {
       // ensure that the user has a good privilege level
       if (CRM_Core_Permission::check('administer CiviCRM')) {
-        self::rebuildMenuAndCaches();
+        Civi::rebuild([
+          '*' => TRUE,
+          'triggers' => CRM_Utils_Request::retrieve('triggerRebuild', 'Boolean', CRM_Core_DAO::$_nullObject, FALSE, 0, 'GET'),
+          'sessions' => CRM_Utils_Request::retrieve('sessionReset', 'Boolean', CRM_Core_DAO::$_nullObject, FALSE, 0, 'GET'),
+        ])->execute();
         CRM_Core_Session::setStatus(ts('Cleared all CiviCRM caches (database, menu, templates)'), ts('Complete'), 'success');
         // exits
         return CRM_Utils_System::redirect();

@@ -111,6 +111,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
     'contactSubType' => 'DataSource',
     'dateFormats' => 'DataSource',
     'savedMapping' => 'DataSource',
+    'userJobTemplate' => 'DataSource',
     'dataSource' => 'DataSource',
     'use_existing_upload' => 'DataSource',
     'dedupe_rule_id' => 'DataSource',
@@ -167,7 +168,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
    */
   public function getTemplateID(): ?int {
     if ($this->templateID === NULL) {
-      $this->templateID = CRM_Utils_Request::retrieve('template_id', 'Int', $this);
+      $this->templateID = $this->getSubmittedValue('userJobTemplate') ? (int) $this->getSubmittedValue('userJobTemplate') : CRM_Utils_Request::retrieve('template_id', 'Int', $this);
       if ($this->templateID && $this->getTemplateJob()) {
         return $this->templateID;
       }
@@ -189,6 +190,9 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * @throws \CRM_Core_Exception
    */
   protected function getMappingName(): string {
+    if ($this->getSubmittedValue('saveMappingName')) {
+      return $this->getSubmittedValue('saveMappingName');
+    }
     if ($this->mappingName === NULL) {
       $savedMappingID = $this->getSavedMappingID();
       if ($savedMappingID) {
@@ -432,6 +436,7 @@ class CRM_Import_Forms extends CRM_Core_Form {
           'submitted_values' => $this->getSubmittedValues(),
           'template_id' => $this->getTemplateID(),
           'Template' => ['mapping_id' => $this->getSavedMappingID()],
+          'import_mappings' => $this->getTemplateJob() ? $this->getTemplateJob()['metadata']['import_mappings'] : [],
         ],
       ])
       ->execute()
@@ -458,12 +463,12 @@ class CRM_Import_Forms extends CRM_Core_Form {
 
   /**
    * @param string $key
-   * @param array $data
+   * @param array|int $data
    *
    * @throws \CRM_Core_Exception
    * @throws \Civi\API\Exception\UnauthorizedException
    */
-  protected function updateUserJobMetadata(string $key, array $data): void {
+  protected function updateUserJobMetadata(string $key, array|int $data): void {
     $metaData = array_merge(
       $this->getUserJob()['metadata'],
       [$key => $data]
@@ -915,15 +920,26 @@ class CRM_Import_Forms extends CRM_Core_Form {
    * @throws \CRM_Core_Exception
    */
   protected function getTemplateJob(): ?array {
-    $mappingName = $this->getMappingName();
-    if (!$mappingName) {
-      return NULL;
+    $templateID = $this->templateID ?? NULL;
+    if (!$templateID && $this->getUserJobID()) {
+      $templateID = $this->getUserJob()['metadata']['template_id'] ?? NULL;
     }
-    $templateJob = UserJob::get(FALSE)
-      ->addWhere('name', '=', 'import_' . $mappingName)
-      ->addWhere('is_template', '=', TRUE)
-      ->execute()->first();
-    $this->templateID = $templateJob['id'] ?? NULL;
+
+    if ($templateID) {
+      $templateJob = UserJob::get(FALSE)
+        ->addWhere('id', '=', $templateID)
+        ->addWhere('is_template', '=', TRUE)
+        ->execute()->first();
+      $this->templateID = $templateJob['id'] ?? NULL;
+    }
+    else {
+      $mappingName = $this->getMappingName();
+      $templateJob = UserJob::get(FALSE)
+        ->addWhere('name', '=', 'import_' . $mappingName)
+        ->addWhere('is_template', '=', TRUE)
+        ->execute()->first();
+      $this->templateID = $templateJob['id'] ?? NULL;
+    }
     return $templateJob ?? NULL;
   }
 

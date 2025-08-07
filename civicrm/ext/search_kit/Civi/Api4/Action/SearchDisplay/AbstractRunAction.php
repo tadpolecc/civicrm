@@ -1147,6 +1147,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
       $result = [
         'entity' => $field['entity'],
         'input_type' => $field['input_type'],
+        'input_attrs' => $field['input_attrs'],
         'data_type' => $field['data_type'],
         'options' => $field['options'],
         'serialize' => !empty($field['serialize']),
@@ -1711,6 +1712,10 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
           // TODO: This just uses the first fieldset, but there could be multiple. Potentially could use filters to match it.
           $afform['searchDisplay']['fieldset'] = $key === 'form' ? [] : $fieldset;
         }
+      }
+      // For security, Afform must contain the search display.
+      if (!$afform['searchDisplay']) {
+        throw new UnauthorizedException('Afform does not contain search display');
       }
       $this->_afform = $afform;
     }
