@@ -54,11 +54,8 @@ class CRM_Contact_BAO_Relationship extends CRM_Contact_DAO_Relationship implemen
 
     $extendedParams = self::loadExistingRelationshipDetails($params);
     // When id is specified we always want to update, so we don't need to check for duplicate relations.
-    if (!isset($params['id'])) {
-      $duplicateId = self::checkDuplicateRelationship($extendedParams, (int) $extendedParams['contact_id_a'], (int) $extendedParams['contact_id_b'], $extendedParams['id'] ?? 0);
-      if ($duplicateId) {
-        throw new CRM_Core_Exception(ts('Duplicate Relationship'), 'duplicate', ['duplicate_id' => $duplicateId]);
-      }
+    if (!isset($params['id']) && self::checkDuplicateRelationship($extendedParams, (int) $extendedParams['contact_id_a'], (int) $extendedParams['contact_id_b'], $extendedParams['id'] ?? 0)) {
+      throw new CRM_Core_Exception('Duplicate Relationship');
     }
     $params = $extendedParams;
     // Check if this is a "simple" disable relationship. If it is don't check the relationshipType
@@ -738,10 +735,10 @@ class CRM_Contact_BAO_Relationship extends CRM_Contact_DAO_Relationship implemen
    * @param int $relationshipId
    *   This is relationship id for the contact.
    *
-   * @return bool|int
-   *   id if record exists else false
+   * @return bool
+   *   true if record exists else false
    */
-  public static function checkDuplicateRelationship(array $params, int $id, int $contactId = 0, int $relationshipId = 0) {
+  public static function checkDuplicateRelationship(array $params, int $id, int $contactId = 0, int $relationshipId = 0): bool {
     $relationshipTypeId = $params['relationship_type_id'] ?? NULL;
     [$type] = explode('_', $relationshipTypeId);
 
@@ -804,7 +801,7 @@ WHERE  is_active = 1 AND relationship_type_id = ' . CRM_Utils_Type::escape($type
     while ($relationship->fetch()) {
       // Check whether the custom field values are identical.
       if (self::checkDuplicateCustomFields($params['custom'] ?? [], $relationship->id)) {
-        return (int) $relationship->id;
+        return TRUE;
       }
     }
     return FALSE;
