@@ -324,18 +324,6 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
   /**
    * @inheritDoc
    */
-  public function theme(&$content, $print = FALSE, $maintenance = FALSE) {
-    if ($maintenance) {
-      \CRM_Core_Error::deprecatedWarning('Calling CRM_Utils_Base::theme with $maintenance is deprecated - use renderMaintenanceMessage instead');
-      $content = $this->renderMaintenanceMessage($content, $print);
-    }
-    print $content;
-    return NULL;
-  }
-
-  /**
-   * @inheritDoc
-   */
   public function renderMaintenanceMessage(string $content): string {
     // wrap in a minimal header
     $headerContent = CRM_Core_Region::instance('html-header', FALSE)->render('');
@@ -656,9 +644,14 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
       $session_cookie_name = 'SESSCIVISOFALLBACK';
     }
     else {
+      $session_cookie_name = 'SESSCIVISO';
+    }
+    if (ini_get('session.save_handler') === 'redis') {
+      // We'll just use the default, take no action.
+    }
+    else {
       $session_handler = new SessionHandler();
       session_set_save_handler($session_handler);
-      $session_cookie_name = 'SESSCIVISO';
     }
 
     // session lifetime in seconds (default = 24 minutes)

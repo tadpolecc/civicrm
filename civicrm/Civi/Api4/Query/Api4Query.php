@@ -110,6 +110,15 @@ abstract class Api4Query {
     return FALSE;
   }
 
+  protected function isDistinctUnion(): bool {
+    foreach ($this->api->getSets() as $set) {
+      if ($set[0] === 'UNION DISTINCT') {
+        return TRUE;
+      }
+    }
+    return FALSE;
+  }
+
   /**
    * Add LIMIT to query
    *
@@ -465,7 +474,7 @@ abstract class Api4Query {
       $operator = str_replace('EMPTY', 'NULL', $operator);
       // For strings & numbers, create an OR grouping of empty value OR null
       if (in_array($field['data_type'] ?? NULL, ['String', 'Integer', 'Float', 'Boolean'], TRUE)) {
-        $emptyVal = $field['data_type'] === 'String' ? '""' : '0';
+        $emptyVal = ($field['data_type'] === 'String' || $field['serialize']) ? '""' : '0';
         $isEmptyClause = $operator === 'IS NULL' ? "= $emptyVal OR" : "<> $emptyVal AND";
         return "($fieldAlias $isEmptyClause $fieldAlias $operator)";
       }

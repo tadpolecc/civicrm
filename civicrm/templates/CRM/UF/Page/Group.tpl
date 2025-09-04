@@ -32,7 +32,7 @@
 
 {else}
   <div class="help">
-    {ts}CiviCRM Profile(s) allow you to aggregate groups of fields and include them in your site as input forms, contact display pages, and search and listings features. They provide a powerful set of tools for you to collect information from constituents and selectively share contact information.{/ts} {help id='profile_overview'}
+    {ts}Profiles allow you to aggregate groups of fields and include them in your site as input forms, contact display pages, and search and listings features. They provide a powerful set of tools for you to collect information from constituents and selectively share contact information.{/ts} {help id='profile_overview'}
   </div>
 
   <div class="crm-content-block crm-block">
@@ -66,7 +66,7 @@
                   <th>{ts}Description{/ts}</th>
                   <th>{ts}Type{/ts}</th>
                   <th>{ts}ID{/ts}</th>
-                  <th id="nosort">{ts}Used For{/ts}</th>
+                  <th id="nosort">{ts}Exposed To{/ts}</th>
                   <th><span class="sr-only">{ts}Actions{/ts}</span></th>
                 </tr>
               </thead>
@@ -105,7 +105,7 @@
                   <th>{ts}Description{/ts}</th>
                   <th>{ts}Type{/ts}</th>
                   <th>{ts}ID{/ts}</th>
-                  <th id="nosort">{ts}Used For{/ts}</th>
+                  <th id="nosort">{ts}Exposed To{/ts}</th>
                   <th><span class="sr-only">{ts}Actions{/ts}</span></th>
                 </tr>
               </thead>
