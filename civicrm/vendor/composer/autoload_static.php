@@ -281,8 +281,8 @@ class ComposerStaticInit269c5286f133d79ba6ca3523d9aaeef8
         ),
         'Psr\\Http\\Message\\' => 
         array (
-            0 => __DIR__ . '/..' . '/psr/http-factory/src',
-            1 => __DIR__ . '/..' . '/psr/http-message/src',
+            0 => __DIR__ . '/..' . '/psr/http-message/src',
+            1 => __DIR__ . '/..' . '/psr/http-factory/src',
         ),
         'Psr\\Http\\Client\\' => 
         array (
@@ -351,8 +351,8 @@ class ComposerStaticInit269c5286f133d79ba6ca3523d9aaeef8
         ),
         'League\\OAuth2\\Client\\' => 
         array (
-            0 => __DIR__ . '/..' . '/league/oauth2-client/src',
-            1 => __DIR__ . '/..' . '/league/oauth2-google/src',
+            0 => __DIR__ . '/..' . '/league/oauth2-google/src',
+            1 => __DIR__ . '/..' . '/league/oauth2-client/src',
         ),
         'League\\Csv\\' => 
         array (
