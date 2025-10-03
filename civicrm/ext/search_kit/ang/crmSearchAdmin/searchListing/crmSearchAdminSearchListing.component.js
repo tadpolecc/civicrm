@@ -18,7 +18,7 @@
       this.searchDisplayPath = CRM.url('civicrm/search');
       this.afformPath = CRM.url('civicrm/admin/afform');
       this.afformEnabled = 'org.civicrm.afform' in CRM.crmSearchAdmin.modules;
-      this.afformAdminEnabled = CRM.checkPerm('administer afform') &&
+      this.afformAdminEnabled = CRM.checkPerm('manage own afform') &&
         'org.civicrm.afform_admin' in CRM.crmSearchAdmin.modules;
       const scheduledCommunicationsEnabled = 'scheduled_communications' in CRM.crmSearchAdmin.modules;
       const scheduledCommunicationsAllowed = scheduledCommunicationsEnabled && CRM.checkPerm('schedule communications');
@@ -98,16 +98,21 @@
 
       // Get the names of in-use filters
       function getActiveFilters() {
-        return _.keys(_.pick(ctrl.filters, function(val) {
-          return val !== null && (_.includes(['boolean', 'number'], typeof val) || val.length);
-        }));
+        return Object.keys(ctrl.filters).filter(key => {
+          let val = ctrl.filters[key];
+          if (typeof val === 'object' && val.hasOwnProperty('CONTAINS')) {
+            val = val.CONTAINS;
+          }
+          return val !== null &&
+            (['boolean', 'number'].includes(typeof val) || val.length);
+        });
       }
 
       this.onPostRun.push(function(apiResults) {
         _.each(apiResults.run, function(row) {
           row.permissionToEdit = CRM.checkPerm('all CiviCRM permissions and ACLs') || !_.includes(row.data.display_acl_bypass, true);
           // If someone has manage own permission, we need to override and only allow if they are the owner.
-          if (!CRM.checkPerm('all CiviCRM permissions and ACLs') && CRM.checkPerm('manage own search_kit') && (CRM.config.cid !== row.data.created_id)) {
+          if (!CRM.checkPerm('administer search_kit') && CRM.checkPerm('manage own search_kit') && (CRM.config.cid !== row.data.created_id)) {
             row.permissionToEdit = false;
           }
 
