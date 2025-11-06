@@ -18,7 +18,14 @@
 /**
  * This class generates form components for custom data
  */
-class CRM_Case_Form_CustomData extends CRM_Core_Form {
+class CRM_Case_Form_CustomData extends CRM_Core_Form implements CRM_Case_Form_CaseFormInterface {
+
+  public function getCaseID(): int {
+    if (!isset($this->_entityID)) {
+      $this->_entityID = (int) CRM_Utils_Request::retrieve('entityID', 'Positive', $this, TRUE);
+    }
+    return $this->_entityID;
+  }
 
   /**
    * The entity id, used when editing/creating custom data
@@ -49,7 +56,7 @@ class CRM_Case_Form_CustomData extends CRM_Core_Form {
    */
   public function preProcess(): void {
     $groupID = CRM_Utils_Request::retrieve('groupID', 'Positive', $this, TRUE);
-    $this->_entityID = CRM_Utils_Request::retrieve('entityID', 'Positive', $this, TRUE);
+    $this->getCaseID();
     $this->_subTypeID = CRM_Utils_Request::retrieve('subType', 'Positive', $this, TRUE);
     $contactID = CRM_Utils_Request::retrieve('cid', 'Positive', $this, TRUE);
 
@@ -197,8 +204,9 @@ class CRM_Case_Form_CustomData extends CRM_Core_Form {
   private function formatDisplayValue(mixed $value, int $customFieldId, string $customFieldDataType): string {
     switch ($customFieldDataType) {
       case 'Money':
-        // Money is special for non-US locales because at this point it's in human format so we don't try
-        // want to try to convert it.
+      case 'Float':
+        // Money and Float are special for non-US locales because at this point
+        // it's in human format so we don't want to try to convert it.
         return $value;
 
       case 'File':

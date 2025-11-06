@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'civicrm/civicrm-core',
-        'pretty_version' => '6.7.x-dev',
-        'version' => '6.7.9999999.9999999-dev',
-        'reference' => '20ca89aeabfe8e37c19928af05899d8394724255',
+        'pretty_version' => '6.8.x-dev',
+        'version' => '6.8.9999999.9999999-dev',
+        'reference' => '3a30ce8434aae0a296b92f3eb3582210e0047239',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -47,9 +47,9 @@
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-core' => array(
-            'pretty_version' => '6.7.x-dev',
-            'version' => '6.7.9999999.9999999-dev',
-            'reference' => '20ca89aeabfe8e37c19928af05899d8394724255',
+            'pretty_version' => '6.8.x-dev',
+            'version' => '6.8.9999999.9999999-dev',
+            'reference' => '3a30ce8434aae0a296b92f3eb3582210e0047239',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -164,9 +164,9 @@
             'dev_requirement' => false,
         ),
         'firebase/php-jwt' => array(
-            'pretty_version' => 'v6.11.0',
-            'version' => '6.11.0.0',
-            'reference' => '8f718f4dfc9c5d5f0c994cdfd103921b43592712',
+            'pretty_version' => 'v6.11.1',
+            'version' => '6.11.1.0',
+            'reference' => 'd1e91ecf8c598d073d0995afa8cd5c75c6e19e66',
             'type' => 'library',
             'install_path' => __DIR__ . '/../firebase/php-jwt',
             'aliases' => array(),
