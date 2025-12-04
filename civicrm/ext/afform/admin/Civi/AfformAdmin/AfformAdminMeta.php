@@ -36,14 +36,22 @@ class AfformAdminMeta {
     foreach ($afformTypes as $index => $type) {
       $afformTypes[$index]['plural'] = $plurals[$type['name']] ?? \CRM_Utils_String::pluralize($type['label']);
     }
+    $containerStyles = (array) \Civi\Api4\OptionValue::get(FALSE)
+      ->addSelect('value', 'label')
+      ->addWhere('is_active', '=', TRUE)
+      ->addWhere('option_group_id:name', '=', 'afform_container_style')
+      ->addOrderBy('weight', 'ASC')
+      ->execute();
     return [
       'afform_type' => $afformTypes,
       'afform_placement' => $afformPlacement,
+      'afform_container_style' => $containerStyles,
       'placement_entities' => array_column(PlacementUtils::getPlacements(), 'entities', 'value'),
       'placement_filters' => self::getPlacementFilterOptions(),
       'afform_tags' => $afformTags,
       'search_operators' => \Civi\Afform\Utils::getSearchOperators(),
       'confirmation_types' => self::getConfirmationTypes(),
+      'locales' => self::getLocales(),
     ];
   }
 
@@ -241,7 +249,7 @@ class AfformAdminMeta {
         $name = basename($file, '.html');
         $inputTypes[] = [
           'name' => $name,
-          'label' => $inputTypeLabels[$name] ?? E::ts($name),
+          'label' => $inputTypeLabels[$name] ?? $name,
           'template' => '~/af/fields/' . $name . '.html',
           'admin_template' => '~/afGuiEditor/inputType/' . $name . '.html',
         ];
@@ -399,6 +407,27 @@ class AfformAdminMeta {
       }
     }
     return $entityFilterOptions;
+  }
+
+  private static function getLocales(): array {
+    $options = [];
+    if (\CRM_Core_I18n::isMultiLingual()) {
+      $languages = \CRM_Core_I18n::languages();
+      $locales = \CRM_Core_I18n::getMultilingual();
+
+      if (\Civi::settings()->get('force_translation_source_locale') ?? TRUE) {
+        $defaultLocale = \Civi::settings()->get('lcMessages');
+        $locales = [$defaultLocale];
+      }
+
+      foreach ($locales as $index => $locale) {
+        $options[] = [
+          'id' => $locale,
+          'text' => $languages[$locale],
+        ];
+      }
+    }
+    return $options;
   }
 
 }

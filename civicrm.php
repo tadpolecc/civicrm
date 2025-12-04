@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CiviCRM
  * Description: CiviCRM - Growing and Sustaining Relationships
- * Version: 6.8.0
+ * Version: 6.9.0
  * Requires at least: 4.9
  * Requires PHP:      8.0
  * Author: CiviCRM LLC
@@ -36,7 +36,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Set version here: changing it forces Javascript and CSS to reload.
-define('CIVICRM_PLUGIN_VERSION', '6.8.0');
+define('CIVICRM_PLUGIN_VERSION', '6.9.0');
 
 // Store reference to this file.
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -485,9 +485,6 @@ class CiviCRM_For_WordPress {
       wp_die(__('Only one instance of CiviCRM_For_WordPress please', 'civicrm'));
     }
 
-    // Maybe start session.
-    $this->maybe_start_session();
-
     /*
      * AJAX calls do not set the 'cms.root' item, so make sure it is set here so
      * the CiviCRM doesn't fall back on flaky directory traversal code.
@@ -710,6 +707,9 @@ class CiviCRM_For_WordPress {
 
     // Store.
     self::$context = $context;
+
+    // Maybe start session.
+    $this->maybe_start_session();
 
   }
 

@@ -93,10 +93,15 @@
         ));
       };
 
-      this.canBeMultiple = function() {
-        return this.isSearch() &&
-          !_.includes(['Date', 'Timestamp'], ctrl.getDefn().data_type) &&
-          _.includes(['Select', 'EntityRef', 'ChainSelect'], $scope.getProp('input_type'));
+      this.canBeMultiple = () => {
+        if (!this.isSearch() ||
+          ['Date', 'Timestamp'].includes(ctrl.getDefn().data_type) ||
+          !(['Select', 'EntityRef', 'ChainSelect'].includes($scope.getProp('input_type')))
+        ) {
+          return false;
+        }
+        const op = $scope.getSetOperator();
+        return (!op || ['_EXPOSE_', 'IN', 'NOT IN'].includes(op));
       };
 
       this.getRangeElements = function(type) {
@@ -145,7 +150,8 @@
 
       $scope.hasOptions = function() {
         const inputType = $scope.getProp('input_type');
-        return _.contains(['CheckBox', 'Radio', 'Select'], inputType) && !(inputType === 'CheckBox' && ctrl.getDefn().data_type === 'Boolean');
+        return _.contains(['CheckBox', 'Toggle', 'Radio', 'Select'], inputType) &&
+          !(inputType === 'CheckBox' && ctrl.getDefn().data_type === 'Boolean');
       };
 
       this.getOptions = function() {
@@ -211,6 +217,7 @@
         }
         switch (type) {
           case 'CheckBox':
+          case 'Toggle':
           case 'Radio':
             return defn.options || defn.data_type === 'Boolean';
 
@@ -296,7 +303,7 @@
 
       function defaultValueShouldBeArray() {
         return ($scope.getProp('data_type') !== 'Boolean' &&
-          ($scope.getProp('input_type') === 'CheckBox' || $scope.getProp('input_attrs.multiple')));
+          ($scope.getProp('input_type') === 'CheckBox' || $scope.getProp('input_type') === 'Toggle' || $scope.getProp('input_attrs.multiple')));
       }
 
       function setFieldDefn() {
@@ -383,9 +390,18 @@
         return afGui.getSearchDisplayFields(ctrl.container.getSearchDisplay(), _.noop, [ctrl.getFieldName()]);
       };
 
+      this.showLabel = () => {
+        if (this.node.defn && this.node.defn.label === false) {
+          return false;
+        }
+        // Single checkboxes don't get a separate label
+        return !(getSet('input_type') === 'CheckBox' && this.getDefn().data_type === 'Boolean');
+      };
+
       $scope.defaultValueContains = function(val) {
         const defaultVal = getSet('afform_default');
-        return defaultVal === val || (Array.isArray(defaultVal) && defaultVal.includes(val));      };
+        return defaultVal === val || (Array.isArray(defaultVal) && defaultVal.includes(val));
+      };
 
       $scope.toggleDefaultValueItem = function(val) {
         if (defaultValueShouldBeArray()) {
@@ -422,6 +438,10 @@
           } else {
             getSet('search_operator', val);
           }
+          // Ensure multiselect is only used when compatible with operator
+          if (['_EXPOSE_', 'IN', 'NOT IN'].includes(val) != getSet('input_attrs.multiple')) {
+            $scope.toggleMultiple();
+          }
           return val;
         }
         return getSet('expose_operator') ? '_EXPOSE_' : getSet('search_operator');
@@ -457,7 +477,7 @@
               clearOut(ctrl.node, ['defn', 'input_attrs']);
             }
             // Boolean checkbox has no options
-            if (val === 'CheckBox' && ctrl.getDefn().data_type === 'Boolean' && ctrl.node.defn) {
+            if ((val === 'CheckBox' || val === 'Toggle') && ctrl.getDefn().data_type === 'Boolean' && ctrl.node.defn) {
               delete ctrl.node.defn.options;
             }
           }

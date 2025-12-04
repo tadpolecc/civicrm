@@ -108,9 +108,15 @@ abstract class CRM_Utils_System_Base {
    *
    * @param string $head
    *   The new string to be appended.
+   * @internal
+   *   Historically, this was a public method.
+   *   In practice, today, it's mostly used as internal plumbing for some UF-integrations.
+   *   For writing application logic, you should be looking at one of these:
+   *     - To add JS+CSS resources, see Civi::resources().
+   *     - To add novel markup, see CRM_Core_Region::instance('html-header').
    */
   public function addHTMLHead($head) {
-    \CRM_Core_Error::deprecatedFunctionWarning("addHTMLHead is deprecated in " . self::class);
+    \CRM_Core_Error::deprecatedFunctionWarning('Civi::resources() or CRM_Core_Region::instance("html-header")');
   }
 
   /**
@@ -1043,6 +1049,21 @@ abstract class CRM_Utils_System_Base {
     }
     echo $response->getBody();
     CRM_Utils_System::civiExit(0, ['response' => $response]);
+  }
+
+  /**
+   * Output JSON response to the client
+   *
+   * @param array $response
+   * @param int $httpResponseCode
+   *
+   * @return void
+   */
+  public static function sendJSONResponse(array $response, int $httpResponseCode): void {
+    http_response_code($httpResponseCode);
+    CRM_Utils_System::setHttpHeader('Content-Type', 'application/json');
+    echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    CRM_Utils_System::civiExit();
   }
 
   /**

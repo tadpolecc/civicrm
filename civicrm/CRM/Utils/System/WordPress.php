@@ -272,9 +272,11 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
 
   /**
    * @inheritDoc
+   * @internal
+   * @deprecated
    */
   public function addHTMLHead($head) {
-    \CRM_Core_Error::deprecatedFunctionWarning("addHTMLHead is deprecated in WordPress and will be removed in a future version");
+    \CRM_Core_Error::deprecatedFunctionWarning('Civi::resources() or CRM_Core_Region::instance("html-header")');
     static $registered = FALSE;
     if (!$registered) {
       // front-end view
@@ -1310,6 +1312,18 @@ class CRM_Utils_System_WordPress extends CRM_Utils_System_Base {
     }
     echo $response->getBody();
     CRM_Utils_System::civiExit();
+  }
+
+  /**
+   * Output JSON response to the client
+   *
+   * @param array $response
+   * @param int $httpResponseCode
+   *
+   * @return void
+   */
+  public static function sendJSONResponse(array $response, int $httpResponseCode): void {
+    wp_send_json($response, $httpResponseCode, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
   }
 
   /**

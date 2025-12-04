@@ -56,23 +56,18 @@ class Submit extends AbstractProcessor {
     $errors = $event->getErrors();
     if ($errors) {
       \Civi::log('afform')->error('Afform Validation errors: ' . print_r($errors, TRUE));
-      throw new \CRM_Core_Exception(implode("\n", $errors));
+      throw new \CRM_Core_Exception(implode("\n", $errors), 0, ['show_detailed_error' => TRUE]);
     }
 
     // Save submission record
-    $status = 'Processed';
     if (!empty($this->_afform['create_submission']) && empty($this->args['sid'])) {
-      if (!empty($this->_afform['manual_processing'])) {
-        $status = 'Pending';
-      }
-
       $userId = \CRM_Core_Session::getLoggedInContactID();
 
       $submissionRecord = [
         'contact_id' => $userId,
         'afform_name' => $this->name,
         'data' => $this->getValues(),
-        'status_id:name' => $status,
+        'status_id:name' => 'Pending',
       ];
       // Update draft if it exists
       if ($userId) {
@@ -95,7 +90,7 @@ class Submit extends AbstractProcessor {
     // let's not save the data in other CiviCRM table if manual verification is needed.
     if (!empty($this->_afform['manual_processing']) && empty($this->args['sid'])) {
       // check for verification email
-      $this->processVerficationEmail($submission['id']);
+      $this->processVerificationEmail($submission['id']);
     }
     else {
       // process and save various enities
@@ -112,7 +107,7 @@ class Submit extends AbstractProcessor {
         AfformSubmission::update(FALSE)
           ->addWhere('id', '=', $submissionId)
           ->addValue('data', $submissionData)
-          ->addValue('status_id:name', $status)
+          ->addValue('status_id:name', 'Processed')
           ->execute();
       }
 
@@ -725,7 +720,7 @@ class Submit extends AbstractProcessor {
    *
    * @return void
    */
-  private function processVerficationEmail(int $submissionId):void {
+  private function processVerificationEmail(int $submissionId):void {
     // check if email verification configured and message template is set
     if (empty($this->_afform['allow_verification_by_email']) || empty($this->_afform['email_confirmation_template_id'])) {
       return;
