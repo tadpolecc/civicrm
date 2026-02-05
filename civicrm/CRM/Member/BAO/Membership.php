@@ -297,11 +297,6 @@ class CRM_Member_BAO_Membership extends CRM_Member_DAO_Membership {
     $params['id'] ??= $ids['membership'] ?? NULL;
     $membership = self::add($params);
 
-    if (is_a($membership, 'CRM_Core_Error')) {
-      $transaction->rollback();
-      return $membership;
-    }
-
     $params['membership_id'] = $membership->id;
     // For api v4 we skip all of this stuff. There is an expectation that v4 users either use
     // the order api, or handle any financial / related processing themselves.
@@ -328,6 +323,7 @@ class CRM_Member_BAO_Membership extends CRM_Member_DAO_Membership {
       // Record contribution for this membership and create a MembershipPayment
       // @todo deprecate this.
       if (!empty($params['contribution_status_id'])) {
+        CRM_Core_Error::deprecatedWarning('creating a contribution via membership BAO is deprecated');
         $memInfo = array_merge($params, ['membership_id' => $membership->id]);
         $params['contribution'] = self::recordMembershipContribution($memInfo);
       }
@@ -337,6 +333,7 @@ class CRM_Member_BAO_Membership extends CRM_Member_DAO_Membership {
       // hack whereby they are deleted and recreated
       if (empty($latestContributionID)) {
         if (!empty($params['lineItems'])) {
+          CRM_Core_Error::deprecatedWarning('do not pass in lineItems');
           $params['line_item'] = $params['lineItems'];
         }
         // do cleanup line items if membership edit the Membership type.
@@ -1775,7 +1772,12 @@ INNER JOIN  civicrm_contact contact ON ( contact.id = membership.contact_id AND 
    * @throws \CRM_Core_Exception
    */
   protected static function hasExistingInheritedMembership($params) {
-    foreach (civicrm_api3('Membership', 'get', ['contact_id' => $params['contact_id']])['values'] as $membership) {
+    $currentMemberships = \Civi\Api4\Membership::get(FALSE)
+      ->addJoin('MembershipStatus AS membership_status', 'LEFT')
+      ->addWhere('membership_status.is_current_member', '=', TRUE)
+      ->addWhere('contact_id', '=', $params['contact_id'])
+      ->execute();
+    foreach ($currentMemberships as $membership) {
       if (!empty($membership['owner_membership_id'])
         && $membership['membership_type_id'] === $params['membership_type_id']
         && (int) $params['owner_membership_id'] !== (int) $membership['owner_membership_id']
@@ -1797,8 +1799,10 @@ INNER JOIN  civicrm_contact contact ON ( contact.id = membership.contact_id AND 
    * @param array $lineItem
    *
    * @throws \CRM_Core_Exception
+   * @deprecated since 6.11 will be removed around 6.19
    */
   public function processPriceSet($membershipId, $lineItem) {
+    CRM_Core_Error::deprecatedFunctionWarning('no alternative');
     //FIXME : need to move this too
     if (!$membershipId || !is_array($lineItem)
       || CRM_Utils_System::isNull($lineItem)

@@ -416,14 +416,19 @@ WHERE ceft.entity_id = %1";
    *
    * @param array $lineItems
    *
-   * @param CRM_Contribute_BAO_Contribution $contributionDetails
+   * @param CRM_Contribute_BAO_Contribution|CRM_Contribute_DAO_Contribution $contributionDetails
    *
    * @param bool $update
    *
    * @param string $context
    *
+   * @deprecated only called from deprecated / discouraged paths.
+   *
    */
   public static function createDeferredTrxn($lineItems, $contributionDetails, $update = FALSE, $context = NULL) {
+    if ($update || $context) {
+      CRM_Core_Error::deprecatedWarning('deprecated parameter passed to (deprecated) function ' . __FUNCTION__);
+    }
     if (empty($lineItems)) {
       return;
     }
@@ -559,6 +564,7 @@ WHERE ceft.entity_id = %1";
    *
    * @param array $inputParams
    *
+   * @deprecated since 6.10 will be removed around 6.16
    */
   public static function updateFinancialAccountsOnPaymentInstrumentChange($inputParams) {
     $prevContribution = $inputParams['prevContribution'];

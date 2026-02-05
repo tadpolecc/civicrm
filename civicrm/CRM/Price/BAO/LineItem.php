@@ -255,7 +255,7 @@ WHERE li.contribution_id = %1";
    * @param int $fid
    *   Price set field id.
    * @param array $params
-   *   Reference to form values.
+   *   Array of [price_FIELDID => [optionValueID => Quantity]]
    * @param array $fields
    *   Array of fields belonging to the price set used for particular event
    * @param array $values
@@ -377,12 +377,6 @@ WHERE li.contribution_id = %1";
         if (empty($line['entity_id'])) {
           $line['entity_id'] = $entityId;
         }
-        if (!empty($line['membership_type_id'])) {
-          if (($line['entity_table'] ?? '') !== 'civicrm_membership') {
-            CRM_Core_Error::deprecatedWarning('entity table should be already set');
-          }
-          $line['entity_table'] = 'civicrm_membership';
-        }
         if (!empty($contributionDetails->id)) {
           $line['contribution_id'] = $contributionDetails->id;
           if ($line['entity_table'] === 'civicrm_contribution') {
@@ -458,6 +452,7 @@ WHERE li.contribution_id = %1";
       }
     }
     else {
+      CRM_Core_Error::deprecatedWarning('use the api to load line items for existing entities');
       $setID = NULL;
       $totalEntityId = count($entityId);
       if ($entityTable == 'contribution') {

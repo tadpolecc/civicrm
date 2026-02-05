@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'civicrm/civicrm-core',
-        'pretty_version' => '6.10.x-dev',
-        'version' => '6.10.9999999.9999999-dev',
-        'reference' => 'a5ac0afc48b072296df08f59be5a11388638d32c',
+        'pretty_version' => '6.11.x-dev',
+        'version' => '6.11.9999999.9999999-dev',
+        'reference' => 'feca63e9853a28e88cf82a475379e3edc338472a',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -47,9 +47,9 @@
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-core' => array(
-            'pretty_version' => '6.10.x-dev',
-            'version' => '6.10.9999999.9999999-dev',
-            'reference' => 'a5ac0afc48b072296df08f59be5a11388638d32c',
+            'pretty_version' => '6.11.x-dev',
+            'version' => '6.11.9999999.9999999-dev',
+            'reference' => 'feca63e9853a28e88cf82a475379e3edc338472a',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -788,9 +788,9 @@
             'dev_requirement' => false,
         ),
         'symfony/process' => array(
-            'pretty_version' => 'v5.4.46',
-            'version' => '5.4.46.0',
-            'reference' => '01906871cb9b5e3cf872863b91aba4ec9767daf4',
+            'pretty_version' => 'v5.4.51',
+            'version' => '5.4.51.0',
+            'reference' => '467bfc56f18f5ef6d5ccb09324d7e988c1c0a98f',
             'type' => 'library',
             'install_path' => __DIR__ . '/../symfony/process',
             'aliases' => array(),

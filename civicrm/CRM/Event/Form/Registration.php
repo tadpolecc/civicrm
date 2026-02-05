@@ -568,7 +568,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
 
     $this->assign('is_email_confirm', $this->_values['event']['is_email_confirm'] ?? NULL);
     // assign pay later stuff
-    $isPayLater = empty($this->getSubmittedValue('payment_processor_id'));
+    $isPayLater = empty($this->getSubmittedValue('payment_processor_id')) && !empty($this->getSubmittedValue('priceSetId'));
     $this->assign('is_pay_later', $isPayLater);
     $this->assign('pay_later_text', $isPayLater ? $this->getPayLaterLabel() : FALSE);
     $this->assign('pay_later_receipt', $isPayLater ? $this->_values['event']['pay_later_receipt'] : NULL);
@@ -871,14 +871,8 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
       'discount_id' => $params['discount_id'] ?? NULL,
       'fee_currency' => $params['currencyID'] ?? NULL,
       'campaign_id' => $params['campaign_id'] ?? NULL,
+      'is_test' => $this->isTest(),
     ];
-
-    if ($form->_action & CRM_Core_Action::PREVIEW || (($params['mode'] ?? NULL) === 'test')) {
-      $participantParams['is_test'] = 1;
-    }
-    else {
-      $participantParams['is_test'] = 0;
-    }
 
     if (!empty($form->_params['note'])) {
       $participantParams['note'] = $form->_params['note'];
@@ -1873,19 +1867,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
     $this->assign('isRequireApproval', $this->_requireApproval);
 
     foreach ($additionalIDs as $participantID => $contactId) {
-      if ($participantID == $registerByID) {
-        $customProfile = CRM_Event_BAO_Event::buildCustomProfile($participantID, $this->_values, NULL, $isTest);
-
-        if (count($customProfile)) {
-          $this->assign('customProfile', $customProfile);
-          $this->set('customProfile', $customProfile);
-        }
-      }
-      else {
-        $this->assign('customProfile', NULL);
-      }
-
-      //send Confirmation mail to Primary & additional Participants if exists
+      // Send Confirmation mail to Primary & additional Participants if exists
       CRM_Event_BAO_Event::sendMail($contactId, $this->_values, $participantID, $isTest);
     }
   }
