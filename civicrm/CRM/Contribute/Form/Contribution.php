@@ -956,11 +956,13 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     ) {
       $this->order->setExistingContributionID($this->getContributionID());
     }
-    if ($this->getSubmittedValue('financial_type_id')) {
-      $this->order->setOverrideFinancialTypeID((int) $this->getSubmittedValue('financial_type_id'));
-    }
-    if ($this->getSubmittedValue('total_amount')) {
-      $this->order->setOverrideTotalAmountTaxExclusive($this->getSubmittedValue('total_amount'));
+    if (!$this->getSubmittedValue('price_set_id')) {
+      if ($this->getSubmittedValue('financial_type_id')) {
+        $this->order->setOverrideFinancialTypeID((int) $this->getSubmittedValue('financial_type_id'));
+      }
+      if ($this->getSubmittedValue('total_amount')) {
+        $this->order->setOverrideTotalAmountTaxExclusive($this->getSubmittedValue('total_amount'));
+      }
     }
     $this->order->setForm($this);
     foreach ($this->order->getPriceFieldsMetaData() as $priceField) {
@@ -1276,14 +1278,10 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
     }
 
     $this->set('params', $this->_params);
-    // It actually makes no sense that we would set receive_date in params
-    // for credit card payments....
-    $this->assign('receive_date', $this->_params['receive_date'] ?? date('Y-m-d H:i:s'));
 
     // Result has all the stuff we need
     // lets archive it to a financial transaction
     if ($financialType->is_deductible) {
-      $this->assign('is_deductible', TRUE);
       $this->set('is_deductible', TRUE);
     }
     $contributionParams = [
@@ -1621,61 +1619,6 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
 
       //update pledge status according to the new payment statuses
       CRM_Pledge_BAO_PledgePayment::updatePledgePaymentStatus($pledgeID);
-      return;
-    }
-    else {
-      //when user creating pledge record.
-      CRM_Core_Error::deprecatedWarning('code slated for removal, believed to be only reachable in the online flow');
-      $pledgeParams = [];
-      $pledgeParams['contact_id'] = $contribution->contact_id;
-      $pledgeParams['installment_amount'] = $pledgeParams['actual_amount'] = $contribution->total_amount;
-      $pledgeParams['contribution_id'] = $contribution->id;
-      $pledgeParams['contribution_page_id'] = $contribution->contribution_page_id;
-      $pledgeParams['financial_type_id'] = $contribution->financial_type_id;
-      $pledgeParams['frequency_interval'] = $params['pledge_frequency_interval'];
-      $pledgeParams['installments'] = $params['pledge_installments'];
-      $pledgeParams['frequency_unit'] = $params['pledge_frequency_unit'];
-      if ($pledgeParams['frequency_unit'] === 'month') {
-        $pledgeParams['frequency_day'] = intval(date("d"));
-      }
-      else {
-        $pledgeParams['frequency_day'] = 1;
-      }
-      $pledgeParams['create_date'] = $pledgeParams['start_date'] = $pledgeParams['scheduled_date'] = date("Ymd");
-      if (!empty($params['start_date'])) {
-        $pledgeParams['frequency_day'] = intval(date("d", strtotime($params['start_date'])));
-        $pledgeParams['start_date'] = $pledgeParams['scheduled_date'] = date('Ymd', strtotime($params['start_date']));
-      }
-      $pledgeParams['status_id'] = $contribution->contribution_status_id;
-      $pledgeParams['max_reminders'] = $form->_values['max_reminders'];
-      $pledgeParams['initial_reminder_day'] = $form->_values['initial_reminder_day'];
-      $pledgeParams['additional_reminder_day'] = $form->_values['additional_reminder_day'];
-      $pledgeParams['is_test'] = $contribution->is_test;
-      $pledgeParams['acknowledge_date'] = date('Ymd');
-      $pledgeParams['original_installment_amount'] = $pledgeParams['installment_amount'];
-
-      //inherit campaign from contirb page.
-      $pledgeParams['campaign_id'] = $contributionParams['campaign_id'] ?? NULL;
-
-      $pledge = CRM_Pledge_BAO_Pledge::create($pledgeParams);
-
-      $form->_params['pledge_id'] = $pledge->id;
-
-      //send acknowledgment email. only when pledge is created
-      if ($pledge->id && $isEmailReceipt) {
-        //build params to send acknowledgment.
-        $pledgeParams['id'] = $pledge->id;
-        $pledgeParams['receipt_from_name'] = $form->_values['receipt_from_name'];
-        $pledgeParams['receipt_from_email'] = $form->_values['receipt_from_email'];
-
-        //scheduled amount will be same as installment_amount.
-        $pledgeParams['scheduled_amount'] = $pledgeParams['installment_amount'];
-
-        //get total pledge amount.
-        $pledgeParams['total_pledge_amount'] = $pledge->amount;
-
-        CRM_Pledge_BAO_Pledge::sendAcknowledgment($form, $pledgeParams);
-      }
     }
   }
 
@@ -2132,6 +2075,7 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
         'currency' => $this->getCurrency(),
         'skipCleanMoney' => TRUE,
         'id' => $this->_id,
+        'financial_type_id' => $this->getFinancialTypeID(),
       ];
 
       //format soft-credit/pcp param first
@@ -2358,12 +2302,24 @@ class CRM_Contribute_Form_Contribution extends CRM_Contribute_Form_AbstractEditP
    * @return int
    */
   protected function getFinancialTypeID() {
-    if (!empty($this->_submitValues['financial_type_id'])) {
-      return $this->_submitValues['financial_type_id'];
+    if (!$this->isSubmitted()) {
+      // We should only consider the unvalidated _submitValues array
+      // before the form is submitted, for purposes of determining
+      // which custom fields to show or possibly validation.
+      if (!empty($this->_submitValues['financial_type_id'])) {
+        return (int) $this->_submitValues['financial_type_id'];
+      }
+      // @todo - remove this - it might be a round about way of
+      // looking up a template contribution value - but if so
+      // we should make that explicit.
+      if (!empty($this->_values['financial_type_id'])) {
+        return $this->_values['financial_type_id'];
+      }
     }
-    if (!empty($this->_values['financial_type_id'])) {
-      return $this->_values['financial_type_id'];
+    if (!$this->getSubmittedValue('price_set_id')) {
+      return $this->getSubmittedValue('financial_type_id');
     }
+    return $this->getOrder()->getPriceSetMetadata()['financial_type_id'];
   }
 
   /**

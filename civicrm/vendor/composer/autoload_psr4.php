@@ -8,7 +8,8 @@ $baseDir = dirname($vendorDir);
 return array(
     'xKerman\\Restricted\\' => array($vendorDir . '/xkerman/restricted-unserialize/src'),
     'tubalmartin\\CssMin\\' => array($vendorDir . '/tubalmartin/cssmin/src'),
-    'phpseclib\\' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
+    'phpseclib\\' => array($vendorDir . '/phpseclib/phpseclib2_compat/src'),
+    'phpseclib3\\' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
     'cweagans\\Composer\\' => array($vendorDir . '/cweagans/composer-patches/src'),
     'ZipStream\\' => array($vendorDir . '/maennchen/zipstream-php/src'),
     'When\\' => array($vendorDir . '/tplaner/when/src'),
@@ -48,6 +49,7 @@ return array(
     'PhpOffice\\PhpWord\\' => array($vendorDir . '/phpoffice/phpword/src/PhpWord'),
     'PhpOffice\\PhpSpreadsheet\\' => array($vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet'),
     'PhpOffice\\Math\\' => array($vendorDir . '/phpoffice/math/src/Math'),
+    'ParagonIE\\ConstantTime\\' => array($vendorDir . '/paragonie/constant_time_encoding/src'),
     'Padaliyajay\\PHPAutoprefixer\\' => array($vendorDir . '/padaliyajay/php-autoprefixer/src'),
     'MyCLabs\\Enum\\' => array($vendorDir . '/myclabs/php-enum/src'),
     'MimeTyper\\' => array($vendorDir . '/adrienrn/php-mimetyper/src'),

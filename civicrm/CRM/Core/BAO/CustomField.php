@@ -1180,7 +1180,7 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField implements \Civi
           $display = implode(', ', $v);
         }
         else {
-          $display = $field['options'][$value] ?? '';
+          $display = $field['options'][$value ?? ''] ?? '';
           // For float type (see Number and Money) $value would be decimal like
           // 1.00 (because it is stored in db as decimal), while options array
           // key would be integer like 1. In this case expression on line above
@@ -2457,17 +2457,6 @@ AND      default_value IS NOT NULL";
     foreach ($params as $key => $value) {
       $customFieldInfo = CRM_Core_BAO_CustomField::getKeyID($key, TRUE);
       if ($customFieldInfo[0]) {
-
-        // for autocomplete transfer hidden value instead of label
-        if ($params[$key] && isset($params[$key . '_id'])) {
-          $value = $params[$key . '_id'];
-        }
-
-        // we need to append time with date
-        if ($params[$key] && isset($params[$key . '_time'])) {
-          $value .= ' ' . $params[$key . '_time'];
-        }
-
         CRM_Core_BAO_CustomField::formatCustomField($customFieldInfo[0],
           $customData,
           $value,

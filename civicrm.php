@@ -2,9 +2,9 @@
 /**
  * Plugin Name: CiviCRM
  * Description: CiviCRM - Growing and Sustaining Relationships
- * Version: 6.11.3
- * Requires at least: 4.9
- * Requires PHP:      8.0
+ * Version: 6.12.0
+ * Requires at least: 6.3
+ * Requires PHP:      8.1.2
  * Author: CiviCRM LLC
  * Author URI: https://civicrm.org/
  * Plugin URI: https://docs.civicrm.org/sysadmin/en/latest/install/wordpress/
@@ -36,7 +36,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Set version here: changing it forces Javascript and CSS to reload.
-define('CIVICRM_PLUGIN_VERSION', '6.11.3');
+define('CIVICRM_PLUGIN_VERSION', '6.12.0');
 
 // Store reference to this file.
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -65,7 +65,7 @@ if (!defined('CIVICRM_PLUGIN_DIR')) {
  * @see CiviWP\PhpVersionTest::testConstantMatch()
  */
 if (!defined('CIVICRM_WP_PHP_MINIMUM')) {
-  define('CIVICRM_WP_PHP_MINIMUM', '8.0.0');
+  define('CIVICRM_WP_PHP_MINIMUM', '8.1.2');
 }
 
 /*
