@@ -209,7 +209,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     CRM_Core_Payment_Form::mapParams(NULL, $this->getSubmittedValues(), $paymentParams, TRUE);
     $paymentParams['contributionPageID'] = $this->getContributionPageID();
     $paymentParams['campaign_id'] = $this->getCampaignID();
-    $paymentParams['currency'] = $this->getCurrency();
+    $paymentParams['currency'] = $paymentParams['currencyID'] = $this->getCurrency();
     $paymentParams['description'] = $this->getSource();
     $paymentParams['contactID'] = $this->getContactID();
     return $paymentParams;
