@@ -49,12 +49,21 @@ class AfformSearchMetadataInjector {
               }
               try {
                 $display = $searchDisplayGet
-                  ->addSelect('settings', 'saved_search_id.api_entity', 'saved_search_id.api_params')
+                  ->addSelect('type', 'settings', 'saved_search_id.api_entity', 'saved_search_id.api_params')
                   ->execute()->single();
                 $savedSearch = \CRM_Utils_Array::filterByPrefix($display, 'saved_search_id.');
               }
               catch (\CRM_Core_Exception $e) {
                 return;
+              }
+              // Fetch auto columns
+              if (isset($displayName) && ($display['settings']['columnMode'] ?? '') === 'auto') {
+                $defaultSettings = \Civi\Api4\SearchDisplay::getDefault(FALSE)
+                  ->setSavedSearch($searchName)
+                  ->setType($display['type'])
+                  ->addSelect('settings')
+                  ->execute()->first()['settings'];
+                $display['settings']['columns'] = $defaultSettings['columns'];
               }
               // Note: Should be kept in-sync with \Civi\Api4\Action\SearchDisplay\GetMarkup::doTask
               pq($component)->attr('settings', htmlspecialchars(\CRM_Utils_JS::encode($display['settings'] ?? []), ENT_COMPAT));
