@@ -98,6 +98,7 @@ class OrderCompleteSubscriber extends AutoService implements EventSubscriberInte
         ->addJoin('PriceFieldValue AS price_field_value', 'LEFT')
         ->addWhere('contribution_id', '=', $contributionID)
         ->addWhere('entity_table', '=', 'civicrm_membership')
+        ->addWhere('entity_id', '=', $membership['id'])
         ->addWhere('contribution_id.contact_id', '=', $membershipParams['contact_id'])
         ->execute()
         ->first();
@@ -197,8 +198,9 @@ class OrderCompleteSubscriber extends AutoService implements EventSubscriberInte
       ->addWhere('entity_table', '=', 'civicrm_membership')
       ->addSelect('entity_id')
       ->execute()->indexBy('entity_id'));
-
-    $membershipIDs = \CRM_Member_BAO_MembershipPayment::getMembershipPaymentsWithMissingLineitems($contributionID, $membershipIDs);
+    if (\CRM_Price_BAO_LineItem::siteHasMembershipPaymentRecordsNotReflectedInLineItems()) {
+      $membershipIDs = \CRM_Member_BAO_MembershipPayment::getMembershipPaymentsWithMissingLineitems($contributionID, $membershipIDs);
+    }
 
     if (empty($membershipIDs)) {
       return [];

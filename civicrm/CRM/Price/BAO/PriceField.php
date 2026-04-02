@@ -273,6 +273,8 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
     $otherAmount = $qf->get('values');
     $config = CRM_Core_Config::singleton();
     $currencySymbol = CRM_Core_DAO::getFieldValue('CRM_Financial_DAO_Currency', $config->defaultCurrency, 'symbol', 'name');
+    // @todo - this is for calculate.tpl but doesn't seem to work here because
+    // the main form needs it - see Contribution_Form->assignCurrencySymbol()
     $qf->assign('currencySymbol', $currencySymbol);
     $qf->assign('currency', $config->defaultCurrency);
     // get currency name for price field and option attributes
@@ -300,6 +302,7 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
         $priceOptionText = self::buildPriceOptionText($customOption[$optionKey], $field->is_display_amounts, $valueFieldName);
         // This second label is then added to the form as a second form element which just carries the label and is not otherwise used.
         $elementLabelAfter = $qf->add('static', $elementName . '_label_after', $priceOptionText['label']);
+        $elementLabelAfter->setLabelEscaped();
 
         if (!empty($fieldOptions[$optionKey]['label'])) {
           //check for label.
@@ -322,6 +325,7 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
           ),
           $useRequired && $field->is_required
         );
+        $element->setLabelEscaped();
         if ($is_pay_later) {
           $qf->add('text', 'txt-' . $elementName, $label, ['size' => '4']);
         }

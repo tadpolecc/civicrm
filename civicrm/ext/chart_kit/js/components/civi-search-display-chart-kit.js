@@ -58,7 +58,7 @@
     }
 
     toggleBlur(blur = true) {
-      this.style.filter = blur ? 'blur(1px)' : null;
+      this.chartContainer.style.filter = blur ? 'blur(1px)' : null;
     }
 
     renderContainer() {
@@ -163,7 +163,8 @@
     // into at different points
     renderChart() {
       if (this.results.length === 0) {
-        // show a no results type thing
+        // show a no results message
+        this.toggleBlur(false);
         this.chartContainer.innerText = ts('Search returned no results.');
         return;
       }

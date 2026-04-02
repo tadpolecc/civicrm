@@ -31,12 +31,12 @@
           this.placeholders.push({});
         }
 
-        if (this.settings.columnMode === 'auto') {
+        // This will ony be true if running the search outside of an Afform.
+        // Within an Afform, default columns will be set by AfformSearchMetadataInjector.
+        if (this.settings.columnMode === 'auto' && (!this.settings.columns || !this.settings.columns.length)) {
           // start with no columns in case we run before
           // we've fetched the right ones
           this.columns = [];
-          // TODO: default permission is access CiviCRM
-          // need to tweak permissions for frontend forms
           crmApi4('SearchDisplay', 'getDefault', {
             savedSearch: this.search
           })
