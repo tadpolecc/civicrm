@@ -113,6 +113,8 @@ class StyleLoader extends AutoService implements \Symfony\Component\EventDispatc
     if ($bundle->name === 'coreResources') {
       if (\CRM_Core_Permission::check('administer CiviCRM')) {
         $bundle->addScriptFile('riverlea', 'js/previewer.js');
+        // Variable needed by the previewer.js script.
+        $bundle->addVars(E::LONG_NAME, ['resourceUrl' => E::url()]);
       }
     }
 

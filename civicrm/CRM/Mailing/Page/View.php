@@ -65,7 +65,15 @@ class CRM_Mailing_Page_View extends CRM_Core_Page {
     if (empty($id) || is_array($id)) {
       $print = TRUE;
     }
-    $this->getMailingID($id);
+    try {
+      $this->getMailingID($id);
+    }
+    catch (CRM_Core_Exception $e) {
+      // The view mailing URL is frequently hit by spammers.
+      Civi::log()->notice("Invalid mailing view URL requested.", ['request_url' => $_SERVER['REQUEST_URI'] ?? '']);
+      // Exit with permission denied.
+      CRM_Utils_System::permissionDenied();
+    }
 
     // Retrieve contact ID and checksum from the URL
     $cs = CRM_Utils_Request::retrieve('cs', 'String');

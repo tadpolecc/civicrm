@@ -135,6 +135,15 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     $this->_apiParams['checkPermissions'] = $this->savedSearch['api_params']['checkPermissions'] = empty($this->display['acl_bypass']);
     $this->display['settings']['columns'] ??= [];
 
+    // Get auto columns
+    if ('auto' === ($this->display['settings']['columnMode'] ?? NULL)) {
+      $defaultDisplay = \Civi\Api4\SearchDisplay::getDefault(FALSE)
+        ->setSavedSearch($this->savedSearch)
+        ->setType($this->display['type'])
+        ->execute()->single();
+      $this->display['settings']['columns'] = $defaultDisplay['settings']['columns'];
+    }
+
     $this->processResult($result);
   }
 
@@ -596,7 +605,17 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
     ];
 
     foreach ($column['subsearch']['filters'] as $filterSetting) {
-      $out['subsearch']['filters'][$filterSetting['subsearch_field']] = $data[$filterSetting['parent_field']] ?? NULL;
+      // Use parent_field from column data
+      if (isset($filterSetting['parent_field'])) {
+        $value = $data[$filterSetting['parent_field']] ?? NULL;
+      }
+      // Use fixed value
+      else {
+        $value = $filterSetting['value'] ?? NULL;
+      }
+      if (isset($value)) {
+        $out['subsearch']['filters'][$filterSetting['subsearch_field']] = $value;
+      }
     }
 
     return $out;
@@ -1330,7 +1349,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
         break;
 
       case 'Money':
-        $currencyField = $this->getCurrencyField($key);
+        $currencyField = $this->getCurrencyField($key) ?? '';
         $currency = is_string($data[$currencyField] ?? NULL) ? $data[$currencyField] : NULL;
         $formatted = \Civi::format()->money($rawValue, $currency);
         break;

@@ -1139,14 +1139,15 @@ AND civicrm_membership.is_test = %2";
    * @return int
    *   contribution page id
    */
-  public static function getContributionPageId($membershipID) {
+  public static function getContributionPageId(int $membershipID) {
     $query = "
 SELECT c.contribution_page_id as pageID
-  FROM civicrm_membership_payment mp, civicrm_contribution c
- WHERE mp.contribution_id = c.id
-   AND c.contribution_page_id IS NOT NULL
-   AND mp.membership_id = " . CRM_Utils_Type::escape($membershipID, 'Integer')
-      . " ORDER BY mp.id DESC";
+  FROM civicrm_line_item line
+   INNER JOIN civicrm_contribution c ON c.id = line.contribution_id
+    AND entity_table = 'civicrm_membership'
+ WHERE c.contribution_page_id IS NOT NULL
+   AND line.entity_id = " . CRM_Utils_Type::escape($membershipID, 'Integer')
+      . " ORDER BY line.id DESC";
 
     return CRM_Core_DAO::singleValueQuery($query);
   }
@@ -2396,7 +2397,6 @@ WHERE {$whereClause}";
           'priority_id' => 2,
           'activity_date_time' => CRM_Utils_Time::date('Y-m-d H:i:s'),
           'is_auto' => 0,
-          'is_current_revision' => 1,
           'is_deleted' => 0,
         ];
         civicrm_api3('activity', 'create', $activityParam);

@@ -55,9 +55,12 @@
       };
 
       this.setColumnMode = (value) => {
+        if (value === 'auto') {
+          delete this.display.settings.columns;
+        }
         // if not using auto columns we need to run initColumns to initialise defaults
         // and populate or validate this.settings.columns
-        if (value !== 'auto') {
+        else {
           this.parent.initColumns({label: true, sortable: true});
         }
         this.display.settings.columnMode = value;

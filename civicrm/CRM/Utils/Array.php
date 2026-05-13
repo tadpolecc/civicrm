@@ -691,16 +691,16 @@ class CRM_Utils_Array {
         else {
           $keyvalue = $record->{$key} ?? NULL;
         }
-        if (isset($node[$keyvalue]) && !is_array($node[$keyvalue])) {
+        if ($keyvalue !== NULL && isset($node[$keyvalue]) && !is_array($node[$keyvalue])) {
           $node[$keyvalue] = [];
         }
-        $node = &$node[$keyvalue];
+        $node = &$node[$keyvalue ?? ''];
       }
       if (is_array($record)) {
-        $node[$record[$final_key]] = $record;
+        $node[($record[$final_key] ?? '')] = $record;
       }
       else {
-        $node[$record->{$final_key}] = $record;
+        $node[($record->{$final_key} ?? '')] = $record;
       }
     }
     return $result;
