@@ -25,19 +25,15 @@
 
       // Check access for edit link. Defer via $timeout because this is lower priority than the search itself.
       $timeout(() => {
-        crmApi4('SavedSearch', 'get', {
-          select: ['id'],
-          where: [['name', '=', this.searchName]],
-          chain: {
-            checkAccess: ['SavedSearch', 'checkAccess', {action: 'update', values: {id: '$id'}}, 0],
-          },
-        }, 0)
-          .then((result) => {
-            // Format edit link if user has access
-            if (result.checkAccess?.access) {
-              this.editLink = CRM.url('civicrm/admin/search#/edit/' + result.id);
-            }
-          });
+        crmApi4('SavedSearch', 'checkAccess', {
+          action: 'update',
+          values: {name: this.searchName},
+        }, 0).then((result) => {
+          // Format edit link if user has access
+          if (result?.access) {
+            this.editLink = CRM.url('civicrm/admin/search#/edit/' + result.id);
+          }
+        });
       }, 500);
 
       $scope.$watch(() => $location.search(), (params) => this.filters = params);

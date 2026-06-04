@@ -11,13 +11,15 @@
     controller: function($scope, $element, $timeout, crmApi4, crmStatus, $window, $location, $parse, FileUploader) {
       const
         ctrl = this,
-        ts = CRM.ts('org.civicrm.afform'),
-        saveDraftButtons = [],
-        schema = {},
-        data = {extra: {}};
+        ts = CRM.ts('org.civicrm.afform');
+
+      const saveDraftButtons = [];
+      const schema = {};
+      const data = {
+        extra: {fields: {}},
+      };
 
       let
-        status,
         args,
         submissionResponse,
         // Default autosave function does nothing
@@ -30,7 +32,7 @@
         // This component has no template. It makes its controller available within it by adding it to the parent scope.
         $scope.$parent[this.ctrl] = this;
 
-        $timeout(function() {
+        $timeout(() => {
           ctrl.loadData()
             .then(setupDraftWatcher);
 
@@ -146,14 +148,25 @@
       this.fileUploader = new FileUploader({
         url: CRM.url('civicrm/ajax/api4/Afform/submitFile'),
         headers: headers,
-        onAfterAddingFile: function(item) {
+        onAfterAddingFile: (item) => {
           setDraftStatus('unsaved');
         },
         onSuccessItem: onFileUploadSuccess,
         onCompleteAll: onFileUploadsComplete,
-        onBeforeUploadItem: function(item) {
-          status.resolve();
-          status = CRM.status({start: ts('Uploading %1', {1: item.file.name})});
+        onBeforeUploadItem: (item) => {
+          // Show unobtrusive status indicator.
+          item._status = CRM.status({
+            start: ts('Uploading %1', {1: item.file.name}),
+            error: ts('Upload failed'),
+            success: ts('Upload complete'),
+          });
+        },
+        onCompleteItem: (item, response, status, headers) => {
+          if (status === 200) {
+            item._status.resolve();
+          } else {
+            item._status.reject();
+          }
         }
       });
 
@@ -172,7 +185,6 @@
           if (draftStatus === 'unsaved') {
             autoSave();
           }
-          status.resolve();
         } else {
           postProcess();
         }
@@ -320,6 +332,9 @@
         const metaData = ctrl.getFormMeta(),
           dialog = $element.closest('.ui-dialog-content');
 
+        // reset form to clean
+        ctrl.ngForm.$setPristine();
+
         $element.trigger('crmFormSuccess', {
           afform: metaData,
           data: data,
@@ -338,8 +353,6 @@
           $window.location.href = url;
           return;
         }
-
-        status.resolve();
 
         if (submissionResponse[0].message) {
           $element.hide();
@@ -424,17 +437,16 @@
           }
           return;
         }
-        status = CRM.status({error: ts('Not saved')});
         $element.block();
         if (cancelDraftWatcher) {
           cancelDraftWatcher();
         }
 
-        crmApi4('Afform', 'submit', {
+        const submitApi = crmApi4('Afform', 'submit', {
           name: ctrl.getFormMeta().name,
           args: args,
           values: data,
-        }).then(function(response) {
+        }).then((response) => {
           submissionResponse = response;
           if (ctrl.fileUploader.getNotUploadedItems().length) {
             _.each(ctrl.fileUploader.getNotUploadedItems(), function(file) {
@@ -451,8 +463,7 @@
             postProcess();
           }
         })
-        .catch(function(error) {
-          status.reject();
+        .catch((error) => {
           $element.unblock();
 
           handleError(error);
@@ -464,6 +475,11 @@
             error: error
           });
         });
+        // Show unobtrusive status indicator.
+        crmStatus({
+          // Defaults for `start` and `success` are 'Saving...' and 'Saved' .
+          error: ts('Not Saved'),
+        }, submitApi);
       };
 
       this.submitDraft = function() {
@@ -471,16 +487,14 @@
           return;
         }
         setDraftStatus('saving');
-        status = CRM.status({start: ts('Saving Draft'), success: ts('Draft saved')});
-        crmApi4('Afform', 'submitDraft', {
+        const submitDraft = crmApi4('Afform', 'submitDraft', {
           name: ctrl.getFormMeta().name,
           args: args,
           values: data,
-        }).then(function(response) {
-          status.resolve();
+        }).then((response) => {
           if (ctrl.fileUploader.getNotUploadedItems().length) {
             uploadingDraftFiles = true;
-            _.each(ctrl.fileUploader.getNotUploadedItems(), function(file) {
+            ctrl.fileUploader.getNotUploadedItems().forEach((file) => {
               file.formData.push({
                 params: JSON.stringify(_.extend({
                   name: ctrl.getFormMeta().name
@@ -492,10 +506,16 @@
             setDraftStatus('saved');
           }
         })
-        .catch(function(error) {
+        .catch((error) => {
           setDraftStatus('unsaved');
           handleError(error);
         });
+        // Show unobtrusive status indicator.
+        crmStatus({
+          start: ts('Saving Draft'),
+          success: ts('Draft Saved'),
+          error: ts('Not Saved'),
+        }, submitDraft);
       };
 
       function getDraftButtons() {
@@ -541,6 +561,34 @@
           }
         });
       }
+
+      // Used by "extra" afFields that have no entity.
+      this.getFieldData = () => {
+        return data.extra.fields;
+      };
+
+      // these tokens matching/replacing functions should match
+      // the serverside implementation in AbstractProcessor::replaceTokens
+      this.identifyTokens = (message) => message?.match(/\[[a-zA-Z0-9_]+\.[0-9]+\.[^\]]+\]/g);
+
+      this.getTokenValues = (tokens) => {
+        const values = {};
+
+        tokens.forEach((token) => {
+          const parts = token.slice(1, -1).split('.');
+          values[token] = data[parts[0]][parts[1]].fields[parts.slice(2).join('.')];
+          values[token] = (values[token] === undefined) ? '' : values[token];
+        });
+
+        return values;
+      };
+
+      this.replaceTokens = (message) => {
+        const tokens = this.identifyTokens(message);
+        const tokenValues = this.getTokenValues(tokens);
+        tokens.forEach((token) => message = message.replace(token, tokenValues[token]));
+        return message;
+      };
 
     }
   });

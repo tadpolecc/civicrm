@@ -720,7 +720,6 @@ class CRM_Member_Form_MembershipRenewal extends CRM_Member_Form {
    * @throws \CRM_Core_Exception
    */
   public function processMembership($memParams, $changeToday, $numRenewTerms, $pending) {
-    $ids = [];
     $currentMembership = Membership::get(FALSE)
       ->addSelect('id', 'join_date', 'membership_type_id', 'start_date', 'status_id:name', 'status_id.is_current_member')
       ->addWhere('id', '=', $memParams['id'])
@@ -746,14 +745,6 @@ class CRM_Member_Form_MembershipRenewal extends CRM_Member_Form {
       'start_date' => $currentMembership['status_id.is_current_member'] ? $currentMembership['start_date'] : ($dates['start_date'] ?? NULL),
       'log_start_date' => $dates['log_start_date'],
     ]);
-
-    // Now Renew the membership
-    if ($currentMembership['status_id.is_current_member']) {
-      // CURRENT Membership
-      if (!empty($currentMembership['id'])) {
-        $ids['membership'] = $currentMembership['id'];
-      }
-    }
 
     CRM_Member_BAO_Membership::create($memParams);
   }

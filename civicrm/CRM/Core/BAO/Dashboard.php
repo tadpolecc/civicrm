@@ -185,7 +185,10 @@ class CRM_Core_BAO_Dashboard extends CRM_Core_DAO_Dashboard implements EventSubs
    */
   public static function initializeDashlets() {
     $allDashlets = (array) civicrm_api4('Dashboard', 'get', [
-      'where' => [['domain_id', '=', 'current_domain']],
+      'where' => [
+        ['domain_id', '=', 'current_domain'],
+        ['is_active', '=', TRUE],
+      ],
     ], 'name');
     $defaultDashlets = [];
     $defaults = ['blog' => 1, 'getting-started' => '0'];

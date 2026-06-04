@@ -296,8 +296,8 @@ class CRM_Core_I18n {
     for ($i = 1; $i < func_num_args(); $i++) {
       $arg = func_get_arg($i);
       if (is_array($arg)) {
-        foreach ($arg as $aarg) {
-          $tr['%' . ++$p] = $aarg;
+        foreach ($arg as $key => $aarg) {
+          $tr['%' . $key] = $aarg;
         }
       }
       else {

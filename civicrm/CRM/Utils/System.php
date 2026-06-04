@@ -1649,6 +1649,22 @@ class CRM_Utils_System {
   }
 
   /**
+   * Given a Civi\ or CRM_ class, return the corresponding template filename.
+   */
+  public static function getTemplateForClass(string|object $classNameOrInstance): string {
+    if (is_object($classNameOrInstance)) {
+      $classNameOrInstance = get_class($classNameOrInstance);
+    }
+    return strtr(
+        $classNameOrInstance,
+        [
+          '_' => DIRECTORY_SEPARATOR,
+          '\\' => DIRECTORY_SEPARATOR,
+        ]
+      ) . '.tpl';
+  }
+
+  /**
    * Append the contents of an 'extra' smarty template file.
    *
    * It must be present in the custom template directory. This does not work if there are

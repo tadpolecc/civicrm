@@ -340,6 +340,16 @@ class Admin {
               // Add the straight 1-1 join (but only if it's not a reference to itself, those can be done with implicit joins)
               if (!$isSelf) {
                 $alias = $entity['name'] . '_' . $targetEntityName . '_' . $keyField['name'];
+
+                // For LineItem we have contribution_id and entity_id=contribution_id when entity_table=civicrm_contribution
+                // They are the same and it is confusing to have two joins in the SearchKit UI.
+                // Aliases: LineItem_Contribution_contribution_id and LineItem_Contribution_entity_id
+                if ($alias === 'LineItem_Contribution_entity_id') {
+                  // LineItem.entity_id === LineItem.contribution_id if LineItem.entity_table='civicrm_contribution'
+                  // Don't show the duplicate join - see https://github.com/civicrm/civicrm-core/pull/35495
+                  continue;
+                }
+
                 $joins[$entity['name']][] = [
                   'label' => $entity['title'] . ' ' . ($dynamicCol ? $targetEntity['title'] : $keyField['label']),
                   'description' => '',

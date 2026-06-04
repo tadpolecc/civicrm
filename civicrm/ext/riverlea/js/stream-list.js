@@ -294,7 +294,7 @@
       this.innerHTML = `
       <div class="panel panel-info">
         <div class="panel-heading">
-          <h3></h3>
+          <h3><i role="img" aria-hidden="true" class="crm-i fa-window-maximize"></i><span></span></h3>
           <div class="civi-riverlea-stream-header-tags"></div>
           <div class="civi-riverlea-stream-header-buttons crm-buttons"></div>
         </div>
@@ -313,7 +313,7 @@
       </div>
       `;
 
-      this.querySelector('h3').innerText = this.data.label;
+      this.querySelector('h3 span').innerText = this.data.label;
       if (this.data.description) {
         this.querySelector('.panel-body p').innerText = this.data.description;
       }

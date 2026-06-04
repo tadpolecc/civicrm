@@ -657,9 +657,12 @@
       if (ctrl.savedSearch.api_params.groupBy.indexOf(arg.path) > -1) {
         return false;
       }
+      const primaryKeys = searchMeta.getEntity(arg.field.entity)?.primary_key;
+      if (!primaryKeys || !primaryKeys.length) {
+        return true;
+      }
       // If the entity this column belongs to is being grouped by primary key, then also no
-      const idField = searchMeta.getEntity(arg.field.entity).primary_key[0];
-      return ctrl.savedSearch.api_params.groupBy.indexOf(arg.prefix + idField) < 0;
+      return ctrl.savedSearch.api_params.groupBy.indexOf(arg.prefix + primaryKeys[0]) < 0;
     };
 
     $scope.fieldsForGroupBy = function() {

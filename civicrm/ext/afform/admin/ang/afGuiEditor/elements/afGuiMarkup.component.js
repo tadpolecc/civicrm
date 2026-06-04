@@ -22,7 +22,7 @@
         $scope.id = 'af-markup-editor-' + richtextId++;
 
         // When creating a new markup container, go straight to edit mode
-        $timeout(function() {
+        $timeout(() => {
           if (ctrl.node['#markup'] === false) {
             $scope.edit();
           }

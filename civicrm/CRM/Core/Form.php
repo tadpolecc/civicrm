@@ -1296,13 +1296,7 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
       $tplname = $ext->getTemplatePath(CRM_Utils_System::getClassName($this)) . DIRECTORY_SEPARATOR . $filename;
     }
     else {
-      $tplname = strtr(
-        CRM_Utils_System::getClassName($this),
-        [
-          '_' => DIRECTORY_SEPARATOR,
-          '\\' => DIRECTORY_SEPARATOR,
-        ]
-      ) . '.tpl';
+      $tplname = CRM_Utils_System::getTemplateForClass($this);
     }
     return $tplname;
   }
@@ -1934,7 +1928,8 @@ class CRM_Core_Form extends HTML_QuickForm_Page {
         return $this->addRadio($name, $label, $options, $props, NULL, $required);
 
       case 'CheckBox':
-        if ($context === 'search') {
+        // Ex: for is_deceased, but not is_deleted (usually implicit)
+        if ($context === 'search' && !in_array($name, ['case_deleted', 'is_deleted'])) {
           $this->addYesNo($name, $label, TRUE, FALSE, $props);
           return;
         }

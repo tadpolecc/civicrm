@@ -32,9 +32,9 @@ trait AfformEventEntityTrait {
 
   /**
    * Get the entity type associated with this event
-   * @return string
+   * @return string|null
    */
-  public function getEntityType(): string {
+  public function getEntityType(): ?string {
     return $this->entityType;
   }
 

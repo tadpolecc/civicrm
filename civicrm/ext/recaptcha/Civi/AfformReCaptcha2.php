@@ -19,7 +19,7 @@ class AfformReCaptcha2 extends AutoService implements EventSubscriberInterface {
   /**
    * @return array
    */
-  public static function getSubscribedEvents() {
+  public static function getSubscribedEvents(): array {
     return [
       'civi.afform_admin.metadata' => ['onAfformGetMetadata'],
       'hook_civicrm_alterAngular' => ['alterAngular'],

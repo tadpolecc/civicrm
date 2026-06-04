@@ -474,6 +474,10 @@ input.crm-form-checkbox) + label {
   align-items: center;
   margin-right: 0;
 }
+.crm-container .select2-container-multi.ng-invalid .select2-choices,
+.crm-container .select2-container.ng-invalid .select2-choice {
+  border-color: var(--crm-warning-color);
+}
 .crm-container .select2-container .select2-choice .select2-arrow {
   background: transparent;
   border-left: 0;
@@ -811,7 +815,7 @@ span.crm-select-item-color {
 }
 #ui-datepicker-div .ui-datepicker-header :is(.ui-datepicker-prev,.ui-datepicker-next)::before {
   font-family: "FontAwesome";
-  color: var(--text);
+  color: var(--crm-text-color);
   font-size: var(--crm-font-small-size);
   line-height: var(--crm-l-large);
   padding: 0;
@@ -990,5 +994,5 @@ span.crm-select-item-color {
   color: var(--crm-inactive-color);
 }
 .crm-container :is(input,textarea,option):disabled {
-  background-color: color-mix(in srgb, var(--crm-input-background) 90%, var(--crm-ink) 10%);
+  background-color: color-mix(in srgb, var(--crm-input-bg-color) 90%, var(--crm-ink) 10%);
 }

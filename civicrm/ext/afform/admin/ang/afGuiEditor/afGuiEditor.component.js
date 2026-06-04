@@ -225,10 +225,10 @@
       $scope.updateLayoutHtml = function() {
         $scope.layoutHtml = '...Loading...';
         crmApi4('Afform', 'convert', {layout: editor.afform.layout, from: 'deep', to: 'html', formatWhitespace: true})
-          .then(function(r){
+          .then((r) => {
             $scope.layoutHtml = r[0].layout || '(Error)';
           })
-          .catch(function(r){
+          .catch((r) => {
             $scope.layoutHtml = '(Error)';
           });
       };
@@ -280,7 +280,7 @@
           delete $scope.entities[type + num].loading;
           if (selectTab) {
             editor.selectEntity(type + num);
-            $timeout(function() {
+            $timeout(() => {
               editor.scrollToEntity(type + num);
             });
           }
@@ -294,7 +294,7 @@
           crmApi4('Afform', 'loadAdminData', {
             definition: {type: 'form'},
             entity: type
-          }, 0).then(function(data) {
+          }, 0).then((data) => {
             afGui.addMeta(data);
             addToCanvas();
           });
@@ -460,7 +460,7 @@
 
       this.placementRequiresServerRoute = function() {
         let requiresServerRoute = false;
-        editor.afform.placement.forEach(function(placement) {
+        editor.afform.placement.forEach((placement) => {
           const item = editor.meta.afform_placement.find(item => item.id === placement);
           if (item && item.filter) {
             requiresServerRoute = item.text;
@@ -581,7 +581,7 @@
         const searchFieldsets = afGui.findRecursive(editor.afform.layout, {'af-fieldset': ''});
         return searchFieldsets.reduce((searchDisplays, fieldset) => {
           const displayElement = afGui.findRecursive(fieldset['#children'], (item) => {
-            return item['search-name'] && item['#tag'] && item['#tag'].indexOf('crm-search-display-') === 0;
+            return item['search-name'] && item['#tag'] && afGui.meta.searchDisplayTags.includes(item['#tag']);
           })[0];
           if (displayElement) {
             searchDisplays[displayElement['search-name'] + (displayElement['display-name'] ? '.' + displayElement['display-name'] : '')] = {
@@ -601,7 +601,7 @@
         // A value means it's alredy loaded. Null means it's loading.
         if (!editor.searchOptions && editor.searchOptions !== null) {
           editor.searchOptions = null;
-          afGui.getAllSearchDisplays().then(function(links) {
+          afGui.getAllSearchDisplays().then((links) => {
             editor.searchOptions = links;
           });
         }
@@ -640,7 +640,7 @@
           crmApi4('Afform', 'loadAdminData', {
             definition: {type: 'search'},
             entity: display.key
-          }, 0).then(function(data) {
+          }, 0).then((data) => {
             afGui.addMeta(data);
             meta.settings = afGui.getSearchDisplay(searchName, displayName);
             addToCanvas();
@@ -720,7 +720,7 @@
         }
         $scope.saving = true;
         crmApi4('Afform', 'save', {formatWhitespace: true, records: [afform]})
-          .then(function (data) {
+          .then((data) => {
             $scope.saving = false;
             // When saving a new form for the first time
             if (!editor.afform.name) {

@@ -65,7 +65,9 @@
           // Stop browser from opening clicked links
           e.preventDefault();
           $(item).show().next('.replace-plain').hide();
-          CRM.wysiwyg.create(item);
+          CRM.wysiwyg.create(item).then(() => {
+            CRM.wysiwyg.focus(item);
+          });
         });
     }
   };

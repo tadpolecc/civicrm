@@ -254,6 +254,7 @@ tbody.scrollContent tr.alternateRow:not(.disabled),
 .crm-container .crm-row-selected,
 .crm-container .odd-row:hover,
 .crm-container .odd:hover,
+.crm-container .table tr:has(.crm-search-ctrl-select-row:checked),
 .crm-container .table-striped > tbody > tr:hover {
   --crm-striped-bg-color: var(--crm-table-row-hover-color);
 }
@@ -266,6 +267,7 @@ tbody.scrollContent tr.alternateRow:not(.disabled),
 .crm-container table tr.even-row:hover,
 .crm-container .even:hover,
 tbody.scrollContent tr.alternateRow:hover,
+.crm-container .table.table-striped tr:nth-of-type(2n):has(.crm-search-ctrl-select-row:checked),
 .crm-container .table-striped > tbody > tr:nth-of-type(2n):hover {
   --crm-striped-bg-color: color-mix(in srgb, var(--crm-table-row-hover-color) 100%, #000 6%);
 }

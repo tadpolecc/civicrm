@@ -23,7 +23,7 @@ class MagicFunctionProvider implements EventSubscriberInterface, ProviderInterfa
   /**
    * @return array
    */
-  public static function getSubscribedEvents() {
+  public static function getSubscribedEvents(): array {
     return [
       'civi.api.resolve' => [
         ['onApiResolve', Events::W_MIDDLE],

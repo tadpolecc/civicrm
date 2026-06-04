@@ -25,13 +25,12 @@ class Afform extends AutoService implements EventSubscriberInterface {
   /**
    * @return array
    */
-  public static function getSubscribedEvents() {
+  public static function getSubscribedEvents(): array {
     return [
-      // add afCheckout as a dependency of forms with Contributions
-      // we must hook later to alter afform modules @see afform_civicrm_config
+      // add CheckoutOption modules as dependencies of afCheckout
       'hook_civicrm_angularModules' => ['onAlterAngularModules', -1010],
       // provide CheckoutBlock element to FormBuilder
-      'civi.afform_admin.metadata' => ['onAfformAdminMetadata'],
+      'civi.afform.input_types' => ['onAfformInputTypes'],
       // run validation hook from selected CheckoutOption
       'civi.afform.validate' => ['validatePaymentFields', 0],
       // trigger Checkout on submission
@@ -196,63 +195,16 @@ class Afform extends AutoService implements EventSubscriberInterface {
         $e->angularModules['afCheckout']['requires'][] = $module;
       }
     }
-
-    // add afCheckout as a dependency of afAdmin so can be used in FormBuilder
-    $e->angularModules['afAdmin']['requires'][] = 'afCheckout';
-
-    // find configured afforms which use checkout and add the module dependency
-    // TODO: if/when we have a hook for afforms being saved, we should include
-    // the requirement in the .ang.php data in order to avoid computing it
-    // for every form every cache clear
-    foreach ($e->angularModules as $name => $module) {
-      if (!empty($module['_afform']) && $this->afformUsesCheckout($module['_afform'])) {
-        $e->angularModules[$name]['requires'] ??= [];
-        $e->angularModules[$name]['requires'][] = 'afCheckout';
-      }
-    }
   }
 
-  private function afformUsesCheckout(string $afformName): bool {
-    $layout = \Civi\Api4\Afform::get(FALSE)
-      ->addWhere('name', '=', $afformName)
-      ->addSelect('layout')
-      ->setLayoutFormat('html')
-      ->execute()
-      ->first()['layout'] ?? '';
-
-    if (!\str_contains($layout, 'Contribution')) {
-      return FALSE;
-    }
-    return TRUE;
-
-    // the below is a more strictly correct check - but is more labour intensive
-    // $layout = \Civi\Api4\Afform::get(FALSE)
-    //   ->addWhere('name', '=', $afformName)
-    //   ->addSelect('layout')
-    //   ->setLayoutFormat('deep')
-    //   ->execute()
-    //   ->first()['layout'] ?? NULL;
-
-    // // unexpected but dont crash the hook
-    // if (!$layout) {
-    //   return FALSE;
-    // }
-
-    // // does the form include contributions?
-    // $formDataModel = new FormDataModel($layout);
-    // $contributions = array_filter($formDataModel->getEntities(), fn ($entity) => $entity['type'] === 'Contribution');
-
-    // return !!$contributions;
-  }
-
-  public function onAfformAdminMetadata(GenericHookEvent $e) {
+  public function onAfformInputTypes(GenericHookEvent $e) {
     if (!$this->isActive()) {
       return;
     }
-    $e->inputTypes[] = [
-      'name' => 'CheckoutBlock',
+    $e->inputTypes['CheckoutBlock'] = [
       'label' => E::ts('Checkout Details Block'),
       'template' => '~/afCheckout/inputType/CheckoutBlock.html',
+      // Todo: Split the admin stuff into a different module
       'admin_template' => '~/afCheckout/inputType/CheckoutBlockAdmin.html',
     ];
   }

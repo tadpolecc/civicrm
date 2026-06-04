@@ -419,11 +419,13 @@ class CRM_Upgrade_Incremental_Base {
       $fieldSql .= " $position";
     }
     if (CRM_Core_BAO_SchemaHandler::checkIfFieldExists($tableName, $fieldName)) {
-      return self::alterColumn($ctx, $tableName, $fieldName, $fieldSql, !empty($fieldSpec['localizable']));
+      self::alterColumn($ctx, $tableName, $fieldName, $fieldSql, !empty($fieldSpec['localizable']));
     }
     else {
-      return self::addColumn($ctx, $tableName, $fieldName, $fieldSql, !empty($fieldSpec['localizable']), $version, $triggerRebuild);
+      self::addColumn($ctx, $tableName, $fieldName, $fieldSql, !empty($fieldSpec['localizable']), $version, $triggerRebuild);
     }
+    Civi::schemaHelper()->createForeignKey($tableName, $fieldName, $fieldSpec);
+    return TRUE;
   }
 
   /**

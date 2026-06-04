@@ -114,11 +114,11 @@
 }
 
 /* Edit palette (left side) */
-#afGuiEditor-palette input,
+#afGuiEditor-palette input:not(.crm-form-toggle),
 #afGuiEditor-palette textarea {
   width: 100%;
 }
-#afGuiEditor-palette input[type="checkbox"],
+#afGuiEditor-palette input[type="checkbox"]:not(.crm-form-toggle),
 #afGuiEditor-palette input[type="radio"] {
   width: 1rem;
   height: 1rem;

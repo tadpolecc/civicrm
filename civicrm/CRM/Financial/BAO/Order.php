@@ -317,7 +317,7 @@ class CRM_Financial_BAO_Order {
   /**
    * Add a line item to an entity.
    *
-   * The v3 api supports more than on line item being stored against a given
+   * The v3 api supports more than one line item being stored against a given
    * set of entity parameters. There is some doubt as to whether this is a
    * good thing that should be supported in v4 or something that 'seemed
    * like a good idea at the time' - but this allows the lines to be added from the
@@ -578,7 +578,8 @@ class CRM_Financial_BAO_Order {
    *
    */
   protected function setPriceSetIDByEntity(string $entity, int $id): void {
-    $this->priceSetID = CRM_Price_BAO_PriceSet::getFor('civicrm_' . $entity, $id);
+    $tableName = CRM_Core_DAO_AllCoreTables::getTableForEntityName(CRM_Core_DAO_AllCoreTables::convertEntityNameToCamel($entity));
+    $this->priceSetID = CRM_Price_BAO_PriceSet::getFor($tableName, $id);
   }
 
   /**
@@ -1320,7 +1321,9 @@ class CRM_Financial_BAO_Order {
    */
   public function getLineItemEntity($index):string {
     // @todo - ensure entity_table is set in setLineItem, go back to enotices here.
-    return str_replace('civicrm_', '', ($this->lineItems[$index]['entity_table'] ?? 'contribution'));
+    return \CRM_Core_DAO_AllCoreTables::convertEntityNameToLower(
+      \CRM_Core_DAO_AllCoreTables::getEntityNameForTable($this->lineItems[$index]['entity_table'] ?? 'civicrm_contribution')
+    );
   }
 
   /**

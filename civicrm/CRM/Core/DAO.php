@@ -2088,60 +2088,68 @@ LIKE %1
   }
 
   /**
+   * Build the custom-field params array for copying custom values from a source entity.
+   *
+   * Returns params in the `custom_{fieldID}_-1` format accepted by
+   * CRM_Core_BAO_CustomValueTable::postProcess()
+   * File-type fields are handled by duplicating the underlying file so the copy
+   * gets its own independent file record (see https://github.com/civicrm/civicrm-core/pull/9407).
+   *
+   * @param string $daoClass
+   * @param int $sourceEntityID
+   * @return array
+   */
+  protected static function buildCustomFieldCopyParams(string $daoClass, int $sourceEntityID): array {
+    $entity = CRM_Core_DAO_AllCoreTables::getEntityNameForClass($daoClass);
+    $customValues = CRM_Core_BAO_CustomValueTable::getEntityValues($sourceEntityID, $entity);
+    if (empty($customValues)) {
+      return [];
+    }
+
+    // Identify File-type fields so we can duplicate them rather than share the file.
+    $htmlType = [];
+    $fieldIds = implode(', ', array_keys($customValues));
+    $result = CRM_Core_DAO::executeQuery("SELECT id FROM civicrm_custom_field WHERE html_type = 'File' AND id IN ( {$fieldIds} )");
+    while ($result->fetch()) {
+      $htmlType[] = $result->id;
+    }
+
+    $customParams = [];
+    foreach ($customValues as $field => $value) {
+      if ($value !== NULL) {
+        if (in_array($field, $htmlType)) {
+          $fileValues = CRM_Core_BAO_File::path($value, $sourceEntityID);
+          $customParams["custom_{$field}_-1"] = [
+            'name' => CRM_Utils_File::duplicate($fileValues[0]),
+            'type' => $fileValues[1],
+          ];
+        }
+        else {
+          $customParams["custom_{$field}_-1"] = $value;
+        }
+      }
+    }
+    return $customParams;
+  }
+
+  /**
    * Method that copies custom fields values from an old entity to a new one.
    *
    * Fixes bug CRM-19302,
    * where if a custom field of File type was present, left both events using the same file,
    * breaking download URL's for the old event.
    *
-   * @todo the goal here is to clean this up so that it works for any entity. Copy Generic already DOES some custom field stuff
-   * but it seems to be bypassed & perhaps less good than this (or this just duplicates it...)
-   *
    * @param int $entityID
    * @param int $newEntityID
    * @param string $parentOperation
    */
   public function copyCustomFields($entityID, $newEntityID, $parentOperation = NULL) {
-    $entity = CRM_Core_DAO_AllCoreTables::getEntityNameForClass(get_class($this));
     $tableName = CRM_Core_DAO_AllCoreTables::getTableForClass(get_class($this));
-    // Obtain custom values for the old entity.
-    $customParams = $htmlType = [];
-    $customValues = CRM_Core_BAO_CustomValueTable::getEntityValues($entityID, $entity);
-
-    // If custom values present, we copy them
-    if (!empty($customValues)) {
-      // Get Field ID's and identify File type attributes, to handle file copying.
-      $fieldIds = implode(', ', array_keys($customValues));
-      $sql = "SELECT id FROM civicrm_custom_field WHERE html_type = 'File' AND id IN ( {$fieldIds} )";
-      $result = CRM_Core_DAO::executeQuery($sql);
-
-      // Build array of File type fields
-      while ($result->fetch()) {
-        $htmlType[] = $result->id;
-      }
-
-      // Build params array of custom values
-      foreach ($customValues as $field => $value) {
-        if ($value !== NULL) {
-          // Handle File type attributes
-          if (in_array($field, $htmlType)) {
-            $fileValues = CRM_Core_BAO_File::path($value, $entityID);
-            $customParams["custom_{$field}_-1"] = [
-              'name' => CRM_Utils_File::duplicate($fileValues[0]),
-              'type' => $fileValues[1],
-            ];
-          }
-          // Handle other types
-          else {
-            $customParams["custom_{$field}_-1"] = $value;
-          }
-        }
-      }
-
-      // Save Custom Fields for new Entity.
+    $entity = CRM_Core_DAO_AllCoreTables::getEntityNameForClass(get_class($this));
+    $customParams = self::buildCustomFieldCopyParams(get_class($this), $entityID);
+    if (!empty($customParams)) {
       CRM_Core_BAO_CustomValueTable::postProcess($customParams, $tableName, $newEntityID, $entity, $parentOperation ?? 'create');
     }
-
     // copy activity attachments ( if any )
     CRM_Core_BAO_File::copyEntityFile($tableName, $entityID, $tableName, $newEntityID);
   }

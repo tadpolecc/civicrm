@@ -314,7 +314,7 @@ class CRM_Contact_BAO_Relationship extends CRM_Contact_DAO_Relationship implemen
   public static function loadExistingRelationshipDetails($params) {
     if (!empty($params['contact_id_a'])
       && !empty($params['contact_id_b'])
-      && is_numeric($params['relationship_type_id'])) {
+      && is_numeric($params['relationship_type_id'] ?? NULL)) {
       return $params;
     }
     if (empty($params['id'])) {

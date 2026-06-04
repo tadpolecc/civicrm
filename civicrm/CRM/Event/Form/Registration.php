@@ -13,6 +13,7 @@
  * @package CRM
  * @copyright CiviCRM LLC https://civicrm.org/licensing
  */
+use Civi\Api4\LineItem;
 
 /**
  * This class generates form components for processing Event.
@@ -158,6 +159,8 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
    * The values for the contribution db object.
    *
    * @var array
+   *
+   * @deprecated - try to avoid.
    */
   public $_values;
 
@@ -384,7 +387,6 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
 
       $priceSetID = $this->getPriceSetID();
       if ($priceSetID) {
-        $this->_values['line_items'] = CRM_Price_BAO_LineItem::getLineItems($this->_participantId, 'participant');
         $this->initEventFee();
 
         //fix for non-upgraded price sets.CRM-4256.
@@ -917,6 +919,8 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
    * Get the array of price field value IDs on the form that 'count' as
    * full, which will be frozen.
    *
+   * Exclude any options that have currently been selected, in a select, for the participant.
+   *
    * @param array $field
    *
    * @return array
@@ -924,8 +928,20 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
    */
   protected function getOptionFullPriceFieldValues(array $field): array {
     $optionFullIds = [];
-    foreach ($field['options'] ?? [] as &$option) {
-      if ($this->isOptionFullID($option, $field)) {
+    $selectedSelectPriceFieldIds = $line_items = [];
+    if ($field['html_type'] === 'Select') {
+      if ($this->getParticipantID()) {
+        $line_items = LineItem::get(FALSE)
+          ->addWhere('entity_table', '=', 'civicrm_participant')
+          ->addWhere('entity_id', '=', $this->getParticipantID())
+          ->execute()->indexBy('price_field_value_id');
+      }
+      $selectedSelectPriceFieldIds = array_values($line_items);
+    }
+    foreach ($field['options'] ?? [] as $option) {
+      if ($this->getIsOptionFull($option) &&
+        !(in_array($option['id'], $selectedSelectPriceFieldIds))
+      ) {
         $optionFullIds[$option['id']] = $option['id'];
       }
     }
@@ -933,34 +949,9 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
   }
 
   /**
-   * Should we disable this option because it is full?
-   *
-   * We don't disable the option if the user has already selected it.
-   *
-   * @param array $option
-   * @param array $field
-   *
-   * @return bool
-   * @throws \CRM_Core_Exception
-   */
-  private function isOptionFullID(array $option, array $field) : bool {
-    $optionFull = $this->getIsOptionFull($option);
-    if ($optionFull && $field['html_type'] === 'Select') {
-      $defaultPricefieldIds = [];
-      if (!empty($this->_values['line_items'])) {
-        foreach ($this->_values['line_items'] as $lineItem) {
-          $defaultPricefieldIds[] = $lineItem['price_field_value_id'];
-        }
-      }
-      if (in_array($option['id'], $defaultPricefieldIds)) {
-        $optionFull = FALSE;
-      }
-    }
-    return $optionFull;
-  }
-
-  /**
    * Is this option full?
+   *
+   * Excluding the current participant's saved options.
    *
    * @param array $option
    *
@@ -968,22 +959,21 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
    * @throws \CRM_Core_Exception
    */
   protected function getIsOptionFull(array $option): bool {
-    $isFull = FALSE;
-    $currentParticipantNo = (int) substr($this->_name, 12);
     $maxValue = $option['max_value'] ?? 0;
-    $priceFieldValueID = $option['id'];
-    //get the current price event price set options count.
-    $currentOptionsCount = $this->getPriceSetOptionCount();
-    $currentTotalCount = $currentOptionsCount[$priceFieldValueID] ?? 0;
-    $totalCount = $currentTotalCount + $this->getUsedSeatsCount($priceFieldValueID);
-
-    if ($maxValue &&
-      (($totalCount >= $maxValue) &&
-        (empty($this->_lineItem[$currentParticipantNo][$priceFieldValueID]['price_field_id']) || $this->getUsedSeatsCount($priceFieldValueID) >= $maxValue))
-    ) {
-      $isFull = TRUE;
+    if (!$maxValue) {
+      return FALSE;
     }
-    return $isFull;
+    $currentTotalCount = $this->getPriceSetOptionCount()[$option['id']] ?? 0;
+    $usedSeatsCount = $this->getUsedSeatsCount($option['id']);
+    $totalCount = $currentTotalCount + $usedSeatsCount;
+
+    $currentParticipantNo = (int) substr($this->_name, 12);
+    if ($usedSeatsCount >= $maxValue ||
+        ($totalCount >= $maxValue && empty($this->_lineItem[$currentParticipantNo][$option['id']]['price_field_id']))
+      ) {
+      return TRUE;
+    }
+    return FALSE;
   }
 
   /**
@@ -1440,7 +1430,8 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
       $optionsCountDetails = $priceSetDetails['optionsCountDetails']['fields'];
     }
 
-    $optionMaxValues = $fieldSelected = [];
+    $optionMaxValues = $optionWithoutCurrentValues = $fieldSelected = [];
+    $currentParticipantNo = (int) substr($this->_name, 12);
     foreach ($params as $pNum => $values) {
       if (!is_array($values) || $values == 'skip') {
         continue;
@@ -1476,15 +1467,12 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
           else {
             $currentMaxValue = 1;
           }
-
           if (isset($optionsCountDetails[$priceFieldId], $optionsCountDetails[$priceFieldId]['options'][$optId])) {
             $currentMaxValue = $optionsCountDetails[$priceFieldId]['options'][$optId] * $optVal;
           }
-          if (empty($optionMaxValues)) {
-            $optionMaxValues[$priceFieldId][$optId] = $currentMaxValue;
-          }
-          else {
-            $optionMaxValues[$priceFieldId][$optId] = $currentMaxValue + ($optionMaxValues[$priceFieldId][$optId] ?? 0);
+          $optionMaxValues[$priceFieldId][$optId] = $currentMaxValue + ($optionMaxValues[$priceFieldId][$optId] ?? 0);
+          if ($pNum !== $currentParticipantNo) {
+            $optionWithoutCurrentValues[$priceFieldId][$optId] = $currentMaxValue + ($optionWithoutCurrentValues[$priceFieldId][$optId] ?? 0);
           }
           $soldOutPnum[$optId] = $pNum;
         }
@@ -1492,7 +1480,7 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
 
       //validate for price field selection.
       if (empty($fieldSelected[$pNum])) {
-        $errors[$pNum]['_qf_default'] = ts('SELECT at least one OPTION FROM EVENT Fee(s).');
+        $errors[$pNum]['_qf_default'] = ts('Select at least one option.');
       }
     }
 
@@ -1502,18 +1490,19 @@ class CRM_Event_Form_Registration extends CRM_Core_Form {
         $optMax = $optionsMaxValueDetails[$fieldId]['options'][$optId];
         $opDbCount = $this->getUsedSeatsCount($optId);
         $total += $opDbCount;
+        $totalWithoutCurrent = $opDbCount + ($optionWithoutCurrentValues[$fieldId][$optId] ?? 0);
         if ($optMax && ($total > $optMax)) {
-          if ($opDbCount && ($opDbCount >= $optMax)) {
+          if ($totalWithoutCurrent && ($totalWithoutCurrent >= $optMax)) {
             $errors[$soldOutPnum[$optId]]["price_{$fieldId}"]
               = ts('Sorry, this option is currently sold out.');
           }
-          elseif (($optMax - $opDbCount) == 1) {
+          elseif (($optMax - $totalWithoutCurrent) == 1) {
             $errors[$soldOutPnum[$optId]]["price_{$fieldId}"]
-              = ts('Sorry, currently only a single space is available for this option.', [1 => ($optMax - $opDbCount)]);
+              = ts('Sorry, currently only a single space is available for this option.');
           }
           else {
             $errors[$soldOutPnum[$optId]]["price_{$fieldId}"]
-              = ts('Sorry, currently only %1 spaces are available for this option.', [1 => ($optMax - $opDbCount)]);
+              = ts('Sorry, currently only %1 spaces are available for this option.', [1 => ($optMax - $totalWithoutCurrent)]);
           }
         }
       }
