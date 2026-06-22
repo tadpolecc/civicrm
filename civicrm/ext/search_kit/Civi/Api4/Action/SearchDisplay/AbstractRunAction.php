@@ -971,7 +971,7 @@ abstract class AbstractRunAction extends \Civi\Api4\Generic\AbstractAction {
           $idsKey = array_search("ids.join(',')", $data);
           unset($data[$idsKey], $link['task']);
           $amp = strpos($link['path'], '?') ? '&' : '?';
-          $link['path'] .= $amp . $idField . '=[' . $link['prefix'] . $idKey . ']';
+          $link['path'] .= $amp . $idsKey . '=[' . $link['prefix'] . $idKey . ']';
           // Add the rest of the data items
           foreach ($data as $dataKey => $dataRaw) {
             $link['path'] .= '&' . $dataKey . '=' . \CRM_Utils_JS::decode($dataRaw);
