@@ -93,6 +93,38 @@
         ));
       };
 
+      const defaultStyles = [{value: '', label: ts('Default')}];
+      const inputStylesByType = {};
+      for (const s of (CRM.afAdmin.field_styles || [])) {
+        if (!inputStylesByType[s.grouping]) {
+          inputStylesByType[s.grouping] = [{value: '', label: ts('Default')}];
+        }
+        inputStylesByType[s.grouping].push({value: s.value, label: s.label});
+      }
+
+      this.getInputStyles = function() {
+        return inputStylesByType[$scope.getProp('input_type')] || defaultStyles;
+      };
+
+      // This is a guard against an empty "other" selection.
+      let userChoseOther = false;
+
+      this.getSetStyleSelect = function(val) {
+        if (arguments.length) {
+          userChoseOther = (val === '_other_');
+          if (!userChoseOther) {
+            getSet('input_style', val);
+          }
+          return val;
+        }
+        const current = getSet('input_style');
+        const styles = ctrl.getInputStyles();
+        if (current && (!styles || !styles.some(s => s.value === current))) {
+          return '_other_';
+        }
+        return userChoseOther ? '_other_' : current;
+      };
+
       this.canBeMultiple = () => {
         if (!this.isSearch() ||
           ['Date', 'Timestamp'].includes(ctrl.getDefn().data_type) ||
@@ -121,6 +153,12 @@
           if (!defn && ctrl.container.getSearchDisplay()) {
             const searchDisplay = ctrl.container.getSearchDisplay();
             defn = _.findWhere(searchDisplay.calc_fields, {name: fieldName});
+          }
+        } else if (ctrl.node.defn?.input_type) {
+          // Extra (non-entity) field: seed from the inputType's extra_defn
+          const inputType = afGui.meta.inputTypes.find((t) => t.name === ctrl.node.defn.input_type);
+          if (inputType?.extra_defn) {
+            defn = _.cloneDeep(inputType.extra_defn);
           }
         }
         defn = defn || {

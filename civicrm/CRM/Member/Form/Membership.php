@@ -1302,7 +1302,7 @@ class CRM_Member_Form_Membership extends CRM_Member_Form {
       }
       $params['lineItems'] = $lineItem;
       if (!empty($formValues['record_contribution'])) {
-        CRM_Member_BAO_Membership::recordMembershipContribution($params);
+        $params['contribution_id'] = CRM_Member_BAO_Membership::recordMembershipContribution($params)->id;
       }
     }
 

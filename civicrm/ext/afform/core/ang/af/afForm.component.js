@@ -33,6 +33,13 @@
         $scope.$parent[this.ctrl] = this;
 
         $timeout(() => {
+          // render tokenised markup
+          $element[0].querySelectorAll('.af-markup:not(af-markup)').forEach((el) => {
+            const renderer = document.createElement('af-markup');
+            renderer.markup = el.innerHTML;
+            el.replaceChildren(renderer);
+          });
+
           ctrl.loadData()
             .then(setupDraftWatcher);
 
@@ -584,8 +591,15 @@
 
         tokens.forEach((token) => {
           const parts = token.slice(1, -1).split('.');
-          values[token] = data[parts[0]][parts[1]].fields[parts.slice(2).join('.')];
-          values[token] = (values[token] === undefined) ? '' : values[token];
+          const entity = parts[0];
+          const index = parts[1];
+          const fieldName = parts.slice(2).join('.');
+          if (!data || !data[entity] || !data[entity][index] || !data[entity][index].fields || (data[entity][index].fields[fieldName] === undefined) ) {
+            values[token] = '';
+          }
+          else {
+            values[token] = data[entity][index].fields[fieldName];
+          }
         });
 
         return values;
@@ -594,10 +608,9 @@
       this.replaceTokens = (message) => {
         const tokens = this.identifyTokens(message);
         const tokenValues = this.getTokenValues(tokens);
-        tokens.forEach((token) => message = message.replace(token, tokenValues[token]));
+        tokens.forEach((token) => message = message.replaceAll(token, tokenValues[token]));
         return message;
       };
-
     }
   });
 })(angular, CRM.$, CRM._);

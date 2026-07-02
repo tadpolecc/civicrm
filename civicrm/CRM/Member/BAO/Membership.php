@@ -311,6 +311,7 @@ class CRM_Member_BAO_Membership extends CRM_Member_DAO_Membership {
     // unavailable through apiv3.
     // once we are rid of direct calls to the BAO::create from core
     // we will deprecate this stuff into the v3 api.
+    // API4 doesn't pass in "version" - we explicitly pass it in for API4 Membership - see MembershipSaveTrait
     if (($params['version'] ?? 0) !== 4) {
       if (isset($ids['membership'])) {
         $latestContributionID = CRM_Member_BAO_MembershipPayment::getLatestContributionIDFromLineitemAndFallbackToMembershipPayment($membership->id);
@@ -2071,10 +2072,12 @@ WHERE {$whereClause}";
    * @param array $params
    *   Array of submitted params.
    *
+   * @deprecated use Order api
+   *
    * @return CRM_Contribute_BAO_Contribution
    * @throws \CRM_Core_Exception
    */
-  public static function recordMembershipContribution(&$params) {
+  public static function recordMembershipContribution($params) {
     $contributionParams = [];
     $config = CRM_Core_Config::singleton();
     $contributionParams['currency'] = $config->defaultCurrency;
@@ -2146,9 +2149,6 @@ WHERE {$whereClause}";
         CRM_Contribute_BAO_ContributionSoft::add($contributionSoftParams);
       }
     }
-
-    // store contribution id
-    $params['contribution_id'] = $contribution->id;
 
     return $contribution;
   }

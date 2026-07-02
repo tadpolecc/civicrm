@@ -18,7 +18,7 @@
       mode: '@'
     },
     controllerAs: 'editor',
-    controller: function($scope, crmApi4, crmUiHelp, afGui, $parse, $timeout, $location, $route, $rootScope, formatForSelect2) {
+    controller: function($scope, $element, crmApi4, crmUiHelp, afGui, $parse, $timeout, $location, $route, $rootScope, formatForSelect2) {
       const ts = $scope.ts = CRM.ts('org.civicrm.afform_admin');
       $scope.hs = crmUiHelp({file: 'CRM/AfformAdmin/afformBuilder'});
 
@@ -711,6 +711,9 @@
       };
 
       $scope.save = function() {
+        // save and close any open rich text elements
+        $element[0].querySelectorAll('civi-rich-text-input[editing]').forEach((el) => el.saveAndCloseEditor());
+
         const afform = JSON.parse(angular.toJson(editor.afform));
         // This might be set to undefined by validation
         afform.server_route = afform.server_route || '';
@@ -803,6 +806,67 @@
         });
         return $location.path(newPath);
       }
+
+      this.getTokens = (includeSubmissionTokens = false) => {
+        const allTokens = [];
+        this.getEntities().forEach((entity) => {
+          const entityTokens = [];
+          const entityMeta = this.meta.entities[entity.type];
+          const entityLabel = entity.label || entityMeta.label;
+          if (entityMeta.submissionTokens && includeSubmissionTokens) {
+            // Explicitly defined submission tokens e.g. by FormProcessor extension
+            entityMeta.submissionTokens.forEach((submissionToken) => {
+              entityTokens.push({
+                id: entity.name + '.0.' + submissionToken.token,
+                text: submissionToken.label,
+                description: submissionToken.description ?? '',
+              });
+            });
+          } else if (!entityMeta.submissionTokens) {
+            // Primary key token
+            // FIXME: not all entities use `id` for primary key
+            if (includeSubmissionTokens) {
+              entityTokens.push({
+                id: entity.name + '.0.id',
+                text: ts('%1 ID', {1: entityMeta.label}),
+              });
+            }
+            // Tokens from entity data values
+            if (entity.data) {
+              Object.keys(entity.data).forEach((key) => {
+                if (entityMeta.fields[key]) {
+                  entityTokens.push({
+                    id: entity.name + '.0.' + key,
+                    text: entityMeta.fields[key].label,
+                  });
+                }
+              });
+            }
+            // Tokens from entity fields on the form
+            this.getEntityFields(entity.name).fields.forEach((field) => {
+              entityTokens.push({
+                id: entity.name + '.0.' + field.name,
+                text: field.label,
+              });
+            });
+          }
+          if (entityTokens.length) {
+            allTokens.push({
+              text: entityLabel,
+              children: entityTokens,
+            });
+          }
+        });
+        if (includeSubmissionTokens) {
+          allTokens.push({
+            text: ts('Form'),
+            children: [
+              {id: 'token', text: ts('Submission JWT')},
+            ],
+          });
+        }
+        return allTokens;
+      };
 
     }
   });

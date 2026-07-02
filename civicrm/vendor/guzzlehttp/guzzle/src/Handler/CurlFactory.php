@@ -249,7 +249,6 @@ class CurlFactory implements CurlFactoryInterface
         }
 
         $conflictingOptions = self::conflictingCurlOptions();
-        $sinceOverrides = self::conflictingCurlOptionSinceOverrides();
 
         foreach ($options['curl'] as $option => $_) {
             if (!\array_key_exists($option, $conflictingOptions)) {
@@ -258,11 +257,10 @@ class CurlFactory implements CurlFactoryInterface
 
             $name = self::formatCurlOption($option);
             $replacement = $conflictingOptions[$option];
-            $since = $sinceOverrides[$option] ?? '7.11';
             if ($replacement !== null) {
                 \trigger_deprecation(
                     'guzzlehttp/guzzle',
-                    $since,
+                    '7.11',
                     \sprintf(
                         'Passing %s in the "curl" request option is deprecated; guzzlehttp/guzzle 8.0 will reject this option because it conflicts with Guzzle-managed request handling. Use %s instead.',
                         $name,
@@ -275,7 +273,7 @@ class CurlFactory implements CurlFactoryInterface
 
             \trigger_deprecation(
                 'guzzlehttp/guzzle',
-                $since,
+                '7.11',
                 \sprintf(
                     'Passing %s in the "curl" request option is deprecated; guzzlehttp/guzzle 8.0 will reject this option because it conflicts with Guzzle-managed cURL internals.',
                     $name
@@ -366,7 +364,6 @@ class CurlFactory implements CurlFactoryInterface
         self::addConflictingCurlOption($options, 'CURLOPT_STDERR', 'the "debug" request option');
         self::addConflictingCurlOption($options, 'CURLOPT_PROXY', 'the "proxy" request option');
         self::addConflictingCurlOption($options, 'CURLOPT_NOPROXY', 'the "proxy" request option');
-        self::addConflictingCurlOption($options, 'CURLOPT_PROXYTYPE', 'the "proxy" request option with a scheme-prefixed URL');
         self::addConflictingCurlOption($options, 'CURLOPT_FOLLOWLOCATION', 'the "allow_redirects" request option');
         self::addConflictingCurlOption($options, 'CURLOPT_MAXREDIRS', 'the "allow_redirects" request option');
         self::addConflictingCurlOption($options, 'CURLOPT_POSTREDIR', 'the "allow_redirects" request option');
@@ -393,26 +390,6 @@ class CurlFactory implements CurlFactoryInterface
         self::addConflictingCurlOption($options, 'CURLOPT_COOKIEJAR', 'Guzzle cookie middleware');
         self::addConflictingCurlOption($options, 'CURLOPT_COOKIELIST', 'Guzzle cookie middleware');
         self::addConflictingCurlOption($options, 'CURLOPT_COOKIESESSION', 'Guzzle cookie middleware');
-
-        return $options;
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private static function conflictingCurlOptionSinceOverrides(): array
-    {
-        static $options = null;
-
-        if ($options !== null) {
-            return $options;
-        }
-
-        $options = [];
-
-        if (\defined('CURLOPT_PROXYTYPE')) {
-            $options[\CURLOPT_PROXYTYPE] = '7.12';
-        }
 
         return $options;
     }
@@ -958,9 +935,9 @@ class CurlFactory implements CurlFactoryInterface
             }
         }
 
-        if (!isset($options['curl'][\CURLOPT_ENCODING]) && isset($options['decode_content']) && $options['decode_content'] !== false) {
+        if (!isset($options['curl'][\CURLOPT_ENCODING]) && !empty($options['decode_content'])) {
             $accept = $easy->request->getHeaderLine('Accept-Encoding');
-            if ($accept !== '') {
+            if ($accept) {
                 $conf[\CURLOPT_ENCODING] = $accept;
             } else {
                 // The empty string enables all available decoders and implicitly

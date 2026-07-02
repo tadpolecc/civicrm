@@ -619,8 +619,10 @@ WHERE li.contribution_id = %1";
       CRM_Price_BAO_LineItem::create($lineItemToAlter);
     }
 
+    // $contributionId may be NULL here and will get written to LineItem, maybe we don't need to pass it in if empty?
     $lineItemObj->addLineItemOnChangeFeeSelection($requiredChanges['line_items_to_add'], $entityID, $entityTable, $contributionId);
 
+    // If $contributionId is NULL this will crash
     $updatedAmount = CRM_Price_BAO_LineItem::getLineTotal($contributionId);
     $displayParticipantCount = '';
     if ($totalParticipant > 0) {
@@ -630,6 +632,7 @@ WHERE li.contribution_id = %1";
     if (!empty($amountLevel)) {
       $updateAmountLevel = CRM_Core_DAO::VALUE_SEPARATOR . implode(CRM_Core_DAO::VALUE_SEPARATOR, $amountLevel) . $displayParticipantCount . CRM_Core_DAO::VALUE_SEPARATOR;
     }
+    // $contributionId must not be NULL
     $trxn = $lineItemObj->_recordAdjustedAmt($updatedAmount, $contributionId, $taxAmount, $updateAmountLevel);
     $contributionStatus = CRM_Core_PseudoConstant::getName('CRM_Contribute_DAO_Contribution', 'contribution_status_id', CRM_Core_DAO::getFieldValue('CRM_Contribute_DAO_Contribution', $contributionId, 'contribution_status_id'));
 
@@ -664,6 +667,7 @@ WHERE li.contribution_id = %1";
       }
     }
 
+    // This won't work if there is no contribution
     $lineItemObj->addFinancialItemsOnLineItemsChange(array_merge($requiredChanges['line_items_to_add'], $requiredChanges['line_items_to_resurrect']), $entityID, $entityTable, $contributionId, $trxn->id ?? NULL);
 
     // update participant fee_amount column
@@ -1088,13 +1092,14 @@ WHERE li.contribution_id = %1";
    * @return bool|\CRM_Core_BAO_FinancialTrxn
    */
   protected function _recordAdjustedAmt($updatedAmount, $contributionId, $taxAmount = NULL, $updateAmountLevel = NULL) {
-    $paidAmount = (float) CRM_Core_BAO_FinancialTrxn::getTotalPayments($contributionId);
+    $paidAmount = \Civi\Api4\Contribution::get(FALSE)
+      ->addWhere('id', '=', $contributionId)
+      ->addSelect('paid_amount')
+      ->execute()->first()['paid_amount'];
+
     $balanceAmt = $updatedAmount - $paidAmount;
 
-    $contributionStatuses = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
-    $partiallyPaidStatusId = array_search('Partially paid', $contributionStatuses);
-    $pendingRefundStatusId = array_search('Pending refund', $contributionStatuses);
-    $completedStatusId = array_search('Completed', $contributionStatuses);
+    $contributionStatuses = array_column(\Civi::entity('Contribution')->getOptions('contribution_status_id'), 'id', 'name');
 
     $updatedContributionDAO = new CRM_Contribute_BAO_Contribution();
     $adjustedTrxn = FALSE;
@@ -1105,7 +1110,7 @@ WHERE li.contribution_id = %1";
         $updatedContributionDAO->cancel_reason = NULL;
       }
       else {
-        $updatedContributionDAO->contribution_status_id = $balanceAmt > 0 ? $partiallyPaidStatusId : $pendingRefundStatusId;
+        $updatedContributionDAO->contribution_status_id = $balanceAmt > 0 ? $contributionStatuses['Partially paid'] : $contributionStatuses['Pending refund'];
       }
 
       // update contribution status and total amount without trigger financial code
@@ -1129,7 +1134,7 @@ WHERE li.contribution_id = %1";
         'to_financial_account_id' => $toFinancialAccount,
         'total_amount' => $balanceAmt,
         'net_amount' => $balanceAmt,
-        'status_id' => $completedStatusId,
+        'status_id' => $contributionStatuses['Completed'],
         'payment_instrument_id' => $updatedContribution->payment_instrument_id,
         'contribution_id' => $updatedContribution->id,
         'trxn_date' => date('YmdHis'),
@@ -1140,7 +1145,7 @@ WHERE li.contribution_id = %1";
     // CRM-17151: Update the contribution status to completed if balance is zero,
     //  because due to sucessive fee change will leave the related contribution status incorrect
     else {
-      CRM_Core_DAO::setFieldValue('CRM_Contribute_DAO_Contribution', $contributionId, 'contribution_status_id', $completedStatusId);
+      CRM_Core_DAO::setFieldValue('CRM_Contribute_DAO_Contribution', $contributionId, 'contribution_status_id', $contributionStatuses['Completed']);
     }
 
     return $adjustedTrxn;

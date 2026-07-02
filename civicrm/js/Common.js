@@ -1297,11 +1297,11 @@ if (!CRM.vars) CRM.vars = {};
       $('form[data-warn-changes] :input', e.target).each(function() {
         $(this).data('crm-initial-value', $(this).is(':checkbox, :radio') ? $(this).prop('checked') : $(this).val());
       });
-      $('textarea.crm-form-wysiwyg', e.target).each(function() {
-        if ($(this).hasClass("collapsed")) {
-          CRM.wysiwyg.createCollapsed(this);
+      e.target.querySelectorAll('textarea.crm-form-wysiwyg').forEach((el) => {
+        if (el.classList.contains('collapsed')) {
+          CRM.wysiwyg.createCollapsed(el);
         } else {
-          CRM.wysiwyg.create(this);
+          CRM.wysiwyg.create(el);
         }
       });
       // Submit once handlers

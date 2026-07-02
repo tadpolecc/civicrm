@@ -87,12 +87,12 @@ class CreateContribution extends AutoService implements EventSubscriberInterface
       return;
     }
     if (count($contributions) > 1) {
-      $event->setError(E::ts('Handling multiple contributions on the same form is not supported'));
+      $event->addError(E::ts('Handling multiple contributions on the same form is not supported'));
       return;
     }
     $contribution = reset($contributions);
     if (count(array_filter($contribution['actions'])) !== 1) {
-      $event->setError(E::ts('Contribution action should be create or update but not both.'));
+      $event->addError(E::ts('Contribution action should be create or update but not both.'));
       return;
     }
 
@@ -118,7 +118,7 @@ class CreateContribution extends AutoService implements EventSubscriberInterface
     // this catches cases when user must select one of a number of possible
     // price fields to provide line items, but no specific price field is required
     if (!$lineItems) {
-      $event->setError(E::ts('No line items for creating contribution'));
+      $event->addError(E::ts('No line items for creating contribution'));
       return;
     }
 

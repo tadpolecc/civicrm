@@ -38,6 +38,12 @@
     this.afformAdminEnabled = CRM.checkPerm('manage own afform') &&
       'org.civicrm.afform_admin' in CRM.crmSearchAdmin.modules;
     this.displayTypes = Object.fromEntries(CRM.crmSearchAdmin.displayTypes.map(type => [type.id, type]));
+
+    // Only super admins are allowed to create entity displays
+    if (!CRM.checkPerm('all CiviCRM permissions and ACLs')) {
+      delete this.displayTypes.entity;
+    }
+
     this.searchDisplayPath = CRM.url('civicrm/search');
     this.afformPath = CRM.url('civicrm/admin/afform');
     this.debug = {};
@@ -138,11 +144,6 @@
           default: defaults
         });
 
-        // Set default label
-        ctrl.savedSearch.label = ctrl.savedSearch.label || ts('%1 Search by %2', {
-          1: searchMeta.getEntity(ctrl.savedSearch.api_entity).title,
-          2: CRM.crmSearchAdmin.myName
-        });
         $scope.$bindToRoute({
           param: 'label',
           expr: '$ctrl.savedSearch.label',
@@ -668,7 +669,7 @@
     $scope.fieldsForGroupBy = function() {
       return {
         results: ctrl.getAllFields('', ['Field', 'Custom', 'Extra'], key =>
-          ctrl.savedSearch.api_params.groupBy.includes(key)
+          ctrl.savedSearch.api_params.groupBy?.includes(key)
         )
       };
     };

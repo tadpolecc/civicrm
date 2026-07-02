@@ -143,7 +143,7 @@ class Submit extends AbstractProcessor {
           $fieldDefn = $event->getEntityFieldDefn($afEntityName, $fieldName);
           $error = self::getFieldInputError($event, $fieldName, $fieldDefn, $attributes, $values['fields'][$fieldName] ?? NULL);
           if ($error) {
-            $event->setError($error);
+            $event->addError($error);
           }
         }
         foreach ($afEntity['joins'] ?? [] as $joinEntity => $join) {
@@ -152,7 +152,7 @@ class Submit extends AbstractProcessor {
               $fieldDefn = $event->getEntityFieldDefn($afEntityName, $fieldName, $joinEntity);
               $error = self::getFieldInputError($event, $fieldName, $fieldDefn, $attributes, $joinValues[$fieldName] ?? NULL);
               if ($error) {
-                $event->setError($error);
+                $event->addError($error);
               }
             }
           }
@@ -229,7 +229,7 @@ class Submit extends AbstractProcessor {
         foreach ($entity['fields'] as $fieldName => $attributes) {
           $error = self::getEntityRefError($formName, $entityName, $entity['type'], $fieldName, $attributes, $values['fields'][$fieldName] ?? NULL);
           if ($error) {
-            $event->setError($error);
+            $event->addError($error);
           }
         }
         foreach ($entity['joins'] ?? [] as $joinEntity => $join) {
@@ -237,7 +237,7 @@ class Submit extends AbstractProcessor {
             foreach ($join['fields'] ?? [] as $fieldName => $attributes) {
               $error = self::getEntityRefError($formName, $entityName . '+' . $joinEntity, $joinEntity, $fieldName, $attributes, $joinValues[$fieldName] ?? NULL);
               if ($error) {
-                $event->setError($error);
+                $event->addError($error);
               }
             }
           }
