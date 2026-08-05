@@ -53,7 +53,6 @@ return array(
     'Phlib\\XssSanitizer\\' => array($vendorDir . '/phlib/xss-sanitizer/src'),
     'ParagonIE\\ConstantTime\\' => array($vendorDir . '/paragonie/constant_time_encoding/src'),
     'Padaliyajay\\PHPAutoprefixer\\' => array($vendorDir . '/padaliyajay/php-autoprefixer/src'),
-    'MyCLabs\\Enum\\' => array($vendorDir . '/myclabs/php-enum/src'),
     'MimeTyper\\' => array($vendorDir . '/adrienrn/php-mimetyper/src'),
     'Matrix\\' => array($vendorDir . '/markbaker/matrix/classes/src'),
     'Masterminds\\' => array($vendorDir . '/masterminds/html5/src'),
