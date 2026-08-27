@@ -25,7 +25,7 @@ class CRM_Upgrade_Incremental_php_SixSeventeen extends CRM_Upgrade_Incremental_B
     if ($rev === '6.17.alpha1') {
       if (Civi::settings()->get('search_mysql_fts')) {
         $settingUrl = (string) \Civi::url('civicrm/admin/setting/search', 'h')->addQuery(['reset' => 1]);
-        $preUpgradeMessage .= '<p>' . ts("This upgrade will add a new Full Text Search index on the `civicrm_contact` table. If you have lots of contacts, this may take a while and use a lot of space on your database server. If you don't want this, turn off Use Mysql Full Text Search in <a %1>Search Preferences</a> before running the upgrade.", [1 => ('href="' . $settingUrl . '"')]) . '</p>';
+        $preUpgradeMessage .= '<p>' . ts("This upgrade will add a new Full Text Search index on the `civicrm_contact` table. If you have lots of contacts, this may take a while and use a lot of space on your database server. Note that this is a new setting which is enabled by default and is different from the older InnoDB Full Text Search setting. If you don't want this, turn off Use Mysql Full Text Search in <a %1>Search Preferences</a> before running the upgrade.", [1 => ('href="' . $settingUrl . '"')]) . '</p>';
       }
     }
   }
@@ -45,6 +45,25 @@ class CRM_Upgrade_Incremental_php_SixSeventeen extends CRM_Upgrade_Incremental_B
     $this->addTask('Replace . ' . $from . ' with ' . $to . ' in ' . $template,
       'updateMessageToken', $template, $from, $to, $rev
     );
+  }
+
+  /**
+   * Upgrade step for 6.17.3
+   *
+   * @param string $rev
+   *   The version number matching this function name
+   */
+  public function upgrade_6_17_3($rev): void {
+    $this->addTask(ts('Recreate Mysql Full Text Search indices if necessary'), 'recreateFtsIndexIfNeeded');
+  }
+
+  public static function recreateFtsIndexIfNeeded(CRM_Queue_TaskContext $ctx): bool {
+    // drop `contact_name` index if added with old def in 6.17.0/1/2
+    CRM_Core_BAO_SchemaHandler::dropIndexIfExists('civicrm_contact', 'contact_name');
+    // ensure `contact_names` index is added (no op if FTS is disable)
+    self::createMissingFtsIndices();
+
+    return TRUE;
   }
 
 }
