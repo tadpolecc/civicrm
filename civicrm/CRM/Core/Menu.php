@@ -46,6 +46,21 @@ class CRM_Core_Menu {
   const MENU_ITEM = 1;
 
   /**
+   * Lock held around a civicrm_menu rebuild, so concurrent rebuilds cannot corrupt the table.
+   *
+   * @see self::store()
+   */
+  private const REBUILD_LOCK = 'data.core.menu';
+
+  /**
+   * Seconds to wait for REBUILD_LOCK before falling back to an unlocked (best-effort) rebuild.
+   *
+   * Generous because a rebuild pays a DB round trip per route and can run for tens of seconds on
+   * an install with a network-remote database.
+   */
+  private const REBUILD_LOCK_TIMEOUT = 180;
+
+  /**
    * This function fetches the menu items from xml and xmlMenu hooks.
    *
    * @param bool $fetchFromXML
@@ -317,20 +332,62 @@ class CRM_Core_Menu {
     return FALSE;
   }
 
+  public static function clear() {
+    // Take the rebuild lock: TRUNCATE is a writer too, and clearing the table out from under an
+    // in-flight self::store() would leave it holding only the rows that store() inserts after the
+    // truncate. Callers include extensions (e.g. Afform) that clear on save.
+    $lock = Civi::lockManager()->acquire(self::REBUILD_LOCK, self::REBUILD_LOCK_TIMEOUT);
+    if (!$lock->isAcquired()) {
+      Civi::log()->warning('CRM_Core_Menu::clear() is truncating civicrm_menu without the ' . self::REBUILD_LOCK . ' lock after waiting ' . self::REBUILD_LOCK_TIMEOUT . 's; a concurrent rebuild may be in progress.');
+    }
+    try {
+      self::clearMenu();
+    }
+    finally {
+      $lock->release();
+    }
+  }
+
+  /**
+   * TRUNCATE civicrm_menu and drop the derived route cache.
+   *
+   * Unlocked; callers hold REBUILD_LOCK (see self::clear() and self::store()).
+   */
+  private static function clearMenu() {
+    CRM_Core_DAO::executeQuery('TRUNCATE civicrm_menu');
+    Civi::cache('long')->delete('PublicRouteIndex');
+    Civi::cache('long')->delete('AdminSiteMapLinks');
+  }
+
   /**
    * This function recomputes menu from xml and populates civicrm_menu.
-   *
-   * @param bool $truncate
    */
-  public static function store($truncate = TRUE) {
-    // first clean up the db
-    if ($truncate) {
-      $query = 'TRUNCATE civicrm_menu';
-      CRM_Core_DAO::executeQuery($query);
+  public static function store() {
+    // Take the rebuild lock: without it, concurrent rebuilds collide on the (path, domain_id)
+    // unique key and can leave the table partially populated. On lock-wait timeout, rebuild anyway (best
+    // effort) rather than skip: an unlocked rebuild is the historical behaviour, so the worst case
+    // is no worse than before, and skipping would leave the empty-table caller in self::get() with
+    // no route table. release() no-ops if the lock is not held.
+    $lock = Civi::lockManager()->acquire(self::REBUILD_LOCK, self::REBUILD_LOCK_TIMEOUT);
+    if (!$lock->isAcquired()) {
+      Civi::log()->warning('CRM_Core_Menu::store() is rebuilding civicrm_menu without the ' . self::REBUILD_LOCK . ' lock after waiting ' . self::REBUILD_LOCK_TIMEOUT . 's; a concurrent rebuild may be in progress.');
     }
-    Civi::cache('long')->delete('PublicRouteIndex');
-    $menuArray = self::items($truncate);
+    try {
+      self::clearMenu();
+      self::rebuild();
+    }
+    finally {
+      $lock->release();
+    }
+  }
 
+  /**
+   * Repopulate civicrm_menu from the route definitions.
+   *
+   * Unlocked; go through self::store(), which clears the table and holds REBUILD_LOCK around this.
+   */
+  private static function rebuild() {
+    $menuArray = self::items(TRUE);
     self::build($menuArray);
 
     $daoFields = CRM_Core_DAO_Menu::fields();
@@ -375,11 +432,14 @@ class CRM_Core_Menu {
   }
 
   /**
-   * Build admin links.
+   * Build admin links and store in long cache
+   *
+   * TODO: this requires passing in menu array in specific point in self::rebuild
+   * It would be neater to decouple and fetch the routes it needs directly
    *
    * @param array $menu
    */
-  public static function buildAdminLinks(&$menu) {
+  public static function buildAdminLinks($menu): void {
     $values = [];
 
     foreach ($menu as $path => $item) {
@@ -422,7 +482,7 @@ class CRM_Core_Menu {
       ksort($values[$group]);
     }
 
-    $menu['admin'] = ['breadcrumb' => $values];
+    \Civi::cache('long')->set('AdminSiteMapLinks', $values);
   }
 
   /**
@@ -431,8 +491,13 @@ class CRM_Core_Menu {
    * @return array|null
    */
   public static function getAdminLinks() {
-    $links = self::get('admin');
-    return $links['breadcrumb'] ?? NULL;
+    $links = \Civi::cache('long')->get('AdminSiteMapLinks');
+    if (!$links) {
+      // cache may have expired
+      self::store();
+      $links = \Civi::cache('long')->get('AdminSiteMapLinks');
+    }
+    return $links;
   }
 
   /**
@@ -573,6 +638,39 @@ class CRM_Core_Menu {
    *   Menu entry array.
    */
   public static function get($path) {
+    $path = (string) $path;
+
+    // all civicrm routes begin with civicrm
+    if ($path !== 'civicrm' && !str_starts_with($path, 'civicrm/')) {
+      return NULL;
+    }
+
+    $item = self::fetch($path);
+    if (!$item) {
+      // if nothing is returned it might just be that the routing table has been
+      // cleared and we need to rebuild it...
+      $anyRoutes = \CRM_Core_DAO::executeQuery('SELECT id FROM civicrm_menu LIMIT 1')->fetch();
+      if ($anyRoutes) {
+        // actual not found
+        return $item;
+      }
+      else {
+        // rebuild and try again
+        self::store();
+        $item = self::fetch($path);
+      }
+    }
+    return $item;
+  }
+
+  /**
+   * @param string $path
+   *   Path of menu item to retrieve.
+   *
+   * @return array
+   *   Menu entry array.
+   */
+  protected static function fetch(string $path) {
     $args = explode('/', $path);
 
     $elements = [];
