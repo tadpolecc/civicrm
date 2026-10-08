@@ -1247,6 +1247,15 @@ class CRM_Core_SelectValues {
         'adv_search_legacy' => 'invoice_number',
       ],
     ];
+
+    $ftsIndices = Civi::service('civi.schema.fts')->getIndicesForEntity('Contact');
+    foreach ($ftsIndices as $key => $defn) {
+      $options[] = [
+        'key' => $key,
+        'label' => ts('Full Text Search: %1', [1 => $defn['label']]),
+      ];
+    }
+
     $customGroups = CRM_Core_BAO_CustomGroup::getAll(['extends' => 'Contact', 'is_active' => TRUE], CRM_Core_Permission::VIEW);
     foreach ($customGroups as $group) {
       $join = NULL;
@@ -1412,6 +1421,17 @@ class CRM_Core_SelectValues {
       'combined' => ts('One combined activity'),
       'combined-attached' => ts('One combined activity plus one file attachment'),
       // 'multiple-attached' <== not worth the work
+    ];
+  }
+
+  /**
+   * Options for UFGroup.is_cms_user
+   */
+  public static function profileUserRegistrationMode(): array {
+    return [
+      0 => ts('Disabled'),
+      1 => ts('Enabled, but not required'),
+      2 => ts('Required'),
     ];
   }
 

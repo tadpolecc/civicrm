@@ -332,6 +332,9 @@ class CRM_Core_Menu {
     return FALSE;
   }
 
+  /**
+   * @internal
+   */
   public static function clear() {
     // Take the rebuild lock: TRUNCATE is a writer too, and clearing the table out from under an
     // in-flight self::rebuild() would leave it holding only the rows that store() inserts after the
@@ -360,21 +363,19 @@ class CRM_Core_Menu {
   }
 
   /**
-   * @deprecated most callers should switch to self::clear()
+   * @deprecated most callers should switch to Civi::router()->clear()
    * and allow the rebuild to happen when next needed
    *
-   * for strictly equivalent behaviour use self::clear(); then self::rebuild();
+   * for strictly equivalent behaviour use clear() then rebuild()
    */
   public static function store($truncate = TRUE) {
     if ($truncate) {
-      // TODO: deprecate once removed from civicrm-backdrop
-      // \CRM_Core_Error::deprecatedFunctionWarning('CRM_Core_Menu::clear(); and then if immediately necessary CRM_Core_Menu::rebuild();');
+      \CRM_Core_Error::deprecatedFunctionWarning('Civi::router()->clear(); or if absolutely necessary Civi::router()->clear()->rebuild();');
       self::clear();
       self::rebuild();
     }
     else {
-      // TODO: deprecate once removed from civicrm-backdrop
-      // \CRM_Core_Error::deprecatedFunctionWarning('CRM_Core_Menu::rebuild();');
+      \CRM_Core_Error::deprecatedFunctionWarning('Civi::router()->rebuild();');
       self::rebuild();
     }
   }
@@ -382,19 +383,33 @@ class CRM_Core_Menu {
   /**
    * Rebuild the routing table
    *
-   * NOTE: this saves routes for the current domain - routes across multidomains are rebuilt lazily
+   * Before rebuilding we:
+   * - take the rebuild lock: without it, concurrent rebuilds collide on the (path, domain_id) unique
+   *   key and can leave the table partially populated. On lock-wait timeout, rebuild anyway (best
+   *   effort) rather than skip: an unlocked rebuild is the historical behaviour, so the worst case
+   *   is no worse than before, and skipping would leave the empty-table caller in self::get() with
+   *   no route table.
+   * - check if routes already exist: it may be another caller has rebuilt for us whilst we were waiting for
+   *   the lock - if routes exist this is a no-op
+   *
+   * Note that this saves routes for the current domain - routes across multidomains are rebuilt lazily
+   * by the first caller for that domain
+   *
+   * @internal prefer Civi::router()->rebuild()
    */
-  public static function rebuild() {
-    // Take the rebuild lock: without it, concurrent rebuilds collide on the (path, domain_id)
-    // unique key and can leave the table partially populated. On lock-wait timeout, rebuild anyway (best
-    // effort) rather than skip: an unlocked rebuild is the historical behaviour, so the worst case
-    // is no worse than before, and skipping would leave the empty-table caller in self::get() with
-    // no route table. release() no-ops if the lock is not held.
+  public static function rebuild(): void {
     $lock = Civi::lockManager()->acquire(self::REBUILD_LOCK, self::REBUILD_LOCK_TIMEOUT);
-    if (!$lock->isAcquired()) {
-      Civi::log()->warning('CRM_Core_Menu::rebuild() is rebuilding civicrm_menu without the ' . self::REBUILD_LOCK . ' lock after waiting ' . self::REBUILD_LOCK_TIMEOUT . 's; a concurrent rebuild may be in progress.');
-    }
     try {
+      if (!$lock->isAcquired()) {
+        // if we fail to acquire the lock log a warning - we will still rebuild as the historical
+        // behaviour
+        Civi::log()->warning('CRM_Core_Menu::rebuild() is rebuilding civicrm_menu without the ' . self::REBUILD_LOCK . ' lock after waiting ' . self::REBUILD_LOCK_TIMEOUT . 's; a concurrent rebuild may be in progress.');
+      }
+      if ($lock->isAcquired() && self::hasRoutes()) {
+        // if routes exist then there should be nothing to do and we can return early
+        // NOTE: dont trust this check if we dont have the lock, a previous save may have stalled
+        return;
+      }
       self::save();
     }
     finally {
@@ -402,12 +417,17 @@ class CRM_Core_Menu {
     }
   }
 
+  private static function hasRoutes(): bool {
+    $domainId = CRM_Core_BAO_Domain::getDomainID();
+    return (bool) CRM_Core_DAO::singleValueQuery('SELECT id FROM civicrm_menu WHERE domain_id = %1 LIMIT 1', [1 => [$domainId, 'Integer']]);
+  }
+
   /**
    * This function recomputes routes from xml and saves them to the civicrm_menu database table
    *
    * Unlocked; go through self::rebuild(), which holds REBUILD_LOCK around this.
    */
-  private static function save() {
+  private static function save(): void {
     $menuArray = self::items(TRUE);
     self::build($menuArray);
 
@@ -653,6 +673,7 @@ class CRM_Core_Menu {
   }
 
   /**
+   * @internal
    * @param string $path
    *   Path of menu item to retrieve.
    *
@@ -669,19 +690,11 @@ class CRM_Core_Menu {
 
     $item = self::fetch($path);
     if (!$item) {
-      // if nothing is returned it might just be that the routing table has been
-      // cleared and we need to rebuild it...
-      $domainId = \CRM_Core_BAO_Domain::getDomainID();
-      $anyRoutes = \CRM_Core_DAO::executeQuery('SELECT id FROM civicrm_menu WHERE domain_id = %1 LIMIT 1', [1 => [$domainId, 'Integer']])->fetch();
-      if ($anyRoutes) {
-        // actual not found
-        return $item;
-      }
-      else {
-        // rebuild and try again
-        self::rebuild();
-        $item = self::fetch($path);
-      }
+      // NOTE: paths starting with `civicrm` should always return at least
+      // the civicrm base page - if nothing is found then the routing table
+      // is likely been cleared and we need to rebuild it
+      self::rebuild();
+      $item = self::fetch($path);
     }
     return $item;
   }

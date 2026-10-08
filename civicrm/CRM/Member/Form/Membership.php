@@ -185,7 +185,7 @@ class CRM_Member_Form_Membership extends CRM_Member_Form {
             }
             $mem['membership_type'] = CRM_Core_DAO::getFieldValue('CRM_Member_DAO_MembershipType',
               $mem['membership_type_id'],
-              'name', 'id'
+              'title', 'id'
             );
             $mem['membership_status'] = CRM_Core_DAO::getFieldValue('CRM_Member_DAO_MembershipStatus',
               $mem['status_id'],
@@ -367,7 +367,7 @@ class CRM_Member_Form_Membership extends CRM_Member_Form {
             '' => ts('Choose price set'),
           ] + $priceSets,
           NULL, ['onchange' => "buildAmount( this.value );"]
-        );
+        )->setOptionTextEscaped();
       }
     }
     $this->assign('hasPriceSets', $buildPriceSet ?? NULL);
@@ -1468,7 +1468,9 @@ class CRM_Member_Form_Membership extends CRM_Member_Form {
     foreach ($this->getCreatedMemberships() as $membership) {
       $endDate = $membership['end_date'] ?? NULL;
     }
-    $statusMsg = ts('Membership for %1 has been updated.', [1 => htmlentities($this->_memberDisplayName)]);
+    $statusMsg = ts('Membership for %1 has been updated.', [
+      1 => htmlentities((string) $this->_memberDisplayName),
+    ]);
     if ($endDate) {
       $endDate = CRM_Utils_Date::customFormat($endDate);
       $statusMsg .= ' ' . ts('The Membership Expiration Date is %1.', [1 => $endDate]);
@@ -1485,8 +1487,8 @@ class CRM_Member_Form_Membership extends CRM_Member_Form {
   protected function getStatusMessageForCreate(): string {
     foreach ($this->getCreatedMemberships() as $membership) {
       $statusMsg[$membership['membership_type_id']] = ts('%1 membership for %2 has been added.', [
-        1 => $this->allMembershipTypeDetails[$membership['membership_type_id']]['name'],
-        2 => htmlentities($this->_memberDisplayName),
+        1 => $this->allMembershipTypeDetails[$membership['membership_type_id']]['title'],
+        2 => htmlentities((string) $this->_memberDisplayName),
       ]);
 
       $memEndDate = $membership['end_date'] ?? NULL;
@@ -1853,7 +1855,7 @@ class CRM_Member_Form_Membership extends CRM_Member_Form {
    */
   protected function getContributionSource(): string {
     [$userName] = CRM_Contact_BAO_Contact_Location::getEmailDetails(CRM_Core_Session::getLoggedInContactID());
-    $userName = htmlentities($userName);
+    $userName = htmlentities((string) $userName);
     if ($this->_mode) {
       return ts('%1 Membership Signup: Credit card or direct debit (by %2)',
         [1 => $this->getSelectedMembershipLabels(), 2 => $userName]

@@ -4,6 +4,7 @@ return [
   'name' => 'Case',
   'table' => 'civicrm_case',
   'class' => 'CRM_Case_DAO_Case',
+  'token_class' => 'CRM_Case_Tokens',
   'getInfo' => fn() => [
     'title' => ts('Case'),
     'title_plural' => ts('Cases'),
@@ -42,6 +43,7 @@ return [
       'usage' => [
         'import',
         'export',
+        'token',
         'duplicate_matching',
       ],
       'primary_key' => TRUE,

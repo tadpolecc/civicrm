@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'civicrm/civicrm-core',
-        'pretty_version' => '6.18.x-dev',
-        'version' => '6.18.9999999.9999999-dev',
-        'reference' => 'd6ed8dd36aff00ef9578fcf027f9ea34401b9842',
+        'pretty_version' => '6.19.x-dev',
+        'version' => '6.19.9999999.9999999-dev',
+        'reference' => '3b031427f1e5cbe3dedf5a7ba46ef59d6751d101',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -47,9 +47,9 @@
             'dev_requirement' => false,
         ),
         'civicrm/civicrm-core' => array(
-            'pretty_version' => '6.18.x-dev',
-            'version' => '6.18.9999999.9999999-dev',
-            'reference' => 'd6ed8dd36aff00ef9578fcf027f9ea34401b9842',
+            'pretty_version' => '6.19.x-dev',
+            'version' => '6.19.9999999.9999999-dev',
+            'reference' => '3b031427f1e5cbe3dedf5a7ba46ef59d6751d101',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -458,9 +458,9 @@
             'dev_requirement' => false,
         ),
         'phpseclib/phpseclib' => array(
-            'pretty_version' => '3.0.55',
-            'version' => '3.0.55.0',
-            'reference' => 'db9744e6d47e742b1f974e965ad49bdd041105af',
+            'pretty_version' => '3.0.57',
+            'version' => '3.0.57.0',
+            'reference' => 'd17e0ddaeaf6f22f7e007cbb437d78792fe2a0e4',
             'type' => 'library',
             'install_path' => __DIR__ . '/../phpseclib/phpseclib',
             'aliases' => array(),
