@@ -462,7 +462,9 @@ abstract class CRM_Import_Parser implements UserJobInterface {
     $totalRowCount = $totalRows = $dataSource->getRowCount(['new']);
     // The retry limit for the queue is set to 5 - allowing for a few deadlocks but we might consider
     // making this configurable at some point.
-    $queue = Civi::queue('user_job_' . $this->getUserJobID(), ['type' => 'Sql', 'error' => 'abort', 'runner' => 'task', 'user_job_id' => $this->getUserJobID(), 'retry_limit' => 5]);
+    // reset: a user job can be queued again (back to the preview, run once
+    // more) after an interactive run left its queue with status NULL.
+    $queue = Civi::queue('user_job_' . $this->getUserJobID(), ['type' => 'Sql', 'error' => 'abort', 'runner' => 'task', 'user_job_id' => $this->getUserJobID(), 'retry_limit' => 5, 'reset' => TRUE]);
     UserJob::update(FALSE)
       ->setValues([
         'queue_id.name' => 'user_job_' . $this->getUserJobID(),
@@ -883,14 +885,22 @@ abstract class CRM_Import_Parser implements UserJobInterface {
     // getOptions does not retrieve these fields with high potential results
     if ($fieldMetadata['name'] === 'event_id' && $fieldMetadata['fk_entity'] === 'Event') {
       if (!isset(Civi::$statics[__CLASS__][$fieldName][$importedValue])) {
-        $event = Event::get()->addClause('OR', ['title', '=', $importedValue], ['id', '=', $importedValue])->addSelect('id')->execute()->first();
+        $searchClause = [['title', '=', $importedValue]];
+        if (is_numeric($importedValue)) {
+          $searchClause[] = ['id', '=', $importedValue];
+        }
+        $event = Event::get()->addClause('OR', $searchClause)->addSelect('id')->execute()->first();
         Civi::$statics[__CLASS__][$fieldName][$importedValue] = $event['id'] ?? FALSE;
       }
       return Civi::$statics[__CLASS__][$fieldName][$importedValue] ?? 'invalid_import_value';
     }
     if ($fieldMetadata['name'] === 'campaign_id') {
       if (!isset(Civi::$statics[__CLASS__][$fieldName][$importedValue])) {
-        $campaign = Campaign::get()->addClause('OR', ['title', '=', $importedValue], ['name', '=', $importedValue], ['id', '=', $importedValue])->addSelect('id')->execute()->first();
+        $searchClause = [['title', '=', $importedValue], ['name', '=', $importedValue]];
+        if (is_numeric($importedValue)) {
+          $searchClause[] = ['id', '=', $importedValue];
+        }
+        $campaign = Campaign::get()->addClause('OR', $searchClause)->addSelect('id')->execute()->first();
         Civi::$statics[__CLASS__][$fieldName][$importedValue] = $campaign['id'] ?? FALSE;
       }
       return Civi::$statics[__CLASS__][$fieldName][$importedValue] ?: 'invalid_import_value';
@@ -999,6 +1009,10 @@ abstract class CRM_Import_Parser implements UserJobInterface {
         $this->importableFieldsMetadata[$fieldMapName]['options'] = $options ?: FALSE;
       }
       return $this->importableFieldsMetadata[$fieldMapName];
+    }
+    if (!is_array($fieldMetadata)) {
+      CRM_Core_Session::setStatus(ts('Field not found for import %1', [1 => $fieldName]));
+      return [];
     }
     return $fieldMetadata;
   }

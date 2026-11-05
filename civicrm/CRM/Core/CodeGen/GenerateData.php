@@ -2198,7 +2198,13 @@ ORDER BY cc.id; ";
         'check_number' => $result->check_number,
         'is_payment' => 1,
       ];
-      $trxn = CRM_Core_BAO_FinancialTrxn::create($trxnParams);
+      $trxn = CRM_Core_BAO_FinancialTrxn::writeRecord($trxnParams);
+      CRM_Financial_BAO_EntityFinancialTrxn::writeRecord([
+        'entity_table' => 'civicrm_contribution',
+        'entity_id' => $result->contribution_id,
+        'financial_trxn_id' => $trxn->id,
+        'amount' => $result->total_amount,
+      ]);
       $financialItem = [
         'transaction_date' => CRM_Utils_Date::processDate($result->receive_date),
         'amount' => $result->total_amount,

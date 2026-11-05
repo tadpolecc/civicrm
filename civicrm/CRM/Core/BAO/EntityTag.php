@@ -401,6 +401,16 @@ class CRM_Core_BAO_EntityTag extends CRM_Core_DAO_EntityTag implements \Civi\Cor
       // 6. remove orphaned entity_tags
       "DELETE FROM civicrm_entity_tag WHERE tag_id = %2",
     ];
+    // Tag A below tag B takes B's place in the tree, so moving B's children cannot make a cycle.
+    $ancestors = [];
+    $ancestorId = $tagAId;
+    while ($ancestorId && !isset($ancestors[$ancestorId])) {
+      $ancestors[$ancestorId] = TRUE;
+      $ancestorId = CRM_Core_DAO::getFieldValue('CRM_Core_DAO_Tag', $ancestorId, 'parent_id', 'id', TRUE);
+    }
+    if (isset($ancestors[$tagBId])) {
+      array_unshift($sqls, "UPDATE civicrm_tag a INNER JOIN civicrm_tag b ON b.id = %2 SET a.parent_id = b.parent_id WHERE a.id = %1");
+    }
     $tables = ['civicrm_entity_tag', 'civicrm_tag'];
 
     // Allow hook_civicrm_merge() to add SQL statements for the merge operation AND / OR
@@ -416,6 +426,35 @@ class CRM_Core_BAO_EntityTag extends CRM_Core_DAO_EntityTag implements \Civi\Cor
 
     $tags['status'] = TRUE;
     return $tags;
+  }
+
+  /**
+   * Get the ids of entities tagged with a given tag, for any entity registered via the
+   * alterNonDbTaggableEntities hook (tag-able but not a physical table, e.g. Afform) - these
+   * have no `EntityTag` rows for a DB-based lookup to find.
+   *
+   * @param int $tagId
+   * @param array|null $onlyEntities
+   *   If given, only invoke the callback for these entity names - lets a caller who already
+   *   knows a tag's `used_for` skip the (often several-query) callback for entities it
+   *   doesn't apply to.
+   * @return array
+   *   Array keyed by entity name, each value an array of that entity's own id/primary-key values.
+   */
+  public static function getNonDbTaggedIds(int $tagId, ?array $onlyEntities = NULL): array {
+    $nonDbEntities = [];
+    CRM_Utils_Hook::alterNonDbTaggableEntities($nonDbEntities);
+    $result = [];
+    foreach ($nonDbEntities as $entityName => $callback) {
+      if ($onlyEntities !== NULL && !in_array($entityName, $onlyEntities, TRUE)) {
+        continue;
+      }
+      $ids = array_column($callback($tagId), 'id');
+      if ($ids) {
+        $result[$entityName] = $ids;
+      }
+    }
+    return $result;
   }
 
   /**

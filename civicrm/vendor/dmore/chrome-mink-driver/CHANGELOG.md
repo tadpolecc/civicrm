@@ -3,6 +3,24 @@ Changelog
 
 ## Unreleased
 
+## 2.11.1
+
+* Test improvements (web fixtures URL !242, !247)
+* Docker Compose development environment (!237, !205)
+* ChromeDriver constructor should not require running Chrome until used (#177, regression in 2.11.0)
+
+## 2.11.0
+
+* Update phrity/websocket to v3 (#161, #168)
+* CI tests for PHP 8.4 (#161)
+* Add Chrome 128+ compatibility (#155)
+* CI tests with zenika/alpine-chrome, chromedp/headless-shell (#165)
+* Restrict getWindowNames() to windows within current browser context (#157, !191)
+* Fix headed (non-headless) mode driver windows not being isolated to own browser context (!225)
+* CI builds PHP images (!232)
+* Add PHP 8.5 support (#171)
+* Throw `InvalidArgumentException` if socket_timeout not a positive number or null (!223)
+
 ## 2.10.0
 
 * Test using [zenika/alpine-chrome](https://github.com/Zenika/alpine-chrome) instead of custom build(s) (#155)

@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit55f071c09b461535140a9e770f1032ae
+class ComposerStaticInitd2054cef881f76093f261151f2272b25
 {
     public static $files = array (
         '6e3fae29631ef280660b3cdad06f25a8' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
@@ -95,14 +95,22 @@ class ComposerStaticInit55f071c09b461535140a9e770f1032ae
             'Psr\\EventDispatcher\\' => 20,
             'Psr\\Container\\' => 14,
             'Pontedilana\\PhpWeasyPrint\\' => 26,
+            'Phrity\\Util\\Transformer\\' => 24,
+            'Phrity\\Util\\Interpolator\\' => 25,
             'Phrity\\Util\\' => 12,
             'Phrity\\Net\\' => 11,
+            'Phrity\\Http\\' => 12,
+            'Phrity\\Comparison\\' => 18,
             'PhpOffice\\PhpWord\\' => 18,
             'PhpOffice\\PhpSpreadsheet\\' => 25,
             'PhpOffice\\Math\\' => 15,
             'Phlib\\XssSanitizer\\' => 19,
             'ParagonIE\\ConstantTime\\' => 23,
             'Padaliyajay\\PHPAutoprefixer\\' => 28,
+        ),
+        'N' =>
+        array (
+            'Nyholm\\Psr7\\' => 12,
         ),
         'M' =>
         array (
@@ -186,7 +194,7 @@ class ComposerStaticInit55f071c09b461535140a9e770f1032ae
         ),
         'WebSocket\\' =>
         array (
-            0 => __DIR__ . '/..' . '/phrity/websocket/lib',
+            0 => __DIR__ . '/..' . '/phrity/websocket/src',
         ),
         'TYPO3\\PharStreamWrapper\\' =>
         array (
@@ -317,14 +325,31 @@ class ComposerStaticInit55f071c09b461535140a9e770f1032ae
         array (
             0 => __DIR__ . '/..' . '/pontedilana/php-weasyprint/src',
         ),
+        'Phrity\\Util\\Transformer\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/phrity/util-transformer/src',
+        ),
+        'Phrity\\Util\\Interpolator\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/phrity/util-interpolator/src',
+        ),
         'Phrity\\Util\\' =>
         array (
             0 => __DIR__ . '/..' . '/phrity/util-errorhandler/src',
+            1 => __DIR__ . '/..' . '/phrity/util-accessor/src',
         ),
         'Phrity\\Net\\' =>
         array (
             0 => __DIR__ . '/..' . '/phrity/net-uri/src',
             1 => __DIR__ . '/..' . '/phrity/net-stream/src',
+        ),
+        'Phrity\\Http\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/phrity/http/src',
+        ),
+        'Phrity\\Comparison\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/phrity/comparison/src',
         ),
         'PhpOffice\\PhpWord\\' =>
         array (
@@ -349,6 +374,10 @@ class ComposerStaticInit55f071c09b461535140a9e770f1032ae
         'Padaliyajay\\PHPAutoprefixer\\' =>
         array (
             0 => __DIR__ . '/..' . '/padaliyajay/php-autoprefixer/src',
+        ),
+        'Nyholm\\Psr7\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/nyholm/psr7/src',
         ),
         'MimeTyper\\' =>
         array (
@@ -737,11 +766,11 @@ class ComposerStaticInit55f071c09b461535140a9e770f1032ae
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit55f071c09b461535140a9e770f1032ae::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit55f071c09b461535140a9e770f1032ae::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInit55f071c09b461535140a9e770f1032ae::$prefixesPsr0;
-            $loader->fallbackDirsPsr0 = ComposerStaticInit55f071c09b461535140a9e770f1032ae::$fallbackDirsPsr0;
-            $loader->classMap = ComposerStaticInit55f071c09b461535140a9e770f1032ae::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitd2054cef881f76093f261151f2272b25::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitd2054cef881f76093f261151f2272b25::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInitd2054cef881f76093f261151f2272b25::$prefixesPsr0;
+            $loader->fallbackDirsPsr0 = ComposerStaticInitd2054cef881f76093f261151f2272b25::$fallbackDirsPsr0;
+            $loader->classMap = ComposerStaticInitd2054cef881f76093f261151f2272b25::$classMap;
 
         }, null, ClassLoader::class);
     }

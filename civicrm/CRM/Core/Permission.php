@@ -117,6 +117,11 @@ class CRM_Core_Permission {
    *   true if contact has permission(s), else false
    */
   public static function check($permissions, $contactId = NULL) {
+    // if no contact id is passed, use the logged in contact id
+    if (empty($contactId) && php_sapi_name() == "cli") {
+      $contactId = CRM_Core_Session::singleton()->getLoggedInContactID();
+    }
+
     $permissions = (array) $permissions;
     $userId = CRM_Core_BAO_UFMatch::getUFId($contactId);
 
@@ -1230,10 +1235,7 @@ class CRM_Core_Permission {
     // Campaign permissions
     $permissions['campaign'] = [
       'get' => ['access CiviCRM'],
-      'default' => [
-        // nested array = OR
-        ['administer CiviCampaign', 'manage campaign'],
-      ],
+      'default' => ['manage campaign'],
     ];
     $permissions['survey'] = $permissions['campaign'];
 
@@ -1417,7 +1419,6 @@ class CRM_Core_Permission {
       ],
       'delete' => [
         'access CiviCRM',
-        $civiMailBasePerms,
         'delete in CiviMail',
       ],
       'submit' => [
@@ -1445,7 +1446,6 @@ class CRM_Core_Permission {
       ],
       'delete' => [
         'access CiviCRM',
-        'access CiviMail',
         'delete in CiviMail',
       ],
       'submit' => [
@@ -1466,12 +1466,10 @@ class CRM_Core_Permission {
       ],
       'delete' => [
         'access CiviCRM',
-        'access CiviMember',
         'delete in CiviMember',
       ],
       'default' => [
         'access CiviCRM',
-        'access CiviMember',
         'edit memberships',
       ],
     ];
@@ -1480,14 +1478,12 @@ class CRM_Core_Permission {
     $permissions['membership_payment'] = [
       'create' => [
         'access CiviCRM',
-        'access CiviMember',
         'edit memberships',
         'access CiviContribute',
         'edit contributions',
       ],
       'delete' => [
         'access CiviCRM',
-        'access CiviMember',
         'delete in CiviMember',
         'access CiviContribute',
         'delete in CiviContribute',
@@ -1572,12 +1568,10 @@ class CRM_Core_Permission {
     $permissions['pledge'] = [
       'create' => [
         'access CiviCRM',
-        'access CiviPledge',
         'edit pledges',
       ],
       'delete' => [
         'access CiviCRM',
-        'access CiviPledge',
         'delete in CiviPledge',
       ],
       'get' => [
@@ -1586,7 +1580,6 @@ class CRM_Core_Permission {
       ],
       'update' => [
         'access CiviCRM',
-        'access CiviPledge',
         'edit pledges',
       ],
     ];
@@ -1604,14 +1597,12 @@ class CRM_Core_Permission {
     $permissions['pledge_payment'] = [
       'create' => [
         'access CiviCRM',
-        'access CiviPledge',
         'edit pledges',
         'access CiviContribute',
         'edit contributions',
       ],
       'delete' => [
         'access CiviCRM',
-        'access CiviPledge',
         'delete in CiviPledge',
         'access CiviContribute',
         'delete in CiviContribute',
@@ -1623,7 +1614,6 @@ class CRM_Core_Permission {
       ],
       'update' => [
         'access CiviCRM',
-        'access CiviPledge',
         'edit pledges',
         'access CiviContribute',
         'edit contributions',
@@ -1714,6 +1704,8 @@ class CRM_Core_Permission {
       'get' => ['access CiviCRM'],
       'create' => [['edit message templates', 'edit user-driven message templates', 'edit system workflow message templates']],
       'update' => [['edit message templates', 'edit user-driven message templates', 'edit system workflow message templates']],
+      // Only system workflow templates have a packaged original to revert to
+      'revert' => [['edit message templates', 'edit system workflow message templates']],
     ];
 
     $permissions['report_template']['update'] = 'save Report Criteria';

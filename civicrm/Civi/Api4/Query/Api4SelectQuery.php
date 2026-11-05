@@ -1,12 +1,12 @@
 <?php
 /*
- +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC. All rights reserved.                        |
- |                                                                    |
- | This work is published under the GNU AGPLv3 license with some      |
- | permitted exceptions and without any warranty. For full license    |
- | and copyright information, see https://civicrm.org/licensing       |
- +--------------------------------------------------------------------+
++--------------------------------------------------------------------+
+| Copyright CiviCRM LLC. All rights reserved.                        |
+|                                                                    |
+| This work is published under the GNU AGPLv3 license with some      |
+| permitted exceptions and without any warranty. For full license    |
+| and copyright information, see https://civicrm.org/licensing       |
++--------------------------------------------------------------------+
  */
 
 namespace Civi\Api4\Query;
@@ -251,6 +251,28 @@ class Api4SelectQuery extends Api4Query {
           if ($options) {
             asort($options);
             $keys = \CRM_Core_DAO::escapeStrings(array_keys($options));
+
+            // If the field is serialized, sort by the first option
+            if (!empty($field['serialize'])) {
+              $sep = \CRM_Core_DAO::VALUE_SEPARATOR;
+              switch ($field['serialize']) {
+                case \CRM_Core_DAO::SERIALIZE_SEPARATOR_BOOKEND:
+                  $column = "SUBSTRING_INDEX(SUBSTRING($column, 2), '$sep', 1)";
+                  break;
+
+                case \CRM_Core_DAO::SERIALIZE_SEPARATOR_TRIMMED:
+                  $column = "SUBSTRING_INDEX($column, '$sep', 1)";
+                  break;
+
+                case \CRM_Core_DAO::SERIALIZE_COMMA:
+                  $column = "SUBSTRING_INDEX($column, ',', 1)";
+                  break;
+
+                default:
+                  // Other serialization methods cannot be sorted
+                  continue 2;
+              }
+            }
             $column = "FIELD($column, $keys)";
           }
         }
@@ -341,11 +363,12 @@ class Api4SelectQuery extends Api4Query {
       }
     }
     $baoName = CoreUtil::getBAOFromApiName($entityName);
-    $clauses = $baoName::getSelectWhereClause($tableAlias, $entityName, $entityValues);
+    $bao = new $baoName();
+    $rawClauses = $bao->addSelectWhereClause($entityName, NULL, $entityValues);
     if ($stack === NULL) {
       // Track field clauses added to the main entity
-      $this->aclFields = array_keys($clauses);
-      if (isset($clauses['id']) && isset($this->apiFieldSpec['contact_id'])) {
+      $this->aclFields = array_keys(array_filter($rawClauses));
+      if (isset($rawClauses['id']) && isset($this->apiFieldSpec['contact_id'])) {
         $this->aclFields[] = 'contact_id';
       }
     }
@@ -355,23 +378,29 @@ class Api4SelectQuery extends Api4Query {
       $stackPrev = array_pop($stack);
       $lastField = $stackLast;
       if ($stackLast && $stackPrev) {
-        // Implicit join
-        if (str_starts_with($lastField, "$stackPrev.")) {
-          $lastField = substr($lastField, strlen($stackPrev) + 1);
-        }
-        // Explicit join
-        elseif (str_starts_with($lastField, "$tableAlias.")) {
+        if (str_starts_with($lastField, "$tableAlias.")) {
+          $joinPrefix = $tableAlias;
           $lastField = substr($lastField, strlen($tableAlias) + 1);
         }
-        foreach ($clauses as $fieldName => $clause) {
+        else {
+          $lastField = str_contains($lastField, '.') ? substr(strrchr($lastField, '.'), 1) : $lastField;
+          $joinPrefix = str_contains($stackLast, '.') ? substr($stackLast, 0, strrpos($stackLast, '.')) : $tableAlias;
+        }
+        foreach ($rawClauses as $fieldName => $clause) {
           if (($fieldName === $lastField || ($fieldName === 'id' && $lastField === 'contact_id')) && (in_array($stackPrev, $this->aclFields, TRUE) || ($stackPrev === 'contact_id' && in_array('id', $this->aclFields, TRUE)))) {
-            unset($clauses[$fieldName]);
+            if ($fieldName === 'id' && $lastField === 'contact_id' && isset($rawClauses['id'][0]) && is_array($rawClauses['id'][0])) {
+              unset($rawClauses['id'][0]);
+            }
+            else {
+              unset($rawClauses[$fieldName]);
+            }
             $this->aclFields[] = $stackLast;
           }
-          $this->aclFields[] = $stackPrev . '.' . $fieldName;
+          $this->aclFields[] = $joinPrefix . '.' . $fieldName;
         }
       }
     }
+    $clauses = $baoName::formatSelectWhereClauses($rawClauses, $tableAlias, $baoName::getSupportedFields());
     return array_filter($clauses);
   }
 
@@ -412,7 +441,8 @@ class Api4SelectQuery extends Api4Query {
   }
 
   public function getFieldSibling(array $field, string $siblingFieldName) {
-    $prefix = ($field['explicit_join'] ? $field['explicit_join'] . '.' : '') . ($field['implicit_join'] ? $field['implicit_join'] . '.' : '');
+    $prefix = ($field['implicit_join'] ?? $field['explicit_join'] ?? '');
+    $prefix = $prefix ? $prefix . '.' : '';
     return $this->getField($prefix . $siblingFieldName);
   }
 
@@ -882,13 +912,7 @@ class Api4SelectQuery extends Api4Query {
       }
     }
 
-    // Used to dedupe acl clauses
-    if (isset($pathArray[0])) {
-      $aclStack = [$explicitJoinPrefix . $pathArray[0]];
-    }
-
     foreach ($joinPath as $joinName => $link) {
-      $aclStack[] = $joinName . '.' . $link->getTargetColumn();
       if (!isset($joinTreeNode[$joinName])) {
         $target = $link->getTargetTable();
         $tableAlias = $link->getAlias() . '_' . ++$this->autoJoinSuffix;
@@ -943,6 +967,10 @@ class Api4SelectQuery extends Api4Query {
         if (!$virtualField) {
           $conditions = $link->getConditionsForJoin($baseTableAlias, $tableAlias, $this->openJoin);
           if ($joinEntity) {
+            $aclStack = [
+              $joinTreeNode['#path'] . $link->getBaseColumn(),
+              $joinTreeNode[$joinName]['#path'] . $link->getTargetColumn(),
+            ];
             $conditions = array_merge($conditions, $this->getAclClause($tableAlias, $joinEntity, $aclStack));
           }
           $this->addJoin('LEFT', $target, $tableAlias, $baseTableAlias, $conditions);

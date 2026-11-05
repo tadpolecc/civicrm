@@ -3,7 +3,7 @@
 namespace DMore\ChromeDriver;
 
 use Behat\Mink\Exception\DriverException;
-use WebSocket\ConnectionException;
+use WebSocket\Exception\ExceptionInterface;
 
 class ChromePage extends DevToolsConnection
 {
@@ -25,7 +25,7 @@ class ChromePage extends DevToolsConnection
     /**
      * @var array https://chromedevtools.github.io/devtools-protocol/tot/Network/#type-Response
      */
-    private $response = null;
+    private $response;
 
     /**
      * @var array
@@ -35,7 +35,6 @@ class ChromePage extends DevToolsConnection
     /**
      * Connect and set up.
      *
-     * @param null $url
      * @throws \Exception
      */
     public function connect($url = null): void
@@ -60,16 +59,14 @@ class ChromePage extends DevToolsConnection
      * Visit a new URL.
      *
      * @param $url
-     * @throws ConnectionException
+     * @throws ExceptionInterface
      * @throws DriverException
      */
     public function visit($url): void
     {
         if (count($this->pending_requests) > 0) {
             $this->waitFor(
-                function () {
-                    return count($this->pending_requests) == 0;
-                }
+                fn() => count($this->pending_requests) == 0
             );
         }
         $this->response = null;
@@ -98,11 +95,9 @@ class ChromePage extends DevToolsConnection
         if (!$this->page_ready) {
             try {
                 $this->waitFor(
-                    function () {
-                        return $this->page_ready;
-                    }
+                    fn() => $this->page_ready
                 );
-            } catch (ConnectionException $exception) {
+            } catch (ExceptionInterface) {
                 throw new DriverException("Page not loaded");
             }
         }
@@ -112,7 +107,7 @@ class ChromePage extends DevToolsConnection
      * Get the response.
      *
      * @return array|null
-     * @throws ConnectionException
+     * @throws ExceptionInterface
      * @throws DriverException
      */
     public function getResponse()
@@ -121,9 +116,6 @@ class ChromePage extends DevToolsConnection
         return $this->response;
     }
 
-    /**
-     * @return boolean
-     */
     public function hasJavascriptDialog(): bool
     {
         return $this->has_javascript_dialog;
@@ -132,8 +124,11 @@ class ChromePage extends DevToolsConnection
     /**
      * Get the browser's tabs.
      *
-     * @return array
+     * This method can return tabs outside of the driver's current browser
+     * context, and thus should not be relied upon.
+     *
      * @throws \Exception
+     * @deprecated Deprecated in favor of ChromeBrowser::getTabs().
      */
     public function getTabs(): array
     {
@@ -148,8 +143,6 @@ class ChromePage extends DevToolsConnection
 
     /**
      * Get all console messages since start or last clear.
-     *
-     * @return array
      */
     public function getConsoleMessages(): array
     {
@@ -167,7 +160,7 @@ class ChromePage extends DevToolsConnection
     /**
      * Wait for an HTTP response.
      *
-     * @throws ConnectionException
+     * @throws ExceptionInterface
      * @throws DriverException
      */
     private function waitForHttpResponse()
@@ -184,9 +177,7 @@ class ChromePage extends DevToolsConnection
             }
 
             $this->waitFor(
-                function () {
-                    return null !== $this->response && count($this->pending_requests) == 0;
-                }
+                fn() => null !== $this->response && count($this->pending_requests) == 0
             );
         }
     }

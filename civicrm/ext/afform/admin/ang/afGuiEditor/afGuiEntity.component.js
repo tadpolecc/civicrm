@@ -230,7 +230,7 @@
           ctrl.editor.allowEntityConfig &&
           (!search || fieldsetTitle.toLowerCase().includes(search))
         ) {
-          const fieldsetElement = _.cloneDeep(afGui.meta.elements.fieldset.element);
+          const fieldsetElement = structuredClone(afGui.meta.elements.fieldset.element);
           fieldsetElement['af-fieldset'] = ctrl.entity.name;
           $scope.elementList.push(fieldsetElement);
           $scope.elementTitles.push(fieldsetTitle);
@@ -287,7 +287,7 @@
         if (!found) {
           found = {};
         }
-        if (_.find(group, criteria)) {
+        if ((group || []).find(afGui.matches(criteria))) {
           found.match = true;
           return true;
         }
@@ -295,7 +295,7 @@
           if (found.match) {
             return false;
           }
-          if (_.isPlainObject(item)) {
+          if (afGui.isPlainObject(item)) {
             // Recurse through everything but skip fieldsets for other entities
             if (!item['af-join'] && (!item['af-fieldset'] || (item['af-fieldset'] === ctrl.entity.name)) && item['#children']) {
               check(item['#children'], criteria, found);
@@ -319,7 +319,7 @@
       };
 
       this.getFieldId = function(fieldName) {
-        return _.kebabCase(ctrl.entity.name + '-' + fieldName);
+        return CRM.utils.dashCase(ctrl.entity.name + '-' + fieldName);
       };
 
       this.$onInit = function() {
@@ -332,7 +332,7 @@
 
         const behaviorInfo = CRM.afGuiEditor.behaviors[ctrl.getEntityType()] || [];
         ctrl.behaviors = behaviorInfo.reduce((behaviors, behavior) => {
-          const item = _.cloneDeep(behavior);
+          const item = structuredClone(behavior);
           item.options = formatForSelect2(item.modes, 'name', 'label', ['description', 'icon']);
           behaviors.push(item);
           return behaviors;

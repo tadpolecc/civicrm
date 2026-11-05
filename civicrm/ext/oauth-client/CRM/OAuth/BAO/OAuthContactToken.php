@@ -22,9 +22,10 @@ class CRM_OAuth_BAO_OAuthContactToken extends CRM_OAuth_DAO_OAuthContactToken im
    *
    * @param array $record
    * @return CRM_OAuth_DAO_OAuthContactToken
+   * @deprecated
    */
   public static function create($record) {
-    self::fillAndValidate($record, CRM_Core_Session::getLoggedInContactID());
+    CRM_Core_Error::deprecatedFunctionWarning('writeRecord');
     return static::writeRecord($record);
   }
 
@@ -32,12 +33,11 @@ class CRM_OAuth_BAO_OAuthContactToken extends CRM_OAuth_DAO_OAuthContactToken im
    * @param $id
    * @return CRM_OAuth_BAO_OAuthContactToken
    * @throws CRM_Core_Exception
-   * @throws \Civi\API\Exception\UnauthorizedException
+   * @deprecated
    */
   public static function del($id) {
-    $record = ['id' => $id];
-    self::fillAndValidate($record, CRM_Core_Session::getLoggedInContactID());
-    return static::deleteRecord($record);
+    CRM_Core_Error::deprecatedFunctionWarning('deleteRecord');
+    return static::deleteRecord(['id' => $id]);
   }
 
   /**

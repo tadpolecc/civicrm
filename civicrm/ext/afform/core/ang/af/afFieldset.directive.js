@@ -1,4 +1,4 @@
-(function(angular, $, _) {
+(function(angular, $) {
   // Example usage: <af-form><af-entity name="Person" type="Contact" /> ... <fieldset af-fieldset="Person> ... </fieldset></af-form>
   angular.module('af').directive('afFieldset', function() {
     return {
@@ -133,7 +133,7 @@
           };
 
           // get a copy of the object
-          const data = _.cloneDeep(this.getFieldData());
+          const data = structuredClone(this.getFieldData());
 
           Object.keys(data).forEach((key) => {
             // first filter sub objects
@@ -201,4 +201,4 @@
       }
     };
   });
-})(angular, CRM.$, CRM._);
+})(angular, CRM.$);

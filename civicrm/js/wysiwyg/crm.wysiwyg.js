@@ -1,5 +1,5 @@
 // https://civicrm.org/licensing
-(function($, _) {
+(function($) {
   // This defines an interface which by default only handles plain textareas
   // A wysiwyg implementation can extend this by overriding as many of these functions as needed
 
@@ -100,15 +100,25 @@
     }
 
     openEditor() {
+      this.originalValue = this.value;
       this.setAttribute('editing', true);
-      CRM.wysiwyg.create(this.input);
       this.preview.style.display = 'none';
-      this.toolbar.style.display = null;
+      $.when(CRM.wysiwyg.create(this.input)).then(() => {
+        if (this.hasAttribute('editing')) {
+          this.toolbar.style.display = null;
+        }
+        else {
+          CRM.wysiwyg.destroy(this.input);
+        }
+      });
       this.dispatchEvent(new Event('load'));
     }
 
-    closeEditor() {
+    closeEditor(revert = true) {
       CRM.wysiwyg.destroy(this.input);
+      if (revert && this.originalValue !== undefined) {
+        this.value = this.originalValue;
+      }
       this.input.style.display = 'none';
       this.toolbar.style.display = 'none';
       this.preview.style.display = null;
@@ -117,7 +127,7 @@
 
     saveAndCloseEditor() {
       this.value = CRM.wysiwyg.getVal(this.input);
-      this.closeEditor();
+      this.closeEditor(false);
       this.dispatchEvent(new Event('change'));
     }
 
@@ -168,8 +178,8 @@
       }
       return ret;
     },
-    destroy: _.noop,
-    updateElement: _.noop,
+    destroy: () => {},
+    updateElement: () => {},
     getVal: function(item) {
       return $(item).val();
     },
@@ -207,4 +217,4 @@
     }
   };
 
-})(CRM.$, CRM._);
+})(CRM.$);

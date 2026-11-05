@@ -386,7 +386,7 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
         $pledgePaymentParams[count($pledgePaymentParams) - 1]['actual_amount'] += $amount;
       }
       foreach ($pledgePaymentParams as $p) {
-        CRM_Pledge_BAO_PledgePayment::add($p);
+        CRM_Pledge_BAO_PledgePayment::writeRecord($p);
       }
 
       //update pledge status according to the new payment statuses
@@ -1079,6 +1079,14 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
     }
     // Presumably this is for hooks to access? Not quite clear & perhaps not required.
     $this->set('params', $this->_params);
+
+    // redirect to specified thank you page if set
+    // TODO: it would be neater if this matched skipToThankYouPage
+    // but the normal flow here is through the state machine, and dont want
+    // to mess with that
+    if ($this->_values['thankyou_mode'] === 'redirect') {
+      CRM_Utils_System::redirect($this->_values['thankyou_redirect_url']);
+    }
   }
 
   /**
@@ -1723,7 +1731,6 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
         continue;
       }
       if (!$this->getExistingContributionID() && !$this->getExistingMembership($membershipTypeID)) {
-        // Create membership & hack line items to connect to it
         // NEW Membership, set up as pending and once Contribution is completed, the membership can be finished processing.
         $memParams = [
           'campaign_id' => $this->getCampaignID(),
@@ -1746,11 +1753,13 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
         CRM_Core_BAO_CustomValueTable::postProcess($this->_params, 'civicrm_membership', $membership['id'], 'Membership');
         $this->_params['createdMembershipIDs'][] = $membership['id'];
         $this->_params['membershipID'] = $membership['id'];
-        $lineItems[$index]['entity_id'] = $membership['id'];
       }
-      // Overwrite the array with our augmented version.
-      $this->setLineItems($lineItems);
-      $this->lineItems = $lineItems;
+      else {
+        $membership = $this->getExistingMembership($membershipTypeID);
+        CRM_Core_BAO_CustomValueTable::postProcess($this->_params, 'civicrm_membership', $membership['id'], 'Membership');
+        $this->_params['membershipID'] = $membership['id'];
+      }
+      $this->setLineItemValue('entity_id', $membership['id'], $index);
     }
 
     if ($this->isSeparatePaymentSelected()) {
@@ -2097,75 +2106,6 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
   }
 
   /**
-   * Submit function.
-   *
-   * @param array $params
-   *
-   * @throws \CRM_Core_Exception
-   * @throws \Civi\API\Exception\UnauthorizedException
-   */
-  public static function submit($params) {
-    $form = new CRM_Contribute_Form_Contribution_Confirm();
-    $form->_id = $params['id'];
-
-    $form->loadContributionPageValues($form->_values);
-    //this way the mocked up controller ignores the session stuff
-    $_SERVER['REQUEST_METHOD'] = 'GET';
-    $form->controller = new CRM_Contribute_Controller_Contribution();
-    $params['invoiceID'] = bin2hex(random_bytes(16));
-
-    $paramsProcessedForForm = $form->_params = self::getFormParams($params['id'], $params);
-
-    $form->order = new CRM_Financial_BAO_Order();
-    $form->order->setPriceSetIDByContributionPageID($params['id']);
-    $form->order->setPriceSelectionFromUnfilteredInput($params);
-    if (isset($params['amount']) && !$form->isSeparateMembershipPayment()) {
-      // @todo deprecate receiving amount, calculate on the form.
-      $form->order->setOverrideTotalAmount((float) $params['amount']);
-    }
-    // hack these in for test support.
-    $form->_fields['billing_first_name'] = 1;
-    $form->_fields['billing_last_name'] = 1;
-    // CRM-18854 - Set form values to allow pledge to be created for api test.
-    $form->setPledgeID($params['pledge_id'] ?? NULL);
-    if (!empty($params['pledge_block_id'])) {
-      $form->_values['pledge_block_id'] = $params['pledge_block_id'];
-      $pledgeBlock = CRM_Pledge_BAO_PledgeBlock::getPledgeBlock($params['id']);
-      $form->_values['max_reminders'] = $pledgeBlock['max_reminders'];
-      $form->_values['initial_reminder_day'] = $form->getPledgeBlockValue('initial_reminder_day');
-      $form->_values['additional_reminder_day'] = $pledgeBlock['additional_reminder_day'];
-    }
-    $priceSetID = $form->_params['priceSetId'] = $paramsProcessedForForm['price_set_id'];
-    $priceFields = CRM_Price_BAO_PriceSet::getSetDetail($priceSetID);
-    $priceSetFields = reset($priceFields);
-    $form->_values['fee'] = $priceSetFields['fields'];
-    $form->_priceSetId = $priceSetID;
-    $form->setFormAmountFields($priceSetID);
-    $capabilities = [];
-    if ($form->_mode) {
-      $capabilities[] = (ucfirst($form->_mode) . 'Mode');
-    }
-    $form->_paymentProcessors = CRM_Financial_BAO_PaymentProcessor::getPaymentProcessors($capabilities);
-    $form->_params['payment_processor_id'] = $params['payment_processor_id'] ?? 0;
-    if ($form->_params['payment_processor_id'] !== '') {
-      // It can be blank with a $0 transaction - then no processor needs to be selected
-      $form->_paymentProcessor = $form->_paymentProcessors[$form->_params['payment_processor_id']];
-    }
-
-    $priceFields = $priceFields[$priceSetID]['fields'];
-    $membershipPriceFieldIDs = [];
-    foreach ($form->order->getLineItems() as $lineItem) {
-      if (!empty($lineItem['membership_type_id'])) {
-        $membershipPriceFieldIDs['id'] = $priceSetID;
-        $membershipPriceFieldIDs[] = $lineItem['price_field_value_id'];
-      }
-    }
-    $form->set('memberPriceFieldIDS', $membershipPriceFieldIDs);
-    $form->setRecurringMembershipParams();
-    $form->processFormSubmission($params['contact_id'] ?? NULL);
-  }
-
-  /**
    * Get the contribution ID.
    *
    * @api This function will not change in a minor release and is supported for
@@ -2176,35 +2116,6 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
    */
   public function getContributionID(): ?int {
     return $this->_ccid ?: $this->_contributionID;
-  }
-
-  /**
-   * Helper function for static submit function.
-   *
-   * Set relevant params - help us to build up an array that we can pass in.
-   *
-   * @param int $id
-   * @param array $params
-   *
-   * @return array
-   * @throws CRM_Core_Exception
-   */
-  public static function getFormParams($id, array $params) {
-    if (!isset($params['is_pay_later'])) {
-      if (!empty($params['payment_processor_id'])) {
-        $params['is_pay_later'] = 0;
-      }
-      elseif (($params['amount'] ?? 0) !== 0) {
-        $params['is_pay_later'] = civicrm_api3('contribution_page', 'getvalue', [
-          'id' => $id,
-          'return' => 'is_pay_later',
-        ]);
-      }
-    }
-    if (empty($params['price_set_id'])) {
-      $params['price_set_id'] = CRM_Price_BAO_PriceSet::getFor('civicrm_contribution_page', $params['id']);
-    }
-    return $params;
   }
 
   /**
@@ -2852,12 +2763,12 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
         // If this is a renewal situation with a new contribution then augment
         // at this point with the membership entity_id.
         $assignedMemberships = [];
-        foreach ($this->lineItems as &$lineItem) {
+        foreach ($this->lineItems as $index => $lineItem) {
           if (!empty($lineItem['membership_type_id'])) {
             $existingMembership = $this->getExistingMembership($lineItem['membership_type_id']);
             if ($existingMembership && !in_array($existingMembership['id'], $assignedMemberships)) {
               $assignedMemberships[] = $existingMembership['id'];
-              $lineItem['entity_id'] = $existingMembership['id'];
+              $this->setLineItemValue('entity_id', $existingMembership['id'], $index);
               $this->set('renewalMode', TRUE);
             }
           }
@@ -2865,6 +2776,19 @@ class CRM_Contribute_Form_Contribution_Confirm extends CRM_Contribute_Form_Contr
       }
     }
     return $this->lineItems;
+  }
+
+  /**
+   * Set a value on one line item, keeping the cached line items and the
+   * underlying Order's line items in sync.
+   *
+   * @param string $name
+   * @param mixed $value
+   * @param int|string $index
+   */
+  protected function setLineItemValue(string $name, $value, $index): void {
+    $this->lineItems[$index][$name] = $value;
+    $this->order->setLineItemValue($name, $value, $index);
   }
 
 }

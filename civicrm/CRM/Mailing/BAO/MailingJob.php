@@ -652,11 +652,29 @@ AND    status IN ( 'Scheduled', 'Running', 'Paused' )
     MailingJob::update(FALSE)
       ->setValues(['status:name' => 'Paused'])
       ->addWhere('mailing_id', '=', $mailingID)
+      ->addWhere('is_test', '=', FALSE)
+      ->addWhere('status:name', 'IN', ['Scheduled', 'Running'])
       ->execute();
     Mailing::update(FALSE)
       ->setValues(['status:name' => 'Paused'])
       ->addWhere('id', '=', $mailingID)
       ->execute();
+  }
+
+  /**
+   * Unschedule a mailing
+   *
+   * @param int $mailingID
+   *   The id of the mailing to be unscheduled.
+   */
+  public static function revert($mailingID) {
+    Mailing::update(FALSE)
+      ->setValues(['status:name' => 'Draft', 'scheduled_id' => NULL, 'scheduled_date' => NULL])
+      ->addWhere('id', '=', $mailingID)
+      ->execute();
+    CRM_Core_DAO::executeQuery("DELETE FROM civicrm_mailing_job WHERE mailing_id = %1 ", [
+      1 => [$mailingID, 'Integer'],
+    ]);
   }
 
   /**
@@ -666,12 +684,23 @@ AND    status IN ( 'Scheduled', 'Running', 'Paused' )
    *   The id of the mailing to be resumed.
    */
   public static function resume($mailingID) {
-    MailingJob::update(FALSE)
-      ->setValues(['status:name' => 'Scheduled'])
+    // runJobs() only starts Scheduled jobs that never ran, so started jobs must go back to Running.
+    foreach (['Scheduled' => 'IS NULL', 'Running' => 'IS NOT NULL'] as $status => $startDate) {
+      MailingJob::update(FALSE)
+        ->setValues(['status:name' => $status])
+        ->addWhere('mailing_id', '=', $mailingID)
+        ->addWhere('is_test', '=', FALSE)
+        ->addWhere('status:name', '=', 'Paused')
+        ->addWhere('start_date', $startDate)
+        ->execute();
+    }
+    $isStarted = MailingJob::get(FALSE)
       ->addWhere('mailing_id', '=', $mailingID)
-      ->execute();
+      ->addWhere('is_test', '=', FALSE)
+      ->addWhere('start_date', 'IS NOT NULL')
+      ->execute()->count() > 0;
     Mailing::update(FALSE)
-      ->setValues(['status:name' => 'Scheduled'])
+      ->setValues(['status:name' => $isStarted ? 'Running' : 'Scheduled'])
       ->addWhere('id', '=', $mailingID)
       ->execute();
   }
@@ -848,18 +877,6 @@ AND    record_type_id = {$targetRecordID}
     }
 
     return $result;
-  }
-
-  /**
-   * Delete the mailing job.
-   *
-   * @param int $id
-   * @deprecated
-   * @return bool
-   */
-  public static function del($id) {
-    CRM_Core_Error::deprecatedFunctionWarning('deleteRecord');
-    return (bool) self::deleteRecord(['id' => $id]);
   }
 
 }

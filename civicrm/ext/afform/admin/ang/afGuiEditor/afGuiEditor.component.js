@@ -1,5 +1,5 @@
 // https://civicrm.org/licensing
-(function(angular, $, _) {
+(function(angular, $) {
   "use strict";
 
   function backfillEntityDefaults(entity) {
@@ -21,6 +21,8 @@
     controller: function($scope, $element, crmApi4, crmUiHelp, afGui, $parse, $timeout, $location, $route, $rootScope, crmEntityTagsCache) {
       const ts = $scope.ts = CRM.ts('org.civicrm.afform_admin');
       $scope.hs = crmUiHelp({file: 'CRM/AfformAdmin/afformBuilder'});
+
+      this.isSuperAdmin = CRM.checkPerm('all CiviCRM permissions and ACLs');
 
       this.afform = null;
       $scope.saving = false;
@@ -64,7 +66,7 @@
           .filter((tag) => newIds.includes(tag.id))
           .map((tag) => tag.name)
           .sort();
-        if (!_.isEqual(names, (editor.afform.tags || []).slice().sort())) {
+        if (!angular.equals(names, (editor.afform.tags || []).slice().sort())) {
           editor.afform.tags = names;
         }
       });
@@ -85,7 +87,7 @@
       ];
 
       // Above mode for use with getterSetter
-      this.debounceWithGetterSetter = _.assign({getterSetter: true}, this.debounceMode);
+      this.debounceWithGetterSetter = Object.assign({getterSetter: true}, this.debounceMode);
 
       this.$onInit = function() {
         // Load the current form plus blocks & fields
@@ -158,7 +160,8 @@
 
         if (editor.getFormType() === 'form') {
           editor.allowEntityConfig = true;
-          $scope.entities = _.mapValues(afGui.findRecursive(editor.layout['#children'], {'#tag': 'af-entity'}, 'name'), backfillEntityDefaults);
+          $scope.entities = afGui.findRecursive(editor.layout['#children'], {'#tag': 'af-entity'}, 'name');
+          Object.values($scope.entities).forEach(backfillEntityDefaults);
 
           if (editor.mode === 'create') {
             editor.addEntity(editor.entity);
@@ -190,7 +193,7 @@
         // Initialize undo history
         undoAction = 'initialLoad';
         undoHistory = [{
-          afform: _.cloneDeep(editor.afform),
+          afform: structuredClone(editor.afform),
           saved: editor.mode === 'edit',
           selectedEntityName: null
         }];
@@ -202,7 +205,7 @@
               undoPosition = 0;
             }
             undoHistory.unshift({
-              afform: _.cloneDeep(editor.afform),
+              afform: structuredClone(editor.afform),
               saved: false,
               selectedEntityName: $scope.selectedEntityName
             });
@@ -240,16 +243,16 @@
         }
         undoPosition += direction;
         undoAction = 'change';
-        editor.afform = _.cloneDeep(undoHistory[undoPosition].afform);
+        editor.afform = structuredClone(undoHistory[undoPosition].afform);
         syncAfformTagIds();
         setEditorLayout();
         editor.canvasTab = 'layout';
         $scope.selectedEntityName = undoHistory[undoPosition].selectedEntityName;
       }
 
-      this.undo = _.wrap(1, changeHistory);
+      this.undo = () => changeHistory(1);
 
-      this.redo = _.wrap(-1, changeHistory);
+      this.redo = () => changeHistory(-1);
 
       this.isSaved = function() {
         return undoHistory[undoPosition].saved;
@@ -304,7 +307,8 @@
             editor.afform.layout = newLayout;
             setEditorLayout();
             if (editor.getFormType() === 'form') {
-              $scope.entities = _.mapValues(afGui.findRecursive(editor.layout['#children'], {'#tag': 'af-entity'}, 'name'), backfillEntityDefaults);
+              $scope.entities = afGui.findRecursive(editor.layout['#children'], {'#tag': 'af-entity'}, 'name');
+              Object.values($scope.entities).forEach(backfillEntityDefaults);
             }
             else if (editor.getFormType() === 'search') {
               editor.searchDisplays = getSearchDisplaysOnForm();
@@ -382,7 +386,8 @@
         while (!!$scope.entities[type + num]) {
           num++;
         }
-        $scope.entities[type + num] = backfillEntityDefaults(_.assign($parse(meta.defaults)(editor), {
+        // $parse returns undefined for entities with no `defaults` metadata
+        $scope.entities[type + num] = backfillEntityDefaults(Object.assign($parse(meta.defaults)(editor) || {}, {
           '#tag': 'af-entity',
           type: meta.entity,
           name: type + num,
@@ -400,19 +405,19 @@
             });
           }
           // Add this af-entity tag after the last existing one
-          let pos = 1 + _.findLastIndex(editor.layout['#children'], {'#tag': 'af-entity'});
+          let pos = 1 + editor.layout['#children'].findLastIndex(afGui.matches({'#tag': 'af-entity'}));
           editor.layout['#children'].splice(pos, 0, $scope.entities[type + num]);
           // Create a new af-fieldset container for the entity
           if (meta.boilerplate !== false) {
-            const fieldset = _.cloneDeep(afGui.meta.elements.fieldset.element);
+            const fieldset = structuredClone(afGui.meta.elements.fieldset.element);
             fieldset['af-fieldset'] = type + num;
             fieldset['af-title'] = meta.label + ' ' + num;
             // Add boilerplate contents if any
             if (Array.isArray(meta.boilerplate) && meta.boilerplate.length) {
-              fieldset['#children'].push(..._.cloneDeep(meta.boilerplate));
+              fieldset['#children'].push(...structuredClone(meta.boilerplate));
             }
             // Attempt to place the new af-fieldset after the last one on the form
-            pos = 1 + _.findLastIndex(editor.layout['#children'], 'af-fieldset');
+            pos = 1 + editor.layout['#children'].findLastIndex((item) => item && item['af-fieldset']);
             if (pos) {
               editor.layout['#children'].splice(pos, 0, fieldset);
             } else {
@@ -489,7 +494,8 @@
 
       // Get all entities or a filtered list
       this.getEntities = function(filter) {
-        return filter ? _.filter($scope.entities, filter) : _.toArray($scope.entities);
+        const entities = Object.values($scope.entities);
+        return filter ? entities.filter(afGui.matches(filter)) : entities;
       };
 
       const placementEntities = {};
@@ -499,7 +505,7 @@
       function getPlacementEntitiesFromMeta(metaPlacements) {
         const placements = {};
         metaPlacements.forEach((item) => {
-          _.extend(placements, editor.meta.placement_entities[item.id]);
+          Object.assign(placements, editor.meta.placement_entities[item.id]);
         });
         return placements;
       }
@@ -613,8 +619,8 @@
 
       // Gets complete field defn, merging values from the field with default values
       function fillFieldDefn(entityType, field) {
-        const spec = _.cloneDeep(afGui.getField(entityType, field.name));
-        const defn = _.merge(spec, field.defn || {});
+        const spec = structuredClone(afGui.getField(entityType, field.name));
+        const defn = angular.merge(spec, field.defn || {});
         const suffix = field.name.split(':')[1];
         if (suffix) {
           // restore suffix in returned defn
@@ -631,9 +637,7 @@
         const fieldsets = afGui.findRecursive(editor.layout['#children'], {'af-fieldset': entityName}),
           entityType = editor.getEntity(entityName).type,
           entityFields = {fields: [], joins: []},
-          isJoin = function (item) {
-            return _.isPlainObject(item) && ('af-join' in item);
-          };
+          isJoin = (item) => Boolean(item && item['af-join']);
         fieldsets.forEach((fieldset) => {
           afGui.getFormElements(fieldset['#children'], {'#tag': 'af-field'}, isJoin).forEach((field) => {
             if (field.name) {
@@ -1039,4 +1043,4 @@
     }
   });
 
-})(angular, CRM.$, CRM._);
+})(angular, CRM.$);

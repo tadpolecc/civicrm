@@ -108,6 +108,7 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
   public function createUser(&$params, $emailParam) {
     try {
       $email = $params[$emailParam];
+      // Profiles pass in this param inconsistently
       $contactId = $params['contactID'] ?? $params['contact_id'] ?? NULL;
       $userParams = [
         'username' => $params['cms_name'],
@@ -115,6 +116,7 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
         'contact_id' => $contactId,
       ];
       if (!empty($params['cms_pass'])) {
+        CRM_Core_Error::deprecatedWarning("Don't supply 'cms_pass' to Standalone::createUser(), instead pass 'notify' => TRUE and users will receive a welcome email to set their own password.");
         $userParams['password'] = $params['cms_pass'];
       }
       $userID = \Civi\Api4\User::create(FALSE)
@@ -772,6 +774,15 @@ class CRM_Utils_System_Standalone extends CRM_Utils_System_Base {
     }
     $session_handler = new SessionHandler();
     session_set_save_handler($session_handler);
+
+    // pass php garbage collection setting if set to a value between 0 and 100
+    // -1 is used as "leave php settings as they are"
+    $gcProbability = Civi::settings()->get('standalone_session_gc_probability') ?? -1;
+    if (0 <= $gcProbability && $gcProbability <= 100) {
+      // php settings are numerator and divisor
+      ini_set('session.gc_probability', $gcProbability);
+      ini_set('session.gc_divisor', 100);
+    }
   }
 
   protected function getSessionStartParams() {

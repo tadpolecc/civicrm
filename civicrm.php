@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CiviCRM
  * Description: CiviCRM - Growing and Sustaining Relationships
- * Version: 6.19.5
+ * Version: 6.20.0
  * Requires at least: 6.3
  * Requires PHP:      8.1.2
  * Author: CiviCRM LLC
@@ -36,7 +36,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Set version here: changing it forces Javascript and CSS to reload.
-define('CIVICRM_PLUGIN_VERSION', '6.19.5');
+define('CIVICRM_PLUGIN_VERSION', '6.20.0');
 
 // Store reference to this file.
 if (!defined('CIVICRM_PLUGIN_FILE')) {
@@ -1190,8 +1190,14 @@ class CiviCRM_For_WordPress {
     $config = CRM_Core_Config::singleton();
     $config->userFrameworkFrontend = $front_end;
 
+    // Adding core resources requires populated superglobals.
+    $this->remove_wp_magic_quotes();
+
     // Add CiviCRM core resources.
     CRM_Core_Resources::singleton()->addCoreResources();
+
+    // Restore superglobals.
+    $this->restore_wp_magic_quotes();
 
   }
 

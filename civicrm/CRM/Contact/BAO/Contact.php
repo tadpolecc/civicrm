@@ -368,6 +368,7 @@ class CRM_Contact_BAO_Contact extends CRM_Contact_DAO_Contact implements Civi\Co
           'entity_table' => 'civicrm_contact',
           'note' => $params['note'],
           'subject' => $params['subject'] ?? NULL,
+          'note_date' => $params['note_date'] ?? NULL,
           'contact_id' => $contactId,
         ];
         CRM_Core_BAO_Note::add($noteParams);
@@ -1274,7 +1275,7 @@ WHERE     civicrm_contact.id = " . CRM_Utils_Type::escape($id, 'Integer');
       $fields = array_merge($fields, $locationFields);
 
       $fields = array_merge($fields, CRM_Contact_DAO_Contact::import());
-      $fields = array_merge($fields, CRM_Core_DAO_Note::import());
+      $fields = array_merge($fields, array_intersect_key(CRM_Core_DAO_Note::import(), array_flip(['note', 'subject', 'note_date'])));
 
       //website fields
       $fields = array_merge($fields, CRM_Core_DAO_Website::import());
@@ -1818,7 +1819,8 @@ ORDER BY civicrm_email.is_primary DESC";
    * @param array $params
    *   Array of profile fields to be edited/added.
    * @param array $fields
-   *   Array of fields from UFGroup.
+   *   Array of fields from UFGroup. Note this is optional unless there are privacy options involved
+   *   as all other fields are ignored.
    * @param int $contactID
    *   Id of the contact to be edited/added.
    * @param int $addToGroupID
@@ -1876,13 +1878,13 @@ ORDER BY civicrm_email.is_primary DESC";
       $isOptOut = $params['is_opt_out'];
       $data['is_opt_out'] = $isOptOut;
       // on change, create new civicrm_subscription_history entry
-      if (($wasOptOut != $isOptOut) && !empty($contactDetails['contact_id'])) {
+      if (($wasOptOut != $isOptOut) && !empty($contactDetails['id'])) {
         $shParams = [
-          'contact_id' => $contactDetails['contact_id'],
+          'contact_id' => $contactDetails['id'],
           'status' => $isOptOut ? 'Removed' : 'Added',
           'method' => 'Web',
         ];
-        CRM_Contact_BAO_SubscriptionHistory::create($shParams);
+        CRM_Contact_BAO_SubscriptionHistory::writeRecord($shParams);
       }
     }
 
@@ -1970,7 +1972,7 @@ ORDER BY civicrm_email.is_primary DESC";
    * Format profile contact parameters.
    *
    * @param array $params
-   * @param array $fields
+   * @param array $privacyOptionsToSet
    * @param int|null $contactID
    * @param int|null $ufGroupId
    * @param string|null $ctype
@@ -1980,24 +1982,32 @@ ORDER BY civicrm_email.is_primary DESC";
    */
   public static function formatProfileContactParams(
     &$params,
-    $fields,
+    $privacyOptionsToSet = [],
     $contactID = NULL,
     $ufGroupId = NULL,
     $ctype = NULL,
     $skipCustom = FALSE
   ) {
-
-    $data = $contactDetails = [];
-
-    // get the contact details (hier)
+    $data = [];
     if ($contactID) {
-      $details = self::getHierContactDetails($contactID, $fields);
-
-      $contactDetails = $details[$contactID];
-      $data['contact_type'] = $contactDetails['contact_type'] ?? NULL;
-      $data['contact_sub_type'] = $contactDetails['contact_sub_type'] ?? NULL;
+      $contact = Civi\Api4\Contact::get(FALSE)
+        ->addWhere('id', '=', $contactID)
+        ->setSelect(['contact_type', 'contact_sub_type', 'household_name', 'organization_name', 'is_opt_out'])
+        ->execute()->single();
+      $data['contact_type'] = $contact['contact_type'];
+      // Api4 returns this serialized field as an array - re-pad it back to the
+      // legacy separator-delimited string the rest of this function (and the
+      // eventual DAO save) expects.
+      $data['contact_sub_type'] = $contact['contact_sub_type'] ? CRM_Utils_Array::implodePadded($contact['contact_sub_type']) : $contact['contact_sub_type'];
+      if ($contact['contact_type'] == 'Organization') {
+        $data['organization_name'] = $contact['organization_name'];
+      }
+      elseif ($contact['contact_type'] == 'Household') {
+        $data['household_name'] = $contact['household_name'];
+      }
     }
     else {
+      $contact = [];
       //we should get contact type only if contact
       if ($ufGroupId) {
         $data['contact_type'] = CRM_Core_BAO_UFField::getProfileType($ufGroupId, TRUE, FALSE, TRUE);
@@ -2041,13 +2051,6 @@ ORDER BY civicrm_email.is_primary DESC";
           $data['contact_sub_type'] = CRM_Core_DAO::VALUE_SEPARATOR . $data['contact_sub_type'] . CRM_Utils_Array::implodePadded($params['contact_sub_type_hidden']);
         }
       }
-    }
-
-    if ($ctype == 'Organization') {
-      $data['organization_name'] = $contactDetails['organization_name'] ?? NULL;
-    }
-    elseif ($ctype == 'Household') {
-      $data['household_name'] = $contactDetails['household_name'] ?? NULL;
     }
 
     $locationType = [];
@@ -2323,7 +2326,7 @@ ORDER BY civicrm_email.is_primary DESC";
     //set the values for checkboxes (do_not_email, do_not_mail, do_not_trade, do_not_phone)
     $privacy = CRM_Core_SelectValues::privacy();
     foreach ($privacy as $key => $value) {
-      if (array_key_exists($key, $fields)) {
+      if (array_key_exists($key, $privacyOptionsToSet)) {
         // do not reset values for existing contacts, if fields are added to a profile
         if (array_key_exists($key, $params)) {
           $data[$key] = $params[$key];
@@ -2337,7 +2340,7 @@ ORDER BY civicrm_email.is_primary DESC";
       }
     }
 
-    return [$data, $contactDetails];
+    return [$data, $contact];
   }
 
   /**
@@ -2824,10 +2827,7 @@ LEFT JOIN civicrm_email    ON ( civicrm_contact.id = civicrm_email.contact_id )
         'href' => CRM_Utils_System::url('civicrm/contact/view/contribution',
           'reset=1&action=add&context=contribution'
         ),
-        'permissions' => [
-          'access CiviContribute',
-          'edit contributions',
-        ],
+        'permissions' => ['edit contributions'],
       ],
       'participant' => [
         'title' => ts('Register for Event'),
@@ -2838,7 +2838,6 @@ LEFT JOIN civicrm_email    ON ( civicrm_contact.id = civicrm_email.contact_id )
         'component' => 'CiviEvent',
         'href' => CRM_Utils_System::url('civicrm/contact/view/participant', 'reset=1&action=add&context=participant'),
         'permissions' => [
-          'access CiviEvent',
           'edit event participants',
         ],
       ],
@@ -2860,7 +2859,6 @@ LEFT JOIN civicrm_email    ON ( civicrm_contact.id = civicrm_email.contact_id )
         ),
         'component' => 'CiviPledge',
         'permissions' => [
-          'access CiviPledge',
           'edit pledges',
         ],
       ],
@@ -2875,7 +2873,6 @@ LEFT JOIN civicrm_email    ON ( civicrm_contact.id = civicrm_email.contact_id )
           'reset=1&action=add&context=membership'
         ),
         'permissions' => [
-          'access CiviMember',
           'edit memberships',
         ],
       ],
